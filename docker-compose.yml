@@ -1,5 +1,7 @@
 services:
   db:
+    networks:
+      - internal
     image: postgres:16-alpine
     environment:
       POSTGRES_DB: dominion_tracker
@@ -16,6 +18,9 @@ services:
     restart: unless-stopped
 
   backend:
+    networks:
+      - proxy
+      - internal
     build: ./backend
     environment:
       DB_HOST: db
@@ -31,11 +36,21 @@ services:
 
   frontend:
     build: ./frontend
+    networks:
+      - proxy
+      - internal
     ports:
-      - "${APP_PORT:-80}:80"
+      - "3002:80"
     depends_on:
       - backend
     restart: unless-stopped
+
+networks:
+  internal:
+    driver: bridge
+  proxy:
+    external: true
+    name: proxy
 
 volumes:
   postgres_data:
