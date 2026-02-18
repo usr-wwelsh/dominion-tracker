@@ -1,6 +1,6 @@
 // API Client for Dominion Tracker
 
-const API_BASE_URL = 'http://localhost:3000/api';
+const API_BASE_URL = `http://${window.location.hostname}:3000/api`;
 
 /**
  * Centralized fetch wrapper with error handling
