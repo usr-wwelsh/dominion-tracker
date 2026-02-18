@@ -84,6 +84,44 @@
         <canvas id="live-score-chart"></canvas>
       </div>
     </div>
+
+    <!-- End Game Modal -->
+    <div id="end-game-modal" class="modal" style="display: none;">
+      <div class="modal-content">
+        <div class="modal-header">Game Complete!</div>
+        
+        <div class="modal-body">
+          <div class="result-summary">
+            <div class="result-item">
+              <span class="result-label">Winner:</span>
+              <span id="result-winner" class="result-value"></span>
+            </div>
+            <div class="result-item">
+              <span class="result-label">Score:</span>
+              <span id="result-score" class="result-value"></span>
+            </div>
+            <div class="result-item">
+              <span class="result-label">League Points:</span>
+              <span id="result-points" class="result-value"></span>
+            </div>
+          </div>
+
+          <div class="restart-section">
+            <h3>Play Again?</h3>
+            <div class="form-group">
+              <label for="restart-build-select">Change Build (Optional)</label>
+              <select id="restart-build-select">
+                <!-- Populated by JavaScript -->
+              </select>
+            </div>
+            <div class="restart-buttons">
+              <button id="restart-game-btn" class="btn btn-primary">Restart with Same Players</button>
+              <button id="go-to-games-btn" class="btn">Go to Games</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
   </div>
 
   <script src="js/api.js"></script>

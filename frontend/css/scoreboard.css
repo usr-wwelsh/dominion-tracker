@@ -188,3 +188,80 @@
     height: 250px;
   }
 }
+
+/* End Game Modal */
+.modal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0, 0, 0, 0.7);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.modal-content {
+  background-color: var(--color-bg-primary);
+  border: 2px solid var(--color-accent);
+  border-radius: var(--border-radius-md);
+  padding: var(--spacing-xl);
+  max-width: 450px;
+  width: 90%;
+  text-align: center;
+}
+
+.modal-header {
+  font-size: 1.8rem;
+  font-weight: bold;
+  color: var(--color-accent);
+  margin-bottom: var(--spacing-lg);
+}
+
+.result-summary {
+  background-color: var(--color-bg-tertiary);
+  padding: var(--spacing-lg);
+  border-radius: var(--border-radius-sm);
+  margin-bottom: var(--spacing-lg);
+}
+
+.result-item {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: var(--spacing-sm);
+}
+
+.result-item:last-child {
+  margin-bottom: 0;
+}
+
+.result-label {
+  color: var(--color-text-secondary);
+}
+
+.result-value {
+  font-weight: bold;
+  color: var(--color-accent);
+}
+
+.restart-section h3 {
+  margin-bottom: var(--spacing-md);
+  color: var(--color-text-primary);
+}
+
+.restart-section .form-group {
+  margin-bottom: var(--spacing-md);
+  text-align: left;
+}
+
+.restart-buttons {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-sm);
+}
+
+.restart-buttons .btn {
+  width: 100%;
+}

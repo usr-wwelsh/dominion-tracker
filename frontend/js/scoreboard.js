@@ -67,6 +67,8 @@ function setupEventListeners() {
   const startGameBtn = document.getElementById('start-game-btn');
   const endGameBtn = document.getElementById('end-game-btn');
   const cancelGameBtn = document.getElementById('cancel-game-btn');
+  const restartGameBtn = document.getElementById('restart-game-btn');
+  const goToGamesBtn = document.getElementById('go-to-games-btn');
 
   addPlayerBtn.addEventListener('click', addPlayer);
   playerInput.addEventListener('keypress', (e) => {
@@ -78,6 +80,8 @@ function setupEventListeners() {
   startGameBtn.addEventListener('click', startGame);
   endGameBtn.addEventListener('click', endGame);
   cancelGameBtn.addEventListener('click', cancelGame);
+  restartGameBtn.addEventListener('click', restartGame);
+  goToGamesBtn.addEventListener('click', goToGamesPage);
 }
 
 // Add player to game
@@ -208,14 +212,9 @@ function renderScoreboard() {
   const scoreboard = document.getElementById('scoreboard');
   scoreboard.innerHTML = '';
 
-  // Sort players by score
-  const sortedPlayers = [...selectedPlayers].sort((a, b) => b.score - a.score);
-
-  sortedPlayers.forEach((player, index) => {
-    const isLeader = index === 0 && player.score > 0;
-
+  selectedPlayers.forEach((player, index) => {
     const div = document.createElement('div');
-    div.className = `score-row ${isLeader ? 'leader' : ''}`;
+    div.className = 'score-row';
     div.dataset.playerId = player.id;
 
     div.innerHTML = `
@@ -266,26 +265,97 @@ async function endGame() {
   }
 
   try {
-    // Clear any pending score updates
     Object.values(scoreUpdateDebounce).forEach(timeout => clearTimeout(timeout));
 
-    // End the game
     const finalGame = await gamesAPI.end(currentGame.id);
 
     stopTimer();
     showSuccess('Game ended! Calculating results...');
 
-    // Show results
-    setTimeout(() => {
-      alert(`Game completed!\n\nWinner: ${finalGame.players[0].player_name}\nScore: ${finalGame.players[0].final_score}\nLeague Points: ${finalGame.players[0].league_points}`);
+    const endedGameInfo = {
+      game: finalGame,
+      selectedPlayerIds: selectedPlayers.map(p => p.id),
+      selectedPlayerNames: selectedPlayers.map(p => p.name),
+      previousBuildId: currentGame.build_id
+    };
 
-      // Reset and go back to setup
-      resetGame();
-      window.location.href = 'games.html';
-    }, 1000);
+    setTimeout(() => {
+      showEndGameModal(endedGameInfo);
+    }, 500);
   } catch (error) {
     showError(`Failed to end game: ${error.message}`);
   }
+}
+
+// Show end game modal with restart options
+function showEndGameModal(endedGameInfo) {
+  const modal = document.getElementById('end-game-modal');
+  const winner = endedGameInfo.game.players[0];
+  
+  document.getElementById('result-winner').textContent = winner.player_name;
+  document.getElementById('result-score').textContent = winner.final_score;
+  document.getElementById('result-points').textContent = winner.league_points;
+  
+  const buildSelect = document.getElementById('restart-build-select');
+  buildSelect.innerHTML = '<option value="">No build selected</option>';
+  allBuilds.forEach(build => {
+    const option = document.createElement('option');
+    option.value = build.id;
+    option.textContent = build.nickname;
+    if (build.id === endedGameInfo.previousBuildId) {
+      option.selected = true;
+    }
+    buildSelect.appendChild(option);
+  });
+  
+  modal.dataset.endedGameInfo = JSON.stringify(endedGameInfo);
+  
+  modal.style.display = 'flex';
+}
+
+// Hide end game modal
+function hideEndGameModal() {
+  document.getElementById('end-game-modal').style.display = 'none';
+}
+
+// Restart game with same players
+async function restartGame() {
+  const modal = document.getElementById('end-game-modal');
+  const endedGameInfo = JSON.parse(modal.dataset.endedGameInfo);
+  const buildSelect = document.getElementById('restart-build-select');
+  const newBuildId = buildSelect.value || null;
+
+  hideEndGameModal();
+
+  try {
+    for (const playerId of endedGameInfo.selectedPlayerIds) {
+      let player = selectedPlayers.find(p => p.id === playerId);
+      if (!player) {
+        player = allPlayers.find(p => p.id === playerId);
+        if (player) {
+          selectedPlayers.push(player);
+        }
+      }
+    }
+
+    document.getElementById('build-select').value = newBuildId || '';
+
+    document.getElementById('setup-section').style.display = 'block';
+    document.getElementById('game-section').style.display = 'none';
+
+    renderSelectedPlayers();
+    updateStartButton();
+    showSuccess('Ready to start new game with same players!');
+  } catch (error) {
+    showError(`Failed to restart game: ${error.message}`);
+  }
+}
+
+// Go to games page
+function goToGamesPage() {
+  hideEndGameModal();
+  resetGame();
+  window.location.href = 'games.html';
 }
 
 // Cancel game
