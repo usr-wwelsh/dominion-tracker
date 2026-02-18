@@ -1,0 +1,209 @@
+/* Builds page styles */
+
+.expansion-sections {
+  margin-top: var(--spacing-md);
+}
+
+.expansion-section {
+  margin-bottom: var(--spacing-xl);
+}
+
+.expansion-header {
+  color: var(--color-accent);
+  font-size: 1.2rem;
+  margin-bottom: var(--spacing-md);
+  padding-bottom: var(--spacing-sm);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.card-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: var(--spacing-sm);
+}
+
+.card-checkbox {
+  display: flex;
+  align-items: center;
+  padding: var(--spacing-sm);
+  background-color: var(--color-bg-tertiary);
+  border: 1px solid var(--color-border);
+  border-radius: var(--border-radius-sm);
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.card-checkbox:hover {
+  border-color: var(--color-accent);
+  background-color: rgba(139, 115, 85, 0.1);
+}
+
+.card-checkbox input[type="checkbox"] {
+  width: auto;
+  margin-right: var(--spacing-sm);
+  cursor: pointer;
+}
+
+.card-checkbox label {
+  margin: 0;
+  cursor: pointer;
+  flex: 1;
+  color: var(--color-text-primary);
+}
+
+.card-checkbox.selected {
+  background-color: rgba(139, 115, 85, 0.2);
+  border-color: var(--color-accent);
+}
+
+.card-count {
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: var(--color-accent);
+  margin-bottom: var(--spacing-md);
+  padding: var(--spacing-sm);
+  background-color: var(--color-bg-tertiary);
+  border-radius: var(--border-radius-sm);
+  text-align: center;
+}
+
+.card-count.limit-reached {
+  color: var(--color-warning);
+}
+
+.build-item {
+  background-color: var(--color-bg-tertiary);
+  border: 1px solid var(--color-border);
+  border-radius: var(--border-radius-sm);
+  padding: var(--spacing-lg);
+  margin-bottom: var(--spacing-md);
+  transition: border-color 0.2s ease;
+}
+
+.build-item:hover {
+  border-color: var(--color-accent);
+}
+
+.build-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: var(--spacing-md);
+  flex-wrap: wrap;
+  gap: var(--spacing-md);
+}
+
+.build-title {
+  font-size: 1.3rem;
+  font-weight: 600;
+  color: var(--color-text-primary);
+}
+
+.build-stats {
+  display: flex;
+  gap: var(--spacing-lg);
+  color: var(--color-text-secondary);
+  font-size: 0.9rem;
+}
+
+.build-cards {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-sm);
+  margin-bottom: var(--spacing-md);
+}
+
+.card-tag {
+  background-color: var(--color-bg-secondary);
+  border: 1px solid var(--color-accent);
+  padding: var(--spacing-xs) var(--spacing-sm);
+  border-radius: var(--border-radius-sm);
+  font-size: 0.9rem;
+  color: var(--color-text-primary);
+}
+
+.build-actions {
+  display: flex;
+  gap: var(--spacing-sm);
+}
+
+#no-builds {
+  color: var(--color-text-secondary);
+  font-style: italic;
+}
+
+.edition-badge {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--color-text-secondary);
+  background-color: var(--color-bg-secondary);
+  border: 1px solid var(--color-border);
+  border-radius: var(--border-radius-sm);
+  padding: 1px 5px;
+  vertical-align: middle;
+  margin-left: var(--spacing-xs);
+}
+
+.supplemental-note {
+  font-size: 0.85rem;
+  font-weight: 400;
+  color: var(--color-text-secondary);
+}
+
+.build-tag-group {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--spacing-xs);
+}
+
+.toggle-label {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  cursor: pointer;
+  font-weight: 600;
+  color: var(--color-text-primary);
+}
+
+.toggle-label input[type="checkbox"] {
+  width: auto;
+  cursor: pointer;
+  accent-color: var(--color-accent);
+  width: 1.1rem;
+  height: 1.1rem;
+}
+
+.platinum-colony-badge {
+  background-color: rgba(139, 115, 85, 0.15);
+  border: 1px solid var(--color-accent);
+  color: var(--color-accent);
+  padding: 1px 8px;
+  border-radius: var(--border-radius-sm);
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+
+.tag-group-label {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--color-text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  white-space: nowrap;
+}
+
+@media (max-width: 768px) {
+  .card-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .build-header {
+    flex-direction: column;
+  }
+
+  .build-stats {
+    flex-direction: column;
+    gap: var(--spacing-xs);
+  }
+}

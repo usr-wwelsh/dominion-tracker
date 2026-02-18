@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Dominion Tracker - Leaderboard</title>
+  <link rel="stylesheet" href="css/main.css">
+  <link rel="stylesheet" href="css/leaderboard.css">
+</head>
+<body>
+  <nav>
+    <ul>
+      <li><a href="index.html" class="active">Leaderboard</a></li>
+      <li><a href="games.html">Recent Games</a></li>
+      <li><a href="builds.html">Builds</a></li>
+      <li><a href="scoreboard.html">Live Scoreboard</a></li>
+    </ul>
+  </nav>
+
+  <div class="container">
+    <h1>Player Leaderboard</h1>
+
+    <div id="error-message" class="error" style="display: none;"></div>
+
+    <div id="loading" class="loading">Loading leaderboard</div>
+
+    <div id="leaderboard-container" style="display: none;">
+      <table id="leaderboard-table">
+        <thead>
+          <tr>
+            <th class="sortable" data-column="rank">#</th>
+            <th class="sortable" data-column="name">Player Name</th>
+            <th class="sortable" data-column="total_league_points">Total League Points</th>
+            <th class="sortable" data-column="avg_league_points">Avg Points/Game</th>
+            <th class="sortable" data-column="total_wins">Wins</th>
+            <th class="sortable" data-column="total_games">Games Played</th>
+            <th class="sortable" data-column="avg_score">Avg Score</th>
+          </tr>
+        </thead>
+        <tbody id="leaderboard-body">
+          <!-- Populated by JavaScript -->
+        </tbody>
+      </table>
+
+      <div id="no-data" class="text-center mt-xl" style="display: none;">
+        <p>No players have completed any games yet.</p>
+        <p>Start by creating a <a href="scoreboard.html">new game</a>!</p>
+      </div>
+    </div>
+  </div>
+
+  <script src="js/api.js"></script>
+  <script src="js/leaderboard.js"></script>
+</body>
+</html>

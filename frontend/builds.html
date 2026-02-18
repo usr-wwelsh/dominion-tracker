@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Dominion Tracker - Builds</title>
+  <link rel="stylesheet" href="css/main.css">
+  <link rel="stylesheet" href="css/builds.css">
+</head>
+<body>
+  <nav>
+    <ul>
+      <li><a href="index.html">Leaderboard</a></li>
+      <li><a href="games.html">Recent Games</a></li>
+      <li><a href="builds.html" class="active">Builds</a></li>
+      <li><a href="scoreboard.html">Live Scoreboard</a></li>
+    </ul>
+  </nav>
+
+  <div class="container">
+    <h1>Card Builds</h1>
+
+    <div id="error-message" class="error" style="display: none;"></div>
+    <div id="success-message" class="success" style="display: none;"></div>
+
+    <!-- Create Build Section -->
+    <div class="card">
+      <div class="card-header">Create New Build</div>
+
+      <form id="create-build-form">
+        <div class="form-group">
+          <label for="build-nickname">Build Nickname *</label>
+          <input
+            type="text"
+            id="build-nickname"
+            name="nickname"
+            placeholder="e.g., Village Engine, Big Money, Chapel Rush"
+            required
+          >
+        </div>
+
+        <div class="form-group">
+          <label>Kingdom Cards (choose 10) *</label>
+          <div id="card-count" class="card-count">0 / 10 kingdom cards selected</div>
+
+          <div class="expansion-sections">
+            <!-- Base Set -->
+            <div class="expansion-section">
+              <h3 class="expansion-header">Base Set</h3>
+              <div class="card-grid" id="base-cards"></div>
+            </div>
+
+            <!-- Intrigue 2e -->
+            <div class="expansion-section">
+              <h3 class="expansion-header">Intrigue <span class="edition-badge">2e</span></h3>
+              <div class="card-grid" id="intrigue-cards"></div>
+            </div>
+
+            <!-- Seaside 2e -->
+            <div class="expansion-section">
+              <h3 class="expansion-header">Seaside <span class="edition-badge">2e</span></h3>
+              <div class="card-grid" id="seaside-cards"></div>
+            </div>
+
+            <!-- Prosperity 2e -->
+            <div class="expansion-section">
+              <h3 class="expansion-header">Prosperity <span class="edition-badge">2e</span></h3>
+              <div class="card-grid" id="prosperity-cards"></div>
+            </div>
+
+            <!-- Empires 1e -->
+            <div class="expansion-section">
+              <h3 class="expansion-header">Empires <span class="edition-badge">1e</span></h3>
+              <div class="card-grid" id="empires-cards"></div>
+            </div>
+
+            <!-- Rising Sun 1e -->
+            <div class="expansion-section">
+              <h3 class="expansion-header">Rising Sun <span class="edition-badge">1e</span></h3>
+              <div class="card-grid" id="rising-sun-cards"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Landmarks (Empires) -->
+        <div class="form-group">
+          <label>Landmarks — Empires <span class="supplemental-note">(optional, no limit)</span></label>
+          <div class="expansion-sections">
+            <div class="expansion-section">
+              <div class="card-grid" id="empires-landmarks"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Events -->
+        <div class="form-group">
+          <label>Events <span class="supplemental-note">(optional, no limit)</span></label>
+          <div class="expansion-sections">
+            <div class="expansion-section">
+              <h3 class="expansion-header">Empires</h3>
+              <div class="card-grid" id="empires-events"></div>
+            </div>
+            <div class="expansion-section">
+              <h3 class="expansion-header">Rising Sun</h3>
+              <div class="card-grid" id="rising-sun-events"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Prophecies (Rising Sun) -->
+        <div class="form-group">
+          <label>Prophecies — Rising Sun <span class="supplemental-note">(optional, no limit)</span></label>
+          <div class="expansion-sections">
+            <div class="expansion-section">
+              <div class="card-grid" id="rising-sun-prophecies"></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label class="toggle-label">
+            <input type="checkbox" id="use-platinum-colony">
+            Use Platinum &amp; Colony
+          </label>
+        </div>
+
+        <button type="submit" class="btn btn-primary">Create Build</button>
+        <button type="button" class="btn" id="clear-form">Clear Form</button>
+      </form>
+    </div>
+
+    <!-- Existing Builds Section -->
+    <div class="card mt-xl">
+      <div class="card-header">Existing Builds</div>
+
+      <div id="loading" class="loading">Loading builds</div>
+
+      <div id="builds-container" style="display: none;">
+        <div id="builds-list">
+          <!-- Populated by JavaScript -->
+        </div>
+
+        <div id="no-builds" class="text-center mt-lg" style="display: none;">
+          <p>No builds created yet. Create your first build above!</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="js/api.js"></script>
+  <script src="js/builds.js"></script>
+</body>
+</html>

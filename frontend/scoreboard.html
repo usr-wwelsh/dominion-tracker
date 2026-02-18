@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Dominion Tracker - Live Scoreboard</title>
+  <link rel="stylesheet" href="css/main.css">
+  <link rel="stylesheet" href="css/scoreboard.css">
+</head>
+<body>
+  <nav>
+    <ul>
+      <li><a href="index.html">Leaderboard</a></li>
+      <li><a href="games.html">Recent Games</a></li>
+      <li><a href="builds.html">Builds</a></li>
+      <li><a href="scoreboard.html" class="active">Live Scoreboard</a></li>
+    </ul>
+  </nav>
+
+  <div class="container">
+    <h1>Live Scoreboard</h1>
+
+    <div id="error-message" class="error" style="display: none;"></div>
+    <div id="success-message" class="success" style="display: none;"></div>
+
+    <!-- Game Setup Section -->
+    <div id="setup-section" class="card">
+      <div class="card-header">Game Setup</div>
+
+      <div class="form-group">
+        <label for="build-select">Select Build (Optional)</label>
+        <select id="build-select">
+          <option value="">No build selected</option>
+        </select>
+      </div>
+
+      <div class="form-group">
+        <label>Players</label>
+        <div id="player-setup">
+          <div class="player-input-group">
+            <input
+              type="text"
+              class="player-name-input"
+              placeholder="Enter player name"
+              list="player-suggestions"
+            >
+            <button type="button" class="btn btn-sm add-player-btn">Add Player</button>
+          </div>
+
+          <datalist id="player-suggestions">
+            <!-- Populated by JavaScript -->
+          </datalist>
+
+          <div id="selected-players" class="selected-players">
+            <!-- Selected players will appear here -->
+          </div>
+        </div>
+      </div>
+
+      <button id="start-game-btn" class="btn btn-primary" disabled>Start Game</button>
+    </div>
+
+    <!-- Active Game Section -->
+    <div id="game-section" class="card" style="display: none;">
+      <div class="card-header flex justify-between items-center">
+        <span>Game in Progress</span>
+        <div class="game-timer">
+          <span id="timer">00:00</span>
+        </div>
+      </div>
+
+      <div id="scoreboard">
+        <!-- Player scores will appear here -->
+      </div>
+
+      <div class="game-actions mt-lg">
+        <button id="end-game-btn" class="btn btn-success">End Game</button>
+        <button id="cancel-game-btn" class="btn btn-danger">Cancel Game</button>
+      </div>
+
+      <!-- Score History Chart -->
+      <div class="chart-container mt-lg">
+        <div class="chart-title">Score Progression</div>
+        <canvas id="live-score-chart"></canvas>
+      </div>
+    </div>
+  </div>
+
+  <script src="js/api.js"></script>
+  <script src="js/scoreboard.js"></script>
+</body>
+</html>

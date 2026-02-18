@@ -1,0 +1,53 @@
+/* Leaderboard-specific styles */
+
+#leaderboard-table {
+  margin-top: var(--spacing-lg);
+}
+
+#leaderboard-table tbody tr:nth-child(1) td:first-child {
+  color: #ffd700;
+  font-weight: bold;
+  font-size: 1.2rem;
+}
+
+#leaderboard-table tbody tr:nth-child(2) td:first-child {
+  color: #c0c0c0;
+  font-weight: bold;
+  font-size: 1.1rem;
+}
+
+#leaderboard-table tbody tr:nth-child(3) td:first-child {
+  color: #cd7f32;
+  font-weight: bold;
+  font-size: 1.1rem;
+}
+
+.player-name {
+  font-weight: 600;
+  color: var(--color-text-primary);
+}
+
+.stat-highlight {
+  color: var(--color-accent);
+  font-weight: 600;
+}
+
+#no-data {
+  color: var(--color-text-secondary);
+  font-style: italic;
+}
+
+#no-data a {
+  font-weight: bold;
+}
+
+@media (max-width: 768px) {
+  #leaderboard-table {
+    font-size: 0.85rem;
+  }
+
+  #leaderboard-table th,
+  #leaderboard-table td {
+    padding: var(--spacing-xs) var(--spacing-sm);
+  }
+}

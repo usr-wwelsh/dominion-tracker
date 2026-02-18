@@ -1,0 +1,149 @@
+/* Games page styles */
+
+.game-card {
+  background-color: var(--color-bg-secondary);
+  border: 2px solid var(--color-border);
+  border-radius: var(--border-radius-md);
+  padding: var(--spacing-lg);
+  margin-bottom: var(--spacing-lg);
+  box-shadow: var(--shadow-md);
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.game-card:hover {
+  border-color: var(--color-accent);
+  box-shadow: var(--shadow-lg);
+}
+
+.game-card.expanded {
+  border-color: var(--color-accent);
+}
+
+.game-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  flex-wrap: wrap;
+  gap: var(--spacing-md);
+}
+
+.game-info {
+  flex: 1;
+  min-width: 250px;
+}
+
+.game-date {
+  color: var(--color-text-secondary);
+  font-size: 0.95rem;
+  margin-bottom: var(--spacing-xs);
+}
+
+.game-winner {
+  font-size: 1.2rem;
+  font-weight: 600;
+  color: var(--color-accent);
+  margin-bottom: var(--spacing-xs);
+}
+
+.game-meta {
+  display: flex;
+  gap: var(--spacing-lg);
+  flex-wrap: wrap;
+  color: var(--color-text-secondary);
+  font-size: 0.9rem;
+}
+
+.game-build {
+  color: var(--color-text-primary);
+  font-style: italic;
+}
+
+.expand-icon {
+  color: var(--color-accent);
+  font-size: 1.5rem;
+  transition: transform 0.2s ease;
+}
+
+.game-card.expanded .expand-icon {
+  transform: rotate(180deg);
+}
+
+.game-details {
+  display: none;
+  margin-top: var(--spacing-lg);
+  padding-top: var(--spacing-lg);
+  border-top: 1px solid var(--color-border);
+}
+
+.game-card.expanded .game-details {
+  display: block;
+}
+
+.players-table {
+  margin-bottom: var(--spacing-lg);
+}
+
+.players-table table {
+  width: 100%;
+}
+
+.placement-1 {
+  font-weight: bold;
+  color: #ffd700;
+}
+
+.placement-2 {
+  color: #c0c0c0;
+}
+
+.placement-3 {
+  color: #cd7f32;
+}
+
+.chart-container {
+  background-color: var(--color-bg-tertiary);
+  padding: var(--spacing-lg);
+  border-radius: var(--border-radius-sm);
+  border: 1px solid var(--color-border);
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.chart-title {
+  text-align: center;
+  margin-bottom: var(--spacing-md);
+  color: var(--color-text-secondary);
+  font-size: 0.95rem;
+}
+
+.chart-container canvas {
+  width: 100% !important;
+  height: 300px;
+  display: block;
+  max-width: 100%;
+}
+
+#no-games {
+  color: var(--color-text-secondary);
+  font-style: italic;
+}
+
+#no-games a {
+  font-weight: bold;
+}
+
+@media (max-width: 768px) {
+  .game-header {
+    flex-direction: column;
+  }
+
+  .game-meta {
+    flex-direction: column;
+    gap: var(--spacing-xs);
+  }
+
+  .chart-container canvas {
+    height: 250px;
+  }
+}

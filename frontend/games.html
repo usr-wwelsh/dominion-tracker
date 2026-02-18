@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Dominion Tracker - Recent Games</title>
+  <link rel="stylesheet" href="css/main.css">
+  <link rel="stylesheet" href="css/games.css">
+</head>
+<body>
+  <nav>
+    <ul>
+      <li><a href="index.html">Leaderboard</a></li>
+      <li><a href="games.html" class="active">Recent Games</a></li>
+      <li><a href="builds.html">Builds</a></li>
+      <li><a href="scoreboard.html">Live Scoreboard</a></li>
+    </ul>
+  </nav>
+
+  <div class="container">
+    <h1>Recent Games</h1>
+
+    <div id="error-message" class="error" style="display: none;"></div>
+
+    <div id="loading" class="loading">Loading games</div>
+
+    <div id="games-container" style="display: none;">
+      <div id="games-list">
+        <!-- Populated by JavaScript -->
+      </div>
+
+      <div id="no-games" class="text-center mt-xl" style="display: none;">
+        <p>No games have been played yet.</p>
+        <p>Start by creating a <a href="scoreboard.html">new game</a>!</p>
+      </div>
+    </div>
+  </div>
+
+  <script src="js/api.js"></script>
+  <script src="js/games.js"></script>
+</body>
+</html>
