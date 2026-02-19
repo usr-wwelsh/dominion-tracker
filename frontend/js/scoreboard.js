@@ -98,6 +98,14 @@ function setupEventListeners() {
 
   startGameBtn.addEventListener('click', startGame);
   endGameBtn.addEventListener('click', endGame);
+  document.getElementById('confirm-end-yes').addEventListener('click', doEndGame);
+  document.getElementById('confirm-end-no').addEventListener('click', () => {
+    document.getElementById('confirm-end-modal').style.display = 'none';
+  });
+  document.getElementById('confirm-cancel-yes').addEventListener('click', doCancelGame);
+  document.getElementById('confirm-cancel-no').addEventListener('click', () => {
+    document.getElementById('confirm-cancel-modal').style.display = 'none';
+  });
   cancelGameBtn.addEventListener('click', cancelGame);
   restartGameBtn.addEventListener('click', restartGame);
   goToGamesBtn.addEventListener('click', goToGamesPage);
@@ -217,9 +225,12 @@ function renderScoreboard() {
     div.className = 'score-row';
     div.dataset.playerId = player.id;
 
+    const color = player.color || '#4db8ff';
+    div.style.borderColor = color;
     div.innerHTML = `
       <div class="player-rank">${index + 1}</div>
       <div class="player-info">
+        <span class="player-color-dot" style="background:${color}"></span>
         <div class="player-info-name">${escapeHtml(player.name)}</div>
       </div>
       <div class="score-display">${player.score}</div>
@@ -259,10 +270,12 @@ async function updateScore(playerId, delta) {
 }
 
 // End game
-async function endGame() {
-  if (!confirm('Are you sure you want to end this game?')) {
-    return;
-  }
+function endGame() {
+  document.getElementById('confirm-end-modal').style.display = 'flex';
+}
+
+async function doEndGame() {
+  document.getElementById('confirm-end-modal').style.display = 'none';
 
   try {
     Object.values(scoreUpdateDebounce).forEach(timeout => clearTimeout(timeout));
@@ -353,10 +366,11 @@ function goToGamesPage() {
 
 // Cancel game
 function cancelGame() {
-  if (!confirm('Are you sure you want to cancel this game? All progress will be lost.')) {
-    return;
-  }
+  document.getElementById('confirm-cancel-modal').style.display = 'flex';
+}
 
+function doCancelGame() {
+  document.getElementById('confirm-cancel-modal').style.display = 'none';
   stopTimer();
   resetGame();
   showSuccess('Game cancelled');
@@ -402,9 +416,6 @@ function updateLiveChart() {
   const chartWidth = width - padding.left - padding.right;
   const chartHeight = height - padding.top - padding.bottom;
 
-  // Colors for players
-  const colors = ['#8b7355', '#a38968', '#6b6355', '#c4b5a9', '#9a8a72', '#7a6a52'];
-
   // Draw axes
   ctx.strokeStyle = '#3a2f26';
   ctx.lineWidth = 2;
@@ -437,7 +448,7 @@ function updateLiveChart() {
   const barSpacing = chartWidth / selectedPlayers.length;
 
   selectedPlayers.forEach((player, index) => {
-    const color = colors[index % colors.length];
+    const color = player.color || '#4db8ff';
     const x = padding.left + (barSpacing * index) + (barSpacing - barWidth) / 2;
     const barHeight = ((player.score - minScore) / scoreRange) * chartHeight;
     const y = height - padding.bottom - barHeight;
