@@ -1,6 +1,8 @@
 // API Client for Dominion Tracker
 
-const API_BASE_URL = `http://${window.location.hostname}:3000/api`;
+const API_BASE_URL = (window.location.port === '8000')
+  ? `http://${window.location.hostname}:3000/api`
+  : '/api';
 
 /**
  * Centralized fetch wrapper with error handling
