@@ -240,11 +240,12 @@ function createGameCard(game) {
   card.className = 'game-card';
   card.dataset.gameId = game.id;
 
-  const winner = game.players && game.players.length > 0
-    ? game.players.find(p => p.placement === 1)
-    : null;
+  const winners = game.players ? game.players.filter(p => p.placement === 1) : [];
+  const winner = winners[0] || null;
+  const tied = winners.length > 1;
 
-  card.style.setProperty('--winner-color', winner?.player_color || '#a08850');
+  // Single winner: use their color. Tied: fall back to gold accent.
+  card.style.setProperty('--winner-color', !tied && winner?.player_color ? winner.player_color : '#a08850');
 
   const startDate = game.started_at ? new Date(game.started_at) : null;
   const formattedDate = startDate
@@ -266,13 +267,8 @@ function createGameCard(game) {
       <div class="game-info">
         <div class="game-date">${formattedDate}</div>
         <div class="game-winner">
-          Winner: <span class="game-winner-name" ${winner?.player_color ? `style="color:${winner.player_color}"` : ''}>${winner ? escapeHtml(winner.player_name) : 'Unknown'}</span>
-          ${winner ? `<span class="game-winner-score">(${winner.final_score} pts)</span>` : ''}
-        </div>
-        <div class="game-meta">
-          <span>Build: <span class="game-build">${game.build_nickname || 'None'}</span></span>
-          <span>Duration: ${duration}</span>
-          <span>Players: ${game.players ? game.players.length : 0}</span>
+          <span class="game-winner-name">${formatWinnerNames(winners)}</span>
+          ${winner ? `<span class="game-winner-score">${winner.final_score} pts</span>` : ''}
         </div>
       </div>
       <div class="game-header-right">
@@ -280,11 +276,15 @@ function createGameCard(game) {
         <div class="expand-icon">▼</div>
       </div>
     </div>
+    <div class="game-type-banner">
+      <span class="game-build">${game.build_nickname || 'No Kingdom'}</span>
+      <span class="game-type-stats">${duration} &middot; ${game.players ? game.players.length : 0} Players</span>
+    </div>
     <div class="game-details"></div>
   `;
 
-  // Add click handler to expand/collapse
-  card.querySelector('.game-header').addEventListener('click', () => {
+  // Click anywhere on card (except delete btn) to expand/collapse
+  card.addEventListener('click', () => {
     toggleGameCard(card, game);
   });
 
@@ -305,7 +305,18 @@ function createGameCard(game) {
 
 // Build the inner HTML for game details (chart first, then standings)
 function buildGameDetailsHTML(game) {
+  const winners = game.players ? game.players.filter(p => p.placement === 1) : [];
+  const tied = winners.length > 1;
+  const showcaseColor = !tied && winners[0]?.player_color ? winners[0].player_color : 'var(--color-accent)';
+
   return `
+    ${winners.length > 0 ? `
+    <div class="winner-showcase" style="--wc: ${showcaseColor}">
+      <span class="winner-showcase-crown">♛</span>
+      <span class="winner-showcase-name">${formatWinnerNames(winners)}</span>
+      <span class="winner-showcase-stats">${winners[0].final_score} pts &middot; ${winners[0].league_points} LP</span>
+    </div>
+    ` : ''}
     <div class="chart-container">
       <div class="chart-title">Score Progression</div>
       <canvas id="chart-${game.id}"></canvas>
@@ -323,7 +334,7 @@ function buildGameDetailsHTML(game) {
         </thead>
         <tbody>
           ${game.players ? game.players.map(player => `
-            <tr>
+            <tr class="${player.placement === 1 ? 'winner-row' : ''}">
               <td class="placement-${player.placement}">
                 <div class="placement-cell">
                   <span class="placement-star">${getPlacementStar(player.placement)}</span>
@@ -419,7 +430,7 @@ function removeSparkles(card) {
 function drawScoreChart(canvas, scoreHistory) {
   if (!scoreHistory || scoreHistory.length === 0) {
     const ctx = canvas.getContext('2d');
-    ctx.fillStyle = '#6b6355';
+    ctx.fillStyle = '#b8a884';
     ctx.font = '14px Georgia, serif';
     ctx.textAlign = 'center';
     ctx.fillText('No score history available', canvas.width / 2, canvas.height / 2);
@@ -430,7 +441,6 @@ function drawScoreChart(canvas, scoreHistory) {
   const width = canvas.width = canvas.offsetWidth;
   const height = canvas.height = canvas.offsetHeight || 300;
 
-  // Clear canvas
   ctx.clearRect(0, 0, width, height);
 
   // Group scores by player
@@ -449,13 +459,19 @@ function drawScoreChart(canvas, scoreHistory) {
     });
   });
 
-  // Find min/max values
+  // Score range
   const allScores = scoreHistory.map(s => s.score);
   const minScore = Math.min(0, ...allScores);
   const maxScore = Math.max(...allScores);
   const scoreRange = maxScore - minScore || 1;
 
-  const padding = { top: 30, right: 10, bottom: 40, left: 50 };
+  // Shared time axis across all players
+  const allTimestamps = scoreHistory.map(s => new Date(s.timestamp).getTime());
+  const globalFirstTime = Math.min(...allTimestamps);
+  const globalLastTime = Math.max(...allTimestamps);
+  const globalTimeRange = globalLastTime - globalFirstTime || 1;
+
+  const padding = { top: 30, right: 10, bottom: 45, left: 50 };
   const chartWidth = width - padding.left - padding.right;
   const chartHeight = height - padding.top - padding.bottom;
 
@@ -464,22 +480,37 @@ function drawScoreChart(canvas, scoreHistory) {
   const playerData = Object.values(playerScores).map((player, index) => {
     const color = player.color || fallbackColors[index % fallbackColors.length];
     const scores = player.scores.sort((a, b) => a.timestamp - b.timestamp);
-
     if (scores.length === 0) return null;
 
-    const firstTime = scores[0].timestamp;
-    const lastTime = scores[scores.length - 1].timestamp;
-    const timeRange = lastTime - firstTime || 1;
-
-    const points = scores.map(point => ({
-      x: padding.left + ((point.timestamp - firstTime) / timeRange * chartWidth),
-      y: height - padding.bottom - ((point.score - minScore) / scoreRange * chartHeight)
+    // Map to canvas coords using the shared time axis
+    const rawPoints = scores.map(point => ({
+      x: padding.left + ((point.timestamp - globalFirstTime) / globalTimeRange * chartWidth),
+      y: height - padding.bottom - ((point.score - minScore) / scoreRange * chartHeight),
+      isData: true,
     }));
 
-    return { name: player.name, color, points };
+    // Build step points: hold value flat until next update, then jump vertically
+    const stepPoints = [];
+    for (let i = 0; i < rawPoints.length; i++) {
+      stepPoints.push(rawPoints[i]);
+      if (i < rawPoints.length - 1) {
+        // Horizontal segment to next x at current y (no dot here)
+        stepPoints.push({ x: rawPoints[i + 1].x, y: rawPoints[i].y, isData: false });
+      }
+    }
+
+    // Extend the last value horizontally to the right edge
+    const lastStep = stepPoints[stepPoints.length - 1];
+    const endX = padding.left + chartWidth;
+    if (lastStep.x < endX - 1) {
+      stepPoints.push({ x: endX, y: lastStep.y, isData: false });
+    }
+
+    const finalScore = scores[scores.length - 1].score;
+    return { name: player.name, color, points: stepPoints, finalScore };
   }).filter(Boolean);
 
-  drawChartStaticElements(ctx, width, height, padding, chartWidth, chartHeight, minScore, scoreRange);
+  drawChartStaticElements(ctx, width, height, padding, chartWidth, chartHeight, minScore, scoreRange, globalTimeRange);
 
   const totalDuration = 3500;
   const startTime = performance.now();
@@ -489,7 +520,7 @@ function drawScoreChart(canvas, scoreHistory) {
     const progress = Math.min(elapsed / totalDuration, 1);
 
     ctx.clearRect(0, 0, width, height);
-    drawChartStaticElements(ctx, width, height, padding, chartWidth, chartHeight, minScore, scoreRange);
+    drawChartStaticElements(ctx, width, height, padding, chartWidth, chartHeight, minScore, scoreRange, globalTimeRange);
 
     playerData.forEach((player, playerIndex) => {
       const pointsToDraw = Math.floor(player.points.length * progress);
@@ -498,7 +529,7 @@ function drawScoreChart(canvas, scoreHistory) {
       ctx.strokeStyle = player.color;
       ctx.lineWidth = 3;
       ctx.lineCap = 'round';
-      ctx.lineJoin = 'round';
+      ctx.lineJoin = 'miter';
       ctx.beginPath();
 
       for (let i = 0; i < pointsToDraw; i++) {
@@ -510,7 +541,7 @@ function drawScoreChart(canvas, scoreHistory) {
         }
       }
 
-      if (progress < 1 && player.points.length > 1) {
+      if (progress < 1 && pointsToDraw < player.points.length) {
         const partialProgress = (player.points.length * progress) % 1;
         if (partialProgress > 0) {
           const lastPoint = player.points[pointsToDraw - 1];
@@ -523,9 +554,10 @@ function drawScoreChart(canvas, scoreHistory) {
 
       ctx.stroke();
 
-      const pointsToShow = Math.min(pointsToDraw, player.points.length);
-      for (let i = 0; i < pointsToShow; i++) {
+      // Dots only at real data points (isData === true)
+      for (let i = 0; i < pointsToDraw; i++) {
         const point = player.points[i];
+        if (!point.isData) continue;
         const pointProgress = Math.max(0, (progress * player.points.length - i) * 2);
         const pointScale = Math.min(1, pointProgress);
         const pointAlpha = Math.min(1, pointProgress);
@@ -538,19 +570,32 @@ function drawScoreChart(canvas, scoreHistory) {
         ctx.globalAlpha = 1;
       }
 
+      // Legend top-left
       if (playerIndex === 0 || progress >= 0.5) {
         const legendProgress = Math.min(1, (progress - 0.3) / 0.4);
         const legendAlpha = Math.max(0, legendProgress);
+        const legendX = padding.left + 8;
         const legendY = padding.top + (playerIndex * 20);
 
-        const legendX = padding.left + 8;
         ctx.globalAlpha = legendAlpha;
         ctx.fillStyle = player.color;
         ctx.fillRect(legendX, legendY - 6, 10 * legendProgress, 10 * legendProgress);
-        ctx.fillStyle = '#d4c5a9';
+        ctx.fillStyle = '#e8dcc8';
         ctx.textAlign = 'left';
         ctx.font = '11px Georgia, serif';
         ctx.fillText(player.name, legendX + 14, legendY + 4);
+        ctx.globalAlpha = 1;
+      }
+
+      // Final score label at right edge of line
+      if (progress >= 0.85) {
+        const labelAlpha = Math.min(1, (progress - 0.85) / 0.15);
+        const lastPoint = player.points[player.points.length - 1];
+        ctx.globalAlpha = labelAlpha;
+        ctx.fillStyle = player.color;
+        ctx.font = 'bold 11px Georgia, serif';
+        ctx.textAlign = 'right';
+        ctx.fillText(player.finalScore, lastPoint.x - 3, lastPoint.y - 5);
         ctx.globalAlpha = 1;
       }
     });
@@ -563,8 +608,24 @@ function drawScoreChart(canvas, scoreHistory) {
   requestAnimationFrame(animate);
 }
 
-function drawChartStaticElements(ctx, width, height, padding, chartWidth, chartHeight, minScore, scoreRange) {
-  ctx.strokeStyle = '#3a2f26';
+function drawChartStaticElements(ctx, width, height, padding, chartWidth, chartHeight, minScore, scoreRange, globalTimeRange) {
+  // Dark background matching site theme
+  const bg = ctx.createLinearGradient(0, 0, 0, height);
+  bg.addColorStop(0,   '#18222e');
+  bg.addColorStop(0.5, '#1b2636');
+  bg.addColorStop(1,   '#18222e');
+  ctx.fillStyle = bg;
+  ctx.fillRect(0, 0, width, height);
+
+  // Subtle inset vignette
+  const inset = ctx.createRadialGradient(width / 2, height / 2, height * 0.35, width / 2, height / 2, Math.max(width, height) * 0.8);
+  inset.addColorStop(0, 'rgba(0,0,0,0)');
+  inset.addColorStop(1, 'rgba(0,0,0,0.3)');
+  ctx.fillStyle = inset;
+  ctx.fillRect(0, 0, width, height);
+
+  // Axes
+  ctx.strokeStyle = '#4a6080';
   ctx.lineWidth = 2;
   ctx.beginPath();
   ctx.moveTo(padding.left, padding.top);
@@ -572,16 +633,17 @@ function drawChartStaticElements(ctx, width, height, padding, chartWidth, chartH
   ctx.lineTo(width - padding.right, height - padding.bottom);
   ctx.stroke();
 
-  ctx.fillStyle = '#a89a82';
+  // Y-axis labels and horizontal gridlines
+  ctx.fillStyle = '#b8a884';
   ctx.font = '12px Georgia, serif';
   ctx.textAlign = 'right';
   const ySteps = 5;
   for (let i = 0; i <= ySteps; i++) {
     const score = minScore + (scoreRange * i / ySteps);
     const y = height - padding.bottom - (chartHeight * i / ySteps);
-    ctx.fillText(Math.round(score), padding.left - 10, y + 4);
+    ctx.fillText(Math.round(score), padding.left - 6, y + 4);
 
-    ctx.strokeStyle = '#2b1f1a';
+    ctx.strokeStyle = 'rgba(74, 96, 128, 0.35)';
     ctx.lineWidth = 1;
     ctx.beginPath();
     ctx.moveTo(padding.left, y);
@@ -589,12 +651,33 @@ function drawChartStaticElements(ctx, width, height, padding, chartWidth, chartH
     ctx.stroke();
   }
 
-  ctx.fillStyle = '#a89a82';
+  // X-axis time labels and vertical gridlines
+  const totalMinutes = globalTimeRange / 60000;
+  const intervalMinutes = totalMinutes <= 20 ? 5 : totalMinutes <= 60 ? 10 : totalMinutes <= 120 ? 20 : 30;
+  const intervalMs = intervalMinutes * 60000;
+
+  ctx.fillStyle = '#b8a884';
+  ctx.font = '11px Georgia, serif';
   ctx.textAlign = 'center';
-  ctx.font = '14px Georgia, serif';
+  for (let t = intervalMs; t < globalTimeRange; t += intervalMs) {
+    const x = padding.left + (t / globalTimeRange * chartWidth);
+    ctx.fillText(`${Math.round(t / 60000)}m`, x, height - padding.bottom + 14);
+
+    ctx.strokeStyle = 'rgba(74, 96, 128, 0.2)';
+    ctx.lineWidth = 1;
+    ctx.setLineDash([3, 4]);
+    ctx.beginPath();
+    ctx.moveTo(x, padding.top);
+    ctx.lineTo(x, height - padding.bottom);
+    ctx.stroke();
+    ctx.setLineDash([]);
+  }
+
+  // Score axis label
+  ctx.fillStyle = '#b8a884';
   ctx.textAlign = 'left';
-  ctx.fillText('Score', 4, padding.top - 16);
-  ctx.fillText('Time', width / 2, height - 10);
+  ctx.font = '13px Georgia, serif';
+  ctx.fillText('Score', 4, padding.top - 14);
 }
 
 // Format duration in seconds to human-readable string
@@ -613,7 +696,17 @@ function formatDuration(seconds) {
 }
 
 function getPlacementStar(placement) {
-  return '';
+  return placement === 1 ? '♛' : '';
+}
+
+// Format winner name(s) with player colors, handling ties
+function formatWinnerNames(winners) {
+  if (!winners || winners.length === 0) return 'Unknown';
+  const spans = winners.map(w =>
+    `<span ${w.player_color ? `style="color:${w.player_color}"` : ''}>${escapeHtml(w.player_name)}</span>`
+  );
+  if (spans.length === 1) return spans[0];
+  return spans.slice(0, -1).join(', ') + ' &amp; ' + spans[spans.length - 1];
 }
 
 // Escape HTML to prevent XSS

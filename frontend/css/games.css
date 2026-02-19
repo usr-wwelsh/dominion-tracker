@@ -47,10 +47,14 @@
 
 @keyframes pulseGold {
   0%, 100% {
-    box-shadow: 0 0 5px color-mix(in srgb, var(--winner-color) 30%, transparent);
+    box-shadow:
+      0 4px 14px rgba(0, 0, 0, 0.6),
+      0 0 0 1px rgba(160, 130, 60, 0.2);
   }
   50% {
-    box-shadow: 0 0 20px color-mix(in srgb, var(--winner-color) 60%, transparent), 0 0 40px color-mix(in srgb, var(--winner-color) 30%, transparent);
+    box-shadow:
+      0 8px 24px rgba(0, 0, 0, 0.8),
+      0 0 22px color-mix(in srgb, var(--winner-color) 40%, transparent);
   }
 }
 
@@ -153,131 +157,140 @@
   }
 }
 
+/* ── Game card — dark-themed with Dominion card structure ── */
 .game-card {
-  background-color: var(--color-bg-secondary);
-  border: 2px solid var(--color-border);
-  border-radius: var(--border-radius-md);
-  padding: var(--spacing-lg);
+  background: var(--color-bg-secondary);
+  border: 3px solid #0e1520;
+  border-radius: 8px;
   margin-bottom: var(--spacing-lg);
-  box-shadow: var(--shadow-md);
   cursor: pointer;
-  transition: all 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
+  overflow: hidden;
   position: relative;
-  overflow: visible;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.6), 0 0 0 1px rgba(160, 130, 60, 0.2);
+  transition: all 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+/* Inner colored frame — like a Dominion card's inner border */
+.game-card::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border: 2px solid var(--winner-color, var(--color-accent));
+  border-radius: 6px;
+  pointer-events: none;
+  z-index: 20;
+  opacity: 0.35;
+  transition: opacity 0.25s ease;
 }
 
 .game-card:hover {
-  border-color: var(--winner-color);
-  box-shadow: var(--shadow-lg);
-  transform: translateY(-3px) scale(1.01);
+  transform: translateY(-3px) scale(1.005);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.75);
+}
+
+.game-card:hover::before {
+  opacity: 0.75;
 }
 
 .game-card.expanded {
-  border-color: var(--winner-color);
-  animation: pulseGold 2s ease-in-out infinite;
+  animation: pulseGold 2.5s ease-in-out infinite;
+}
+
+.game-card.expanded::before {
+  opacity: 0.8;
 }
 
 .game-card:active {
-  transform: scale(0.98);
+  transform: scale(0.99);
   animation: cardShake 0.3s ease;
 }
 
+/* ── Card name banner (dark header) ── */
 .game-header {
+  background: linear-gradient(180deg, #18222e 0%, #1e2d42 60%, #18222e 100%);
+  padding: 10px 14px;
   display: flex;
   justify-content: space-between;
   align-items: flex-start;
-  flex-wrap: wrap;
-  gap: var(--spacing-md);
+  gap: var(--spacing-sm);
   position: relative;
-  z-index: 1;
+  border-bottom: 2px solid var(--winner-color, var(--color-accent));
 }
 
+/* "Click to expand" hint */
 .game-header::after {
-  content: 'Click to expand!';
+  content: 'Click to expand';
   position: absolute;
-  right: 50px;
+  right: 52px;
   top: 50%;
   transform: translateY(-50%);
-  font-size: 0.75rem;
+  font-size: 0.7rem;
   color: var(--color-text-secondary);
   opacity: 0;
   transition: opacity 0.3s ease;
   background: var(--color-bg-tertiary);
-  padding: 4px 8px;
-  border-radius: 4px;
+  padding: 3px 7px;
+  border-radius: 3px;
+  border: 1px solid var(--color-border);
   white-space: nowrap;
+  letter-spacing: 0.04em;
 }
 
 .game-card:not(.expanded):hover .game-header::after {
-  opacity: 0.7;
+  opacity: 0.75;
 }
 
 .game-info {
   flex: 1;
-  min-width: 250px;
+  min-width: 0;
 }
 
 .game-date {
-  color: var(--color-text-secondary);
-  font-size: 0.95rem;
-  margin-bottom: var(--spacing-xs);
+  color: var(--color-text-dim);
+  font-size: 0.75rem;
+  font-style: italic;
+  letter-spacing: 0.04em;
+  margin-bottom: 4px;
 }
 
+/* Winner name — the "card name", most prominent */
 .game-winner {
-  font-size: 1.2rem;
-  font-weight: 600;
-  color: var(--color-accent);
-  margin-bottom: var(--spacing-xs);
   display: flex;
-  align-items: center;
+  align-items: baseline;
   gap: 8px;
-  position: relative;
-}
-
-.game-winner::before {
-  content: '';
-}
-
-.game-meta {
-  display: flex;
-  gap: var(--spacing-lg);
   flex-wrap: wrap;
-  color: var(--color-text-secondary);
-  font-size: 0.9rem;
 }
 
 .game-winner-name {
-  font-size: 1.3em;
+  font-size: 1.25rem;
   font-weight: 700;
-  color: var(--color-text-primary);
+  color: var(--color-accent);
+  letter-spacing: 0.02em;
+  line-height: 1.2;
 }
 
 .game-winner-score {
-  font-size: 0.85em;
+  font-size: 0.8rem;
   font-weight: 400;
   color: var(--color-text-secondary);
-  margin-left: 2px;
-}
-
-.game-build {
-  color: var(--color-text-primary);
-  font-style: italic;
+  letter-spacing: 0.03em;
 }
 
 .game-header-right {
   display: flex;
   align-items: center;
-  gap: var(--spacing-md);
+  gap: var(--spacing-sm);
   flex-shrink: 0;
+  padding-top: 2px;
 }
 
 .delete-game-btn {
   background: none;
   border: 1px solid transparent;
-  color: var(--color-text-secondary);
-  font-size: 1rem;
+  color: var(--color-text-dim);
+  font-size: 0.9rem;
   cursor: pointer;
-  padding: 4px 8px;
+  padding: 3px 6px;
   border-radius: var(--border-radius-sm);
   transition: all 0.2s ease;
   line-height: 1;
@@ -291,7 +304,7 @@
 
 .expand-icon {
   color: var(--color-accent);
-  font-size: 1.5rem;
+  font-size: 1.3rem;
   transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
   display: inline-block;
 }
@@ -300,10 +313,37 @@
   animation: expandIconBounce 0.4s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
 }
 
+/* ── Type banner — like the "Action / Treasure / Victory" bar ── */
+.game-type-banner {
+  background: var(--color-bg-tertiary);
+  border-top: 1px solid var(--color-border);
+  padding: 6px 14px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: var(--spacing-sm);
+}
+
+.game-build {
+  font-style: italic;
+  font-weight: 600;
+  font-size: 0.88rem;
+  color: var(--color-text-primary);
+  letter-spacing: 0.02em;
+}
+
+.game-type-stats {
+  font-size: 0.78rem;
+  color: var(--color-text-secondary);
+  letter-spacing: 0.03em;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+/* ── Expanded details ── */
 .game-details {
   display: none;
-  margin-top: var(--spacing-lg);
-  padding-top: var(--spacing-lg);
+  padding: var(--spacing-lg);
   border-top: 1px solid var(--color-border);
   overflow: hidden;
 }
@@ -313,11 +353,60 @@
   animation: slideDown 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
 }
 
+/* ── Winner showcase banner ── */
+.winner-showcase {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+  margin-bottom: var(--spacing-lg);
+  background: color-mix(in srgb, var(--wc, var(--color-accent)) 12%, var(--color-bg-secondary));
+  border: 1px solid color-mix(in srgb, var(--wc, var(--color-accent)) 50%, transparent);
+  border-radius: var(--border-radius-md);
+  animation: bounceIn 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+
+.winner-showcase-crown {
+  font-size: 1.4rem;
+  animation: starPop 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) 0.1s both;
+  flex-shrink: 0;
+}
+
+.winner-showcase-name {
+  font-size: 1.15rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+
+.winner-showcase-stats {
+  font-size: 0.8rem;
+  color: var(--color-text-secondary);
+  margin-left: auto;
+  flex-shrink: 0;
+}
+
+/* ── Standings table ── */
 .players-table {
+  margin-top: var(--spacing-md);
+}
+
+.players-table h3 {
+  color: var(--color-text-secondary);
+  font-size: 0.75rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  border-bottom: 1px solid var(--color-border);
+  padding-bottom: 5px;
+  margin-bottom: var(--spacing-sm);
 }
 
 .players-table table {
   width: 100%;
+}
+
+.players-table tr.winner-row td {
+  background: rgba(255, 215, 0, 0.07);
+  font-weight: 600;
 }
 
 .placement-cell {
@@ -365,12 +454,15 @@
   opacity: 0;
 }
 
+/* ── Score chart ── */
 .chart-container {
-  background-color: var(--color-bg-tertiary);
+  background-color: #18222e;
   padding: var(--spacing-md) var(--spacing-xs);
   margin-bottom: var(--spacing-lg);
-  border-radius: var(--border-radius-sm);
-  border: 1px solid var(--color-border);
+  border-radius: 4px;
+  border: 2px solid var(--color-border);
+  outline: 1px solid var(--color-border-light);
+  outline-offset: -4px;
   width: 100%;
   box-sizing: border-box;
   position: relative;
@@ -380,29 +472,21 @@
   animation-fill-mode: backwards;
 }
 
-.chart-container::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  height: 3px;
-  background: linear-gradient(90deg, 
-    transparent, 
-    var(--color-accent), 
-    #ffd700, 
-    var(--color-accent), 
-    transparent
-  );
-  background-size: 200% 100%;
-  animation: shimmer 3s linear infinite;
-}
 
 .chart-title {
   text-align: center;
   margin-bottom: var(--spacing-md);
   color: var(--color-text-secondary);
-  font-size: 0.95rem;
+  font-size: 0.85rem;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  background: linear-gradient(180deg, #1e2d42 0%, #243550 50%, #1e2d42 100%);
+  margin-left: calc(-1 * var(--spacing-xs));
+  margin-right: calc(-1 * var(--spacing-xs));
+  padding: 5px 0;
+  border-top: 1px solid var(--color-border);
+  border-bottom: 1px solid var(--color-border);
 }
 
 .chart-container canvas {
@@ -422,13 +506,10 @@
 }
 
 @media (max-width: 768px) {
-  .game-header {
+  .game-type-banner {
     flex-direction: column;
-  }
-
-  .game-meta {
-    flex-direction: column;
-    gap: var(--spacing-xs);
+    align-items: flex-start;
+    gap: 2px;
   }
 
   .chart-container canvas {
