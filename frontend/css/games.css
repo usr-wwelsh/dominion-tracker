@@ -210,6 +210,31 @@
   font-style: italic;
 }
 
+.game-header-right {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-md);
+  flex-shrink: 0;
+}
+
+.delete-game-btn {
+  background: none;
+  border: 1px solid transparent;
+  color: var(--color-text-secondary);
+  font-size: 1rem;
+  cursor: pointer;
+  padding: 4px 8px;
+  border-radius: var(--border-radius-sm);
+  transition: all 0.2s ease;
+  line-height: 1;
+}
+
+.delete-game-btn:hover {
+  color: #c0392b;
+  border-color: #c0392b;
+  background: rgba(192, 57, 43, 0.1);
+}
+
 .expand-icon {
   color: var(--color-accent);
   font-size: 1.5rem;

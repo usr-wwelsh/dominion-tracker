@@ -105,6 +105,10 @@ const gamesAPI = {
   }),
 
   getScoreHistory: (id) => apiRequest(`/games/${id}/scores`),
+
+  delete: (id) => apiRequest(`/games/${id}`, {
+    method: 'DELETE',
+  }),
 };
 
 // Stats API

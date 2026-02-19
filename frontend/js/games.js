@@ -91,7 +91,10 @@ function createGameCard(game) {
           <span>Players: ${game.players ? game.players.length : 0}</span>
         </div>
       </div>
-      <div class="expand-icon">▼</div>
+      <div class="game-header-right">
+        <button class="delete-game-btn" data-game-id="${game.id}" title="Delete game">✕</button>
+        <div class="expand-icon">▼</div>
+      </div>
     </div>
     <div class="game-details">
       <div class="players-table">
@@ -132,6 +135,18 @@ function createGameCard(game) {
   // Add click handler to expand/collapse
   card.querySelector('.game-header').addEventListener('click', () => {
     toggleGameCard(card, game.id);
+  });
+
+  // Delete button — stop propagation so it doesn't also expand the card
+  card.querySelector('.delete-game-btn').addEventListener('click', async (e) => {
+    e.stopPropagation();
+    if (!confirm(`Delete this game? This cannot be undone.`)) return;
+    try {
+      await gamesAPI.delete(game.id);
+      card.remove();
+    } catch (error) {
+      alert(`Failed to delete game: ${error.message}`);
+    }
   });
 
   return card;

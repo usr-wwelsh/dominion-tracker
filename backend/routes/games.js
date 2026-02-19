@@ -232,6 +232,36 @@ router.put('/:id/end', async (req, res, next) => {
   }
 });
 
+// DELETE /api/games/:id - Delete a game and all related data
+router.delete('/:id', async (req, res, next) => {
+  const client = await getClient();
+
+  try {
+    const { id } = req.params;
+
+    await client.query('BEGIN');
+
+    const gameResult = await client.query('SELECT id FROM games WHERE id = $1', [id]);
+    if (gameResult.rows.length === 0) {
+      await client.query('ROLLBACK');
+      return res.status(404).json({ error: 'Game not found' });
+    }
+
+    await client.query('DELETE FROM score_snapshots WHERE game_id = $1', [id]);
+    await client.query('DELETE FROM game_players WHERE game_id = $1', [id]);
+    await client.query('DELETE FROM games WHERE id = $1', [id]);
+
+    await client.query('COMMIT');
+
+    res.json({ success: true });
+  } catch (error) {
+    await client.query('ROLLBACK');
+    next(error);
+  } finally {
+    client.release();
+  }
+});
+
 // Helper function to calculate average league points for tied players
 function calculateAverageLeaguePoints(startPlacement, numPlayers) {
   const pointsMap = { 1: 5, 2: 3, 3: 1 };
