@@ -217,28 +217,6 @@
   border-bottom: 2px solid var(--winner-color, var(--color-accent));
 }
 
-/* "Click to expand" hint */
-.game-header::after {
-  content: 'Click to expand';
-  position: absolute;
-  right: 52px;
-  top: 50%;
-  transform: translateY(-50%);
-  font-size: 0.7rem;
-  color: var(--color-text-secondary);
-  opacity: 0;
-  transition: opacity 0.3s ease;
-  background: var(--color-bg-tertiary);
-  padding: 3px 7px;
-  border-radius: 3px;
-  border: 1px solid var(--color-border);
-  white-space: nowrap;
-  letter-spacing: 0.04em;
-}
-
-.game-card:not(.expanded):hover .game-header::after {
-  opacity: 0.75;
-}
 
 .game-info {
   flex: 1;
