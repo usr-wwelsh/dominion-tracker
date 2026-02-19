@@ -235,10 +235,7 @@
 }
 
 .game-winner::before {
-  content: '⭐';
-  font-size: 1.4rem;
-  animation: starPop 0.6s cubic-bezier(0.34, 1.56, 0.64, 1);
-  display: inline-block;
+  content: '';
 }
 
 .game-meta {
@@ -247,6 +244,18 @@
   flex-wrap: wrap;
   color: var(--color-text-secondary);
   font-size: 0.9rem;
+}
+
+.game-winner-name {
+  font-size: 1.3em;
+  font-weight: 700;
+}
+
+.game-winner-score {
+  font-size: 0.85em;
+  font-weight: 400;
+  color: var(--color-text-secondary);
+  margin-left: 2px;
 }
 
 .game-build {
@@ -304,7 +313,6 @@
 }
 
 .players-table {
-  margin-bottom: var(--spacing-lg);
 }
 
 .players-table table {
@@ -358,7 +366,8 @@
 
 .chart-container {
   background-color: var(--color-bg-tertiary);
-  padding: var(--spacing-lg);
+  padding: var(--spacing-md) var(--spacing-xs);
+  margin-bottom: var(--spacing-lg);
   border-radius: var(--border-radius-sm);
   border: 1px solid var(--color-border);
   width: 100%;
@@ -422,6 +431,6 @@
   }
 
   .chart-container canvas {
-    height: 250px;
+    height: 180px;
   }
 }

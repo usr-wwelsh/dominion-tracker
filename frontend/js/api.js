@@ -83,7 +83,8 @@ const buildsAPI = {
 
 // Games API
 const gamesAPI = {
-  getAll: () => apiRequest('/games'),
+  getAll: ({ limit = 20, offset = 0 } = {}) =>
+    apiRequest(`/games?limit=${limit}&offset=${offset}`),
 
   getById: (id) => apiRequest(`/games/${id}`),
 

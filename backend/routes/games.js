@@ -2,9 +2,12 @@ const express = require('express');
 const router = express.Router();
 const { query, getClient } = require('../db');
 
-// GET /api/games - List all games
+// GET /api/games - List completed games with pagination
 router.get('/', async (req, res, next) => {
   try {
+    const limit = Math.min(parseInt(req.query.limit) || 20, 100);
+    const offset = parseInt(req.query.offset) || 0;
+
     const result = await query(`
       SELECT
         g.*,
@@ -13,6 +16,7 @@ router.get('/', async (req, res, next) => {
           json_build_object(
             'player_id', gp.player_id,
             'player_name', p.name,
+            'player_color', p.color,
             'final_score', gp.final_score,
             'placement', gp.placement,
             'league_points', gp.league_points
@@ -22,11 +26,16 @@ router.get('/', async (req, res, next) => {
       LEFT JOIN builds b ON g.build_id = b.id
       LEFT JOIN game_players gp ON g.id = gp.game_id
       LEFT JOIN players p ON gp.player_id = p.id
+      WHERE g.ended_at IS NOT NULL
       GROUP BY g.id, b.nickname
       ORDER BY g.started_at DESC NULLS LAST, g.id DESC
-    `);
+      LIMIT $1 OFFSET $2
+    `, [limit + 1, offset]);
 
-    res.json(result.rows);
+    const hasMore = result.rows.length > limit;
+    const games = hasMore ? result.rows.slice(0, limit) : result.rows;
+
+    res.json({ games, hasMore });
   } catch (error) {
     next(error);
   }

@@ -1,4 +1,4 @@
-const CACHE_NAME = 'dominion-v2';
+const CACHE_NAME = 'dominion-v3';
 
 const STATIC_ASSETS = [
   '/',

@@ -2,32 +2,36 @@
 
 let gamesData = [];
 let scoreHistoryCache = {};
+let currentOffset = 0;
+const PAGE_SIZE = 20;
 
 // Initialize page
 document.addEventListener('DOMContentLoaded', () => {
   loadGames();
   setupFilters();
+  document.getElementById('load-more-btn').addEventListener('click', loadMoreGames);
 });
 
-// Load games data
+// Load games data (first page)
 async function loadGames() {
   const loading = document.getElementById('loading');
   const errorMessage = document.getElementById('error-message');
   const container = document.getElementById('games-container');
   const noGames = document.getElementById('no-games');
+  const loadMoreContainer = document.getElementById('load-more-container');
 
   try {
     loading.style.display = 'block';
     errorMessage.style.display = 'none';
     container.style.display = 'none';
 
-    gamesData = await gamesAPI.getAll();
-
-    // Filter to only show completed games
-    gamesData = gamesData.filter(game => game.ended_at !== null);
+    const result = await gamesAPI.getAll({ limit: PAGE_SIZE, offset: 0 });
+    gamesData = result.games;
+    currentOffset = PAGE_SIZE;
 
     loading.style.display = 'none';
     container.style.display = 'block';
+    loadMoreContainer.style.display = result.hasMore ? 'block' : 'none';
 
     if (gamesData.length === 0) {
       noGames.style.display = 'block';
@@ -43,33 +47,61 @@ async function loadGames() {
   }
 }
 
-// Populate filter dropdowns from loaded game data
+// Load the next page and append matching cards
+async function loadMoreGames() {
+  const btn = document.getElementById('load-more-btn');
+  const loadMoreContainer = document.getElementById('load-more-container');
+  btn.disabled = true;
+  btn.textContent = 'Loading...';
+
+  try {
+    const result = await gamesAPI.getAll({ limit: PAGE_SIZE, offset: currentOffset });
+    currentOffset += PAGE_SIZE;
+
+    gamesData = gamesData.concat(result.games);
+    appendFilterOptions(result.games);
+
+    const playerFilter = document.getElementById('filter-player').value;
+    const buildFilter = document.getElementById('filter-build').value;
+    const gamesList = document.getElementById('games-list');
+    const noFiltered = document.getElementById('no-filtered-games');
+
+    result.games.forEach(game => {
+      if (gameMatchesFilters(game, playerFilter, buildFilter)) {
+        gamesList.appendChild(createGameCard(game));
+        noFiltered.style.display = 'none';
+      }
+    });
+
+    loadMoreContainer.style.display = result.hasMore ? 'block' : 'none';
+  } catch (error) {
+    alert(`Failed to load more games: ${error.message}`);
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'Load More';
+  }
+}
+
+// Populate filter dropdowns from the initial game list
 function populateFilterDropdowns() {
   const playerSelect = document.getElementById('filter-player');
   const buildSelect = document.getElementById('filter-build');
   const filtersEl = document.getElementById('games-filters');
 
-  // Collect unique players
   const players = new Map();
   gamesData.forEach(game => {
     if (game.players) {
       game.players.forEach(p => {
-        if (p.player_id && p.player_name) {
-          players.set(p.player_id, p.player_name);
-        }
+        if (p.player_id && p.player_name) players.set(p.player_id, p.player_name);
       });
     }
   });
 
-  // Collect unique builds
   const builds = new Map();
   gamesData.forEach(game => {
-    if (game.build_id && game.build_nickname) {
-      builds.set(game.build_id, game.build_nickname);
-    }
+    if (game.build_id && game.build_nickname) builds.set(game.build_id, game.build_nickname);
   });
 
-  // Populate selects
   [...players.entries()].sort((a, b) => a[1].localeCompare(b[1])).forEach(([id, name]) => {
     const opt = document.createElement('option');
     opt.value = id;
@@ -87,6 +119,64 @@ function populateFilterDropdowns() {
   if (players.size > 1 || builds.size > 0) {
     filtersEl.style.display = 'flex';
   }
+}
+
+// Append filter options for newly loaded games (skips duplicates)
+function appendFilterOptions(newGames) {
+  const playerSelect = document.getElementById('filter-player');
+  const buildSelect = document.getElementById('filter-build');
+  const filtersEl = document.getElementById('games-filters');
+
+  const existingPlayers = new Set([...playerSelect.options].map(o => String(o.value)));
+  const existingBuilds = new Set([...buildSelect.options].map(o => String(o.value)));
+
+  const newPlayers = new Map();
+  const newBuilds = new Map();
+
+  newGames.forEach(game => {
+    if (game.players) {
+      game.players.forEach(p => {
+        if (p.player_id && p.player_name && !existingPlayers.has(String(p.player_id))) {
+          newPlayers.set(p.player_id, p.player_name);
+        }
+      });
+    }
+    if (game.build_id && game.build_nickname && !existingBuilds.has(String(game.build_id))) {
+      newBuilds.set(game.build_id, game.build_nickname);
+    }
+  });
+
+  [...newPlayers.entries()].sort((a, b) => a[1].localeCompare(b[1])).forEach(([id, name]) => {
+    const opt = document.createElement('option');
+    opt.value = id;
+    opt.textContent = name;
+    playerSelect.appendChild(opt);
+  });
+
+  [...newBuilds.entries()].sort((a, b) => a[1].localeCompare(b[1])).forEach(([id, name]) => {
+    const opt = document.createElement('option');
+    opt.value = id;
+    opt.textContent = name;
+    buildSelect.appendChild(opt);
+  });
+
+  if (playerSelect.options.length > 1 || buildSelect.options.length > 1) {
+    filtersEl.style.display = 'flex';
+  }
+}
+
+// Check if a single game matches the active filters
+function gameMatchesFilters(game, playerFilter, buildFilter) {
+  if (playerFilter) {
+    const hasPlayer = game.players && game.players.some(
+      p => String(p.player_id) === String(playerFilter)
+    );
+    if (!hasPlayer) return false;
+  }
+  if (buildFilter) {
+    if (String(game.build_id) !== String(buildFilter)) return false;
+  }
+  return true;
 }
 
 function setupFilters() {
@@ -114,19 +204,7 @@ function setupFilters() {
 function getFilteredGames() {
   const playerFilter = document.getElementById('filter-player').value;
   const buildFilter = document.getElementById('filter-build').value;
-
-  return gamesData.filter(game => {
-    if (playerFilter) {
-      const hasPlayer = game.players && game.players.some(
-        p => String(p.player_id) === String(playerFilter)
-      );
-      if (!hasPlayer) return false;
-    }
-    if (buildFilter) {
-      if (String(game.build_id) !== String(buildFilter)) return false;
-    }
-    return true;
-  });
+  return gamesData.filter(game => gameMatchesFilters(game, playerFilter, buildFilter));
 }
 
 // Render games list
@@ -156,7 +234,7 @@ function renderGames() {
   });
 }
 
-// Create game card element
+// Create game card element (header only; details rendered lazily on first expand)
 function createGameCard(game) {
   const card = document.createElement('div');
   card.className = 'game-card';
@@ -186,8 +264,8 @@ function createGameCard(game) {
       <div class="game-info">
         <div class="game-date">${formattedDate}</div>
         <div class="game-winner">
-          Winner: ${winner ? escapeHtml(winner.player_name) : 'Unknown'}
-          ${winner ? `(${winner.final_score} points)` : ''}
+          Winner: <span class="game-winner-name" ${winner?.player_color ? `style="color:${winner.player_color}"` : ''}>${winner ? escapeHtml(winner.player_name) : 'Unknown'}</span>
+          ${winner ? `<span class="game-winner-score">(${winner.final_score} pts)</span>` : ''}
         </div>
         <div class="game-meta">
           <span>Build: <span class="game-build">${game.build_nickname || 'None'}</span></span>
@@ -200,45 +278,12 @@ function createGameCard(game) {
         <div class="expand-icon">▼</div>
       </div>
     </div>
-    <div class="game-details">
-      <div class="players-table">
-        <h3>Final Standings</h3>
-        <table>
-          <thead>
-            <tr>
-              <th>Place</th>
-              <th>Player</th>
-              <th>Score</th>
-              <th>League Points</th>
-            </tr>
-          </thead>
-          <tbody>
-            ${game.players ? game.players.map(player => `
-              <tr>
-                <td class="placement-${player.placement}">
-                  <div class="placement-cell">
-                    <span class="placement-star">${getPlacementStar(player.placement)}</span>
-                    ${player.placement}
-                  </div>
-                </td>
-                <td>${escapeHtml(player.player_name)}</td>
-                <td>${player.final_score}</td>
-                <td>${player.league_points}</td>
-              </tr>
-            `).join('') : ''}
-          </tbody>
-        </table>
-      </div>
-      <div class="chart-container">
-        <div class="chart-title">Score Progression</div>
-        <canvas id="chart-${game.id}"></canvas>
-      </div>
-    </div>
+    <div class="game-details"></div>
   `;
 
   // Add click handler to expand/collapse
   card.querySelector('.game-header').addEventListener('click', () => {
-    toggleGameCard(card, game.id);
+    toggleGameCard(card, game);
   });
 
   // Delete button — stop propagation so it doesn't also expand the card
@@ -256,8 +301,46 @@ function createGameCard(game) {
   return card;
 }
 
+// Build the inner HTML for game details (chart first, then standings)
+function buildGameDetailsHTML(game) {
+  return `
+    <div class="chart-container">
+      <div class="chart-title">Score Progression</div>
+      <canvas id="chart-${game.id}"></canvas>
+    </div>
+    <div class="players-table">
+      <h3>Final Standings</h3>
+      <table>
+        <thead>
+          <tr>
+            <th>Place</th>
+            <th>Player</th>
+            <th>Score</th>
+            <th>League Points</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${game.players ? game.players.map(player => `
+            <tr>
+              <td class="placement-${player.placement}">
+                <div class="placement-cell">
+                  <span class="placement-star">${getPlacementStar(player.placement)}</span>
+                  ${player.placement}
+                </div>
+              </td>
+              <td>${escapeHtml(player.player_name)}</td>
+              <td>${player.final_score}</td>
+              <td>${player.league_points}</td>
+            </tr>
+          `).join('') : ''}
+        </tbody>
+      </table>
+    </div>
+  `;
+}
+
 // Toggle game card expansion
-async function toggleGameCard(card, gameId) {
+async function toggleGameCard(card, game) {
   const wasExpanded = card.classList.contains('expanded');
 
   if (wasExpanded) {
@@ -267,22 +350,28 @@ async function toggleGameCard(card, gameId) {
     card.classList.add('expanded');
     createSparkles(card);
 
+    // Inject details HTML on first expand
+    if (!card.dataset.rendered) {
+      card.dataset.rendered = '1';
+      card.querySelector('.game-details').innerHTML = buildGameDetailsHTML(game);
+    }
+
     // Load score history if not cached
-    if (!scoreHistoryCache[gameId]) {
+    if (!scoreHistoryCache[game.id]) {
       try {
-        const scoreHistory = await gamesAPI.getScoreHistory(gameId);
-        scoreHistoryCache[gameId] = scoreHistory;
+        const scoreHistory = await gamesAPI.getScoreHistory(game.id);
+        scoreHistoryCache[game.id] = scoreHistory;
       } catch (error) {
         console.error('Failed to load score history:', error);
-        scoreHistoryCache[gameId] = [];
+        scoreHistoryCache[game.id] = [];
       }
     }
 
     // Draw chart after a short delay to ensure container is fully expanded
-    const canvas = card.querySelector(`#chart-${gameId}`);
+    const canvas = card.querySelector(`#chart-${game.id}`);
     if (canvas) {
       setTimeout(() => {
-        drawScoreChart(canvas, scoreHistoryCache[gameId]);
+        drawScoreChart(canvas, scoreHistoryCache[game.id]);
       }, 50);
     }
   }
@@ -337,7 +426,7 @@ function drawScoreChart(canvas, scoreHistory) {
 
   const ctx = canvas.getContext('2d');
   const width = canvas.width = canvas.offsetWidth;
-  const height = canvas.height = 300;
+  const height = canvas.height = canvas.offsetHeight || 300;
 
   // Clear canvas
   ctx.clearRect(0, 0, width, height);
@@ -364,7 +453,7 @@ function drawScoreChart(canvas, scoreHistory) {
   const maxScore = Math.max(...allScores);
   const scoreRange = maxScore - minScore || 1;
 
-  const padding = { top: 30, right: 100, bottom: 40, left: 50 };
+  const padding = { top: 30, right: 10, bottom: 40, left: 50 };
   const chartWidth = width - padding.left - padding.right;
   const chartHeight = height - padding.top - padding.bottom;
 
@@ -452,13 +541,14 @@ function drawScoreChart(canvas, scoreHistory) {
         const legendAlpha = Math.max(0, legendProgress);
         const legendY = padding.top + (playerIndex * 20);
 
+        const legendX = padding.left + 8;
         ctx.globalAlpha = legendAlpha;
         ctx.fillStyle = player.color;
-        ctx.fillRect(width - padding.right + 5, legendY - 6, 12 * legendProgress, 12 * legendProgress);
+        ctx.fillRect(legendX, legendY - 6, 10 * legendProgress, 10 * legendProgress);
         ctx.fillStyle = '#d4c5a9';
         ctx.textAlign = 'left';
         ctx.font = '11px Georgia, serif';
-        ctx.fillText(player.name, width - padding.right + 22, legendY + 4);
+        ctx.fillText(player.name, legendX + 14, legendY + 4);
         ctx.globalAlpha = 1;
       }
     });
@@ -500,7 +590,8 @@ function drawChartStaticElements(ctx, width, height, padding, chartWidth, chartH
   ctx.fillStyle = '#a89a82';
   ctx.textAlign = 'center';
   ctx.font = '14px Georgia, serif';
-  ctx.fillText('Score', padding.left / 2, height / 2);
+  ctx.textAlign = 'left';
+  ctx.fillText('Score', 4, padding.top - 16);
   ctx.fillText('Time', width / 2, height - 10);
 }
 
@@ -520,9 +611,6 @@ function formatDuration(seconds) {
 }
 
 function getPlacementStar(placement) {
-  if (placement === 1) return '⭐';
-  if (placement === 2) return '🌟';
-  if (placement === 3) return '✨';
   return '';
 }
 
