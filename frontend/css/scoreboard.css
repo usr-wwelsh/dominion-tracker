@@ -1,49 +1,87 @@
 /* Scoreboard page styles */
 
-.player-input-group {
+/* Player roster grid */
+.player-roster {
   display: flex;
+  flex-wrap: wrap;
   gap: var(--spacing-sm);
   margin-bottom: var(--spacing-md);
+  min-height: 40px;
 }
 
-.player-name-input {
-  flex: 1;
+.roster-empty {
+  color: var(--color-text-dim);
+  font-style: italic;
+  font-size: 0.9rem;
 }
 
-.selected-players {
+.roster-btn {
   display: flex;
-  flex-direction: column;
-  gap: var(--spacing-sm);
-  margin-top: var(--spacing-md);
-}
-
-.player-tag {
-  display: flex;
-  justify-content: space-between;
   align-items: center;
-  background-color: var(--color-bg-tertiary);
-  border: 1px solid var(--color-accent);
-  padding: var(--spacing-sm) var(--spacing-md);
-  border-radius: var(--border-radius-sm);
+  gap: 7px;
+  padding: 6px 14px;
+  background: var(--color-bg-tertiary);
+  border: 1px solid var(--color-border);
+  border-radius: 20px;
+  cursor: pointer;
+  font-family: var(--font-primary);
+  font-size: 0.9rem;
+  color: var(--color-text-secondary);
+  transition: border-color 0.15s, background 0.15s, color 0.15s;
+  box-shadow: none;
 }
 
-.player-tag-name {
-  font-weight: 600;
+.roster-btn:hover {
+  border-color: var(--player-color, var(--color-accent));
+  color: var(--color-text-primary);
+  background: var(--color-bg-tertiary);
+  box-shadow: none;
+}
+
+.roster-btn-selected {
+  border-color: var(--player-color, var(--color-accent));
+  background: color-mix(in srgb, var(--player-color, var(--color-accent)) 15%, var(--color-bg-tertiary));
   color: var(--color-text-primary);
 }
 
-.remove-player-btn {
-  background: none;
-  border: none;
-  color: var(--color-error);
-  cursor: pointer;
-  font-size: 1.2rem;
-  padding: 0 var(--spacing-sm);
-  transition: transform 0.2s ease;
+.roster-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  flex-shrink: 0;
 }
 
-.remove-player-btn:hover {
-  transform: scale(1.2);
+.roster-name {
+  font-weight: 500;
+}
+
+.roster-check {
+  font-size: 0.75rem;
+  color: var(--player-color, var(--color-accent));
+  font-weight: 700;
+  margin-left: 2px;
+}
+
+/* New player inline form */
+.new-player-row {
+  display: flex;
+  gap: var(--spacing-sm);
+  margin-top: var(--spacing-xs);
+}
+
+.new-player-row input {
+  flex: 1;
+  max-width: 220px;
+  font-size: 0.9rem;
+  padding: 6px 10px;
+}
+
+/* Player count label */
+.player-count-label {
+  font-size: 0.8rem;
+  color: var(--color-text-secondary);
+  font-weight: normal;
+  margin-left: 4px;
 }
 
 .game-timer {

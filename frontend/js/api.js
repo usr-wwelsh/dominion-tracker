@@ -61,6 +61,8 @@ const playersAPI = {
     method: 'PATCH',
     body: JSON.stringify({ color }),
   }),
+
+  getH2H: (id) => apiRequest(`/players/${id}/h2h`),
 };
 
 // Builds API
@@ -119,6 +121,7 @@ const gamesAPI = {
 // Stats API
 const statsAPI = {
   getLeaderboard: () => apiRequest('/leaderboard'),
+  getExtras: () => apiRequest('/extras'),
 };
 
 // Export for use in other files

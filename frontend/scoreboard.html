@@ -44,25 +44,13 @@
       </div>
 
       <div class="form-group">
-        <label>Players</label>
-        <div id="player-setup">
-          <div class="player-input-group">
-            <input
-              type="text"
-              class="player-name-input"
-              placeholder="Enter player name"
-              list="player-suggestions"
-            >
-            <button type="button" class="btn btn-sm add-player-btn">Add Player</button>
-          </div>
-
-          <datalist id="player-suggestions">
-            <!-- Populated by JavaScript -->
-          </datalist>
-
-          <div id="selected-players" class="selected-players">
-            <!-- Selected players will appear here -->
-          </div>
+        <label>Players <span id="player-count-label" class="player-count-label"></span></label>
+        <div id="player-roster" class="player-roster">
+          <!-- Populated by JavaScript -->
+        </div>
+        <div class="new-player-row">
+          <input type="text" id="new-player-input" placeholder="New player name…" maxlength="50">
+          <button type="button" id="new-player-btn" class="btn btn-sm">Add</button>
         </div>
       </div>
 

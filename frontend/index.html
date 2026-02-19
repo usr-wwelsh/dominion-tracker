@@ -34,15 +34,23 @@
     <div id="loading" class="loading">Loading leaderboard</div>
 
     <div id="leaderboard-container" style="display: none;">
+
+      <!-- Podium for top 3 -->
+      <div id="podium-section" style="display: none;"></div>
+
+      <!-- Extras: rivalry + high score + most played build -->
+      <div id="extras-section" style="display: none;"></div>
+
       <table id="leaderboard-table">
         <thead>
           <tr>
             <th class="sortable" data-column="rank">#</th>
-            <th class="sortable" data-column="name">Player Name</th>
-            <th class="sortable" data-column="total_league_points">Total League Points</th>
-            <th class="sortable" data-column="avg_league_points">Avg Points/Game</th>
+            <th class="sortable" data-column="name">Player</th>
+            <th class="sortable" data-column="total_league_points">Total LP</th>
+            <th class="sortable" data-column="avg_league_points">Avg / Game</th>
+            <th class="sortable" data-column="win_rate">Win %</th>
             <th class="sortable" data-column="total_wins">Wins</th>
-            <th class="sortable" data-column="total_games">Games Played</th>
+            <th class="sortable" data-column="total_games">Games</th>
             <th class="sortable" data-column="avg_score">Avg Score</th>
           </tr>
         </thead>
@@ -52,9 +60,20 @@
       </table>
 
       <div id="no-data" class="text-center mt-xl" style="display: none;">
-        <p>No players have completed any games yet.</p>
-        <p>Start by creating a <a href="scoreboard.html">new game</a>!</p>
+        <p>No provinces claimed yet.</p>
+        <p>Forge a new kingdom in the <a href="scoreboard.html">Live Scoreboard</a>.</p>
       </div>
+    </div>
+  </div>
+
+  <!-- H2H Modal -->
+  <div id="h2h-modal" class="modal-overlay" style="display: none;">
+    <div class="modal-box">
+      <div class="modal-header">
+        <span id="h2h-title">Head-to-Head</span>
+        <button class="modal-close" id="h2h-close">✕</button>
+      </div>
+      <div id="h2h-body"></div>
     </div>
   </div>
 

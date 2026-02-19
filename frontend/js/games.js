@@ -6,6 +6,7 @@ let scoreHistoryCache = {};
 // Initialize page
 document.addEventListener('DOMContentLoaded', () => {
   loadGames();
+  setupFilters();
 });
 
 // Load games data
@@ -32,6 +33,7 @@ async function loadGames() {
       noGames.style.display = 'block';
     } else {
       noGames.style.display = 'none';
+      populateFilterDropdowns();
       renderGames();
     }
   } catch (error) {
@@ -41,12 +43,114 @@ async function loadGames() {
   }
 }
 
+// Populate filter dropdowns from loaded game data
+function populateFilterDropdowns() {
+  const playerSelect = document.getElementById('filter-player');
+  const buildSelect = document.getElementById('filter-build');
+  const filtersEl = document.getElementById('games-filters');
+
+  // Collect unique players
+  const players = new Map();
+  gamesData.forEach(game => {
+    if (game.players) {
+      game.players.forEach(p => {
+        if (p.player_id && p.player_name) {
+          players.set(p.player_id, p.player_name);
+        }
+      });
+    }
+  });
+
+  // Collect unique builds
+  const builds = new Map();
+  gamesData.forEach(game => {
+    if (game.build_id && game.build_nickname) {
+      builds.set(game.build_id, game.build_nickname);
+    }
+  });
+
+  // Populate selects
+  [...players.entries()].sort((a, b) => a[1].localeCompare(b[1])).forEach(([id, name]) => {
+    const opt = document.createElement('option');
+    opt.value = id;
+    opt.textContent = name;
+    playerSelect.appendChild(opt);
+  });
+
+  [...builds.entries()].sort((a, b) => a[1].localeCompare(b[1])).forEach(([id, name]) => {
+    const opt = document.createElement('option');
+    opt.value = id;
+    opt.textContent = name;
+    buildSelect.appendChild(opt);
+  });
+
+  if (players.size > 1 || builds.size > 0) {
+    filtersEl.style.display = 'flex';
+  }
+}
+
+function setupFilters() {
+  const playerSelect = document.getElementById('filter-player');
+  const buildSelect = document.getElementById('filter-build');
+  const clearBtn = document.getElementById('filter-clear');
+
+  function onFilterChange() {
+    const hasFilter = playerSelect.value || buildSelect.value;
+    clearBtn.style.display = hasFilter ? 'inline-block' : 'none';
+    renderGames();
+  }
+
+  playerSelect.addEventListener('change', onFilterChange);
+  buildSelect.addEventListener('change', onFilterChange);
+  clearBtn.addEventListener('click', () => {
+    playerSelect.value = '';
+    buildSelect.value = '';
+    clearBtn.style.display = 'none';
+    renderGames();
+  });
+}
+
+// Get currently filtered game list
+function getFilteredGames() {
+  const playerFilter = document.getElementById('filter-player').value;
+  const buildFilter = document.getElementById('filter-build').value;
+
+  return gamesData.filter(game => {
+    if (playerFilter) {
+      const hasPlayer = game.players && game.players.some(
+        p => String(p.player_id) === String(playerFilter)
+      );
+      if (!hasPlayer) return false;
+    }
+    if (buildFilter) {
+      if (String(game.build_id) !== String(buildFilter)) return false;
+    }
+    return true;
+  });
+}
+
 // Render games list
 function renderGames() {
   const gamesList = document.getElementById('games-list');
+  const noFiltered = document.getElementById('no-filtered-games');
+  const noGames = document.getElementById('no-games');
   gamesList.innerHTML = '';
 
-  gamesData.forEach(game => {
+  const filtered = getFilteredGames();
+
+  const playerFilter = document.getElementById('filter-player').value;
+  const buildFilter = document.getElementById('filter-build').value;
+  const hasFilter = playerFilter || buildFilter;
+
+  if (filtered.length === 0 && hasFilter) {
+    noFiltered.style.display = 'block';
+    noGames.style.display = 'none';
+  } else {
+    noFiltered.style.display = 'none';
+    noGames.style.display = 'none';
+  }
+
+  filtered.forEach(game => {
     const gameCard = createGameCard(game);
     gamesList.appendChild(gameCard);
   });

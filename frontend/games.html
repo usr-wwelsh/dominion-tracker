@@ -34,14 +34,37 @@
     <div id="loading" class="loading">Loading games</div>
 
     <div id="games-container" style="display: none;">
+
+      <div id="games-filters" class="games-filters" style="display: none;">
+        <label>
+          <span>Player</span>
+          <select id="filter-player">
+            <option value="">All players</option>
+          </select>
+        </label>
+        <label>
+          <span>Kingdom</span>
+          <select id="filter-build">
+            <option value="">All kingdoms</option>
+          </select>
+        </label>
+        <button id="filter-clear" class="btn-secondary" style="display:none;">Clear filters</button>
+      </div>
+
       <div id="games-list">
         <!-- Populated by JavaScript -->
       </div>
 
       <div id="no-games" class="text-center mt-xl" style="display: none;">
-        <p>No games have been played yet.</p>
-        <p>Start by creating a <a href="scoreboard.html">new game</a>!</p>
+        <p>No conquered provinces on record yet.</p>
+        <p>Claim your first victory in the <a href="scoreboard.html">Live Scoreboard</a>.</p>
       </div>
+
+      <div id="no-filtered-games" class="text-center mt-xl" style="display: none;">
+        <p>No campaigns match your search.</p>
+        <p>The archives hold no record of these exploits.</p>
+      </div>
+
     </div>
   </div>
 

@@ -87,6 +87,43 @@ router.get('/:id/stats', async (req, res, next) => {
   }
 });
 
+// GET /api/players/:id/h2h - Head-to-head record vs all opponents
+router.get('/:id/h2h', async (req, res, next) => {
+  try {
+    const { id } = req.params;
+
+    const playerResult = await query('SELECT id, name FROM players WHERE id = $1', [id]);
+    if (playerResult.rows.length === 0) {
+      return res.status(404).json({ error: 'Player not found' });
+    }
+
+    const result = await query(`
+      SELECT
+        gp2.player_id AS opponent_id,
+        p2.name AS opponent_name,
+        p2.color AS opponent_color,
+        COUNT(*) AS games_together,
+        SUM(CASE WHEN gp1.placement < gp2.placement THEN 1 ELSE 0 END) AS player_wins,
+        SUM(CASE WHEN gp2.placement < gp1.placement THEN 1 ELSE 0 END) AS opponent_wins
+      FROM game_players gp1
+      JOIN game_players gp2
+        ON gp1.game_id = gp2.game_id AND gp2.player_id != gp1.player_id
+      JOIN games g ON gp1.game_id = g.id
+      JOIN players p2 ON gp2.player_id = p2.id
+      WHERE gp1.player_id = $1 AND g.ended_at IS NOT NULL
+      GROUP BY gp2.player_id, p2.name, p2.color
+      ORDER BY games_together DESC
+    `, [id]);
+
+    res.json({
+      player: playerResult.rows[0],
+      opponents: result.rows,
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
 // PATCH /api/players/:id/color - Update player color
 router.patch('/:id/color', async (req, res, next) => {
   try {

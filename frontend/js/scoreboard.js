@@ -19,7 +19,7 @@ document.addEventListener('DOMContentLoaded', () => {
 async function loadPlayers() {
   try {
     allPlayers = await playersAPI.getAll();
-    updatePlayerSuggestions();
+    renderPlayerRoster();
   } catch (error) {
     console.error('Failed to load players:', error);
   }
@@ -35,15 +35,36 @@ async function loadBuilds() {
   }
 }
 
-// Update player suggestions datalist
-function updatePlayerSuggestions() {
-  const datalist = document.getElementById('player-suggestions');
-  datalist.innerHTML = '';
+// Render clickable player roster
+function renderPlayerRoster() {
+  const roster = document.getElementById('player-roster');
+  const label = document.getElementById('player-count-label');
+  roster.innerHTML = '';
+
+  const count = selectedPlayers.length;
+  label.textContent = count > 0 ? `(${count} selected)` : '';
+
+  if (allPlayers.length === 0) {
+    roster.innerHTML = '<span class="roster-empty">No players yet — add one below.</span>';
+    return;
+  }
 
   allPlayers.forEach(player => {
-    const option = document.createElement('option');
-    option.value = player.name;
-    datalist.appendChild(option);
+    const isSelected = selectedPlayers.some(p => p.id === player.id);
+    const color = player.color || '#4db8ff';
+
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'roster-btn' + (isSelected ? ' roster-btn-selected' : '');
+    btn.dataset.playerId = player.id;
+    btn.style.setProperty('--player-color', color);
+    btn.innerHTML = `
+      <span class="roster-dot" style="background:${color}"></span>
+      <span class="roster-name">${escapeHtml(player.name)}</span>
+      ${isSelected ? '<span class="roster-check">✓</span>' : ''}
+    `;
+    btn.addEventListener('click', () => togglePlayer(player));
+    roster.appendChild(btn);
   });
 }
 
@@ -62,19 +83,17 @@ function updateBuildDropdown() {
 
 // Setup event listeners
 function setupEventListeners() {
-  const addPlayerBtn = document.querySelector('.add-player-btn');
-  const playerInput = document.querySelector('.player-name-input');
+  const newPlayerBtn = document.getElementById('new-player-btn');
+  const newPlayerInput = document.getElementById('new-player-input');
   const startGameBtn = document.getElementById('start-game-btn');
   const endGameBtn = document.getElementById('end-game-btn');
   const cancelGameBtn = document.getElementById('cancel-game-btn');
   const restartGameBtn = document.getElementById('restart-game-btn');
   const goToGamesBtn = document.getElementById('go-to-games-btn');
 
-  addPlayerBtn.addEventListener('click', addPlayer);
-  playerInput.addEventListener('keypress', (e) => {
-    if (e.key === 'Enter') {
-      addPlayer();
-    }
+  newPlayerBtn.addEventListener('click', addNewPlayer);
+  newPlayerInput.addEventListener('keypress', (e) => {
+    if (e.key === 'Enter') addNewPlayer();
   });
 
   startGameBtn.addEventListener('click', startGame);
@@ -84,58 +103,39 @@ function setupEventListeners() {
   goToGamesBtn.addEventListener('click', goToGamesPage);
 }
 
-// Add player to game
-function addPlayer() {
-  const input = document.querySelector('.player-name-input');
-  const playerName = input.value.trim();
-
-  if (!playerName) {
-    showError('Please enter a player name');
-    return;
+// Toggle a player in/out of the selected list
+function togglePlayer(player) {
+  const idx = selectedPlayers.findIndex(p => p.id === player.id);
+  if (idx === -1) {
+    selectedPlayers.push(player);
+  } else {
+    selectedPlayers.splice(idx, 1);
   }
-
-  if (selectedPlayers.some(p => p.name.toLowerCase() === playerName.toLowerCase())) {
-    showError('Player already added');
-    return;
-  }
-
-  // Check if player exists, or create new
-  let player = allPlayers.find(p => p.name.toLowerCase() === playerName.toLowerCase());
-
-  if (!player) {
-    // Will be created when game starts
-    player = { id: null, name: playerName };
-  }
-
-  selectedPlayers.push(player);
-  input.value = '';
-  renderSelectedPlayers();
+  renderPlayerRoster();
   updateStartButton();
 }
 
-// Remove player from game
-function removePlayer(index) {
-  selectedPlayers.splice(index, 1);
-  renderSelectedPlayers();
-  updateStartButton();
-}
+// Create a brand-new player and add them to the roster
+async function addNewPlayer() {
+  const input = document.getElementById('new-player-input');
+  const name = input.value.trim();
+  if (!name) return;
 
-// Render selected players
-function renderSelectedPlayers() {
-  const container = document.getElementById('selected-players');
-  container.innerHTML = '';
+  if (allPlayers.some(p => p.name.toLowerCase() === name.toLowerCase())) {
+    showError('A player with that name already exists');
+    return;
+  }
 
-  selectedPlayers.forEach((player, index) => {
-    const div = document.createElement('div');
-    div.className = 'player-tag';
-
-    div.innerHTML = `
-      <span class="player-tag-name">${escapeHtml(player.name)}</span>
-      <button class="remove-player-btn" onclick="removePlayer(${index})">×</button>
-    `;
-
-    container.appendChild(div);
-  });
+  try {
+    const newPlayer = await playersAPI.create(name);
+    allPlayers.unshift(newPlayer);
+    selectedPlayers.push(newPlayer);
+    input.value = '';
+    renderPlayerRoster();
+    updateStartButton();
+  } catch (error) {
+    showError(`Failed to create player: ${error.message}`);
+  }
 }
 
 // Update start button state
@@ -328,22 +328,15 @@ async function restartGame() {
   hideEndGameModal();
 
   try {
-    for (const playerId of endedGameInfo.selectedPlayerIds) {
-      let player = selectedPlayers.find(p => p.id === playerId);
-      if (!player) {
-        player = allPlayers.find(p => p.id === playerId);
-        if (player) {
-          selectedPlayers.push(player);
-        }
-      }
-    }
+    selectedPlayers = endedGameInfo.selectedPlayerIds
+      .map(id => allPlayers.find(p => p.id === id))
+      .filter(Boolean);
 
     document.getElementById('build-select').value = newBuildId || '';
-
     document.getElementById('setup-section').style.display = 'block';
     document.getElementById('game-section').style.display = 'none';
 
-    renderSelectedPlayers();
+    renderPlayerRoster();
     updateStartButton();
     showSuccess('Ready to start new game with same players!');
   } catch (error) {
@@ -380,7 +373,7 @@ function resetGame() {
   document.getElementById('game-section').style.display = 'none';
   document.getElementById('timer').textContent = '00:00';
 
-  renderSelectedPlayers();
+  renderPlayerRoster();
   updateStartButton();
 }
 
