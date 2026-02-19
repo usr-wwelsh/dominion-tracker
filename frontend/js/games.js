@@ -244,6 +244,8 @@ function createGameCard(game) {
     ? game.players.find(p => p.placement === 1)
     : null;
 
+  card.style.setProperty('--winner-color', winner?.player_color || '#a08850');
+
   const startDate = game.started_at ? new Date(game.started_at) : null;
   const formattedDate = startDate
     ? startDate.toLocaleString('en-US', {

@@ -47,10 +47,10 @@
 
 @keyframes pulseGold {
   0%, 100% {
-    box-shadow: 0 0 5px rgba(255, 215, 0, 0.3);
+    box-shadow: 0 0 5px color-mix(in srgb, var(--winner-color) 30%, transparent);
   }
   50% {
-    box-shadow: 0 0 20px rgba(255, 215, 0, 0.6), 0 0 40px rgba(255, 215, 0, 0.3);
+    box-shadow: 0 0 20px color-mix(in srgb, var(--winner-color) 60%, transparent), 0 0 40px color-mix(in srgb, var(--winner-color) 30%, transparent);
   }
 }
 
@@ -167,13 +167,13 @@
 }
 
 .game-card:hover {
-  border-color: var(--color-accent);
+  border-color: var(--winner-color);
   box-shadow: var(--shadow-lg);
   transform: translateY(-3px) scale(1.01);
 }
 
 .game-card.expanded {
-  border-color: var(--color-accent);
+  border-color: var(--winner-color);
   animation: pulseGold 2s ease-in-out infinite;
 }
 
