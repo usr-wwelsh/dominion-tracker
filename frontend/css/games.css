@@ -249,6 +249,7 @@
 .game-winner-name {
   font-size: 1.3em;
   font-weight: 700;
+  color: var(--color-text-primary);
 }
 
 .game-winner-score {

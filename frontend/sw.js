@@ -1,32 +1,6 @@
 const CACHE_NAME = 'dominion-v3';
 
-const STATIC_ASSETS = [
-  '/',
-  '/index.html',
-  '/games.html',
-  '/builds.html',
-  '/scoreboard.html',
-  '/favicon.svg',
-  '/icon-192.png',
-  '/icon-512.png',
-  '/manifest.json',
-  '/css/main.css',
-  '/css/leaderboard.css',
-  '/css/games.css',
-  '/css/builds.css',
-  '/css/scoreboard.css',
-  '/js/api.js',
-  '/js/header.js',
-  '/js/leaderboard.js',
-  '/js/games.js',
-  '/js/builds.js',
-  '/js/scoreboard.js',
-];
-
 self.addEventListener('install', (event) => {
-  event.waitUntil(
-    caches.open(CACHE_NAME).then((cache) => cache.addAll(STATIC_ASSETS))
-  );
   self.skipWaiting();
 });
 
@@ -42,13 +16,22 @@ self.addEventListener('activate', (event) => {
 self.addEventListener('fetch', (event) => {
   const url = new URL(event.request.url);
 
-  // Let API requests go straight to the network; fall back to nothing on failure
+  // API requests always go straight to network
   if (url.pathname.startsWith('/api/')) {
     return;
   }
 
-  // For everything else: cache-first, fall back to network
+  // Cache-first for static assets, populate cache on first fetch
   event.respondWith(
-    caches.match(event.request).then((cached) => cached || fetch(event.request))
+    caches.match(event.request).then((cached) => {
+      if (cached) return cached;
+      return fetch(event.request).then((response) => {
+        if (response.ok) {
+          const clone = response.clone();
+          caches.open(CACHE_NAME).then((cache) => cache.put(event.request, clone));
+        }
+        return response;
+      });
+    })
   );
 });

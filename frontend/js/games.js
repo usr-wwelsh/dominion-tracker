@@ -328,7 +328,7 @@ function buildGameDetailsHTML(game) {
                   ${player.placement}
                 </div>
               </td>
-              <td>${escapeHtml(player.player_name)}</td>
+              <td><span ${player.player_color ? `style="color:${player.player_color}"` : ''}>${escapeHtml(player.player_name)}</span></td>
               <td>${player.final_score}</td>
               <td>${player.league_points}</td>
             </tr>
