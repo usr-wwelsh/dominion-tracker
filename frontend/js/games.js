@@ -306,17 +306,8 @@ function createGameCard(game) {
 // Build the inner HTML for game details (chart first, then standings)
 function buildGameDetailsHTML(game) {
   const winners = game.players ? game.players.filter(p => p.placement === 1) : [];
-  const tied = winners.length > 1;
-  const showcaseColor = !tied && winners[0]?.player_color ? winners[0].player_color : 'var(--color-accent)';
 
   return `
-    ${winners.length > 0 ? `
-    <div class="winner-showcase" style="--wc: ${showcaseColor}">
-      <span class="winner-showcase-crown">♛</span>
-      <span class="winner-showcase-name">${formatWinnerNames(winners)}</span>
-      <span class="winner-showcase-stats">${winners[0].final_score} pts &middot; ${winners[0].league_points} LP</span>
-    </div>
-    ` : ''}
     <div class="chart-container">
       <div class="chart-title">Score Progression</div>
       <canvas id="chart-${game.id}"></canvas>
