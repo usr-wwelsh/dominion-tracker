@@ -8,17 +8,26 @@
   <link rel="stylesheet" href="css/builds.css">
 </head>
 <body>
-  <nav>
-    <ul>
-      <li><a href="index.html">Leaderboard</a></li>
-      <li><a href="games.html">Recent Games</a></li>
-      <li><a href="builds.html" class="active">Builds</a></li>
-      <li><a href="scoreboard.html">Live Scoreboard</a></li>
-    </ul>
-  </nav>
+  <header class="site-header">
+    <a href="index.html" class="site-brand">
+      <span class="brand-icon">⚜</span>
+      <span class="brand-name">Dominion Tracker</span>
+    </a>
+    <button class="nav-toggle" id="nav-toggle" aria-label="Menu" aria-expanded="false">
+      <span></span><span></span><span></span>
+    </button>
+    <nav id="main-nav">
+      <ul>
+        <li><a href="index.html">Leaderboard</a></li>
+        <li><a href="games.html">Recent Games</a></li>
+        <li><a href="builds.html" class="active">Builds</a></li>
+        <li><a href="scoreboard.html">Live Scoreboard</a></li>
+      </ul>
+    </nav>
+  </header>
 
   <div class="container">
-    <h1>Card Builds</h1>
+    <div class="page-banner"><h1>Card Builds</h1></div>
 
     <div id="error-message" class="error" style="display: none;"></div>
     <div id="success-message" class="success" style="display: none;"></div>
@@ -148,6 +157,7 @@
   </div>
 
   <script src="js/api.js"></script>
+  <script src="js/header.js"></script>
   <script src="js/builds.js"></script>
 </body>
 </html>

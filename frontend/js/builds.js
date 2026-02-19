@@ -98,9 +98,23 @@ let selectedProphecies = new Set();
 // Initialize page
 document.addEventListener('DOMContentLoaded', () => {
   renderCardCheckboxes();
+  setupCollapsibleSections();
   setupFormHandlers();
   loadBuilds();
 });
+
+// Make expansion headers collapsible; collapse all by default on mobile
+function setupCollapsibleSections() {
+  const isMobile = window.innerWidth <= 768;
+  document.querySelectorAll('.expansion-header').forEach(header => {
+    const section = header.closest('.expansion-section');
+    if (!section) return;
+    if (isMobile) section.classList.add('collapsed');
+    header.addEventListener('click', () => {
+      section.classList.toggle('collapsed');
+    });
+  });
+}
 
 // Render all card checkbox sections
 function renderCardCheckboxes() {
