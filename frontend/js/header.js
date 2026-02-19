@@ -1,3 +1,10 @@
+// Favicon
+const _favicon = document.createElement('link');
+_favicon.rel = 'icon';
+_favicon.type = 'image/png';
+_favicon.href = '/icon-192.png';
+document.head.appendChild(_favicon);
+
 // Mobile nav toggle
 document.addEventListener('DOMContentLoaded', () => {
   const toggle = document.getElementById('nav-toggle');

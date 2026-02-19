@@ -192,8 +192,8 @@ a:hover {
 }
 
 .brand-icon {
-  font-size: 1.4rem;
-  line-height: 1;
+  width: 24px;
+  height: 24px;
 }
 
 .site-header nav ul {

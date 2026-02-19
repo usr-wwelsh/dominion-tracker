@@ -4,14 +4,16 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Dominion Tracker - Leaderboard</title>
-  <link rel="icon" href="favicon.svg" type="image/svg+xml">
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#1c2333">
   <link rel="stylesheet" href="css/main.css">
   <link rel="stylesheet" href="css/leaderboard.css">
+  <script>if ('serviceWorker' in navigator) navigator.serviceWorker.register('/sw.js');</script>
 </head>
 <body>
   <header class="site-header">
     <a href="index.html" class="site-brand">
-      <span class="brand-icon">⚜</span>
+      <img class="brand-icon" src="/icon-192.png" alt="">
       <span class="brand-name">Dominion Tracker</span>
     </a>
     <button class="nav-toggle" id="nav-toggle" aria-label="Menu" aria-expanded="false">

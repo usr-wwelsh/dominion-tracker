@@ -1,0 +1,23 @@
+{
+  "name": "Dominion Tracker",
+  "short_name": "Dominion",
+  "description": "Track Dominion game scores, builds, and league standings",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#1c2333",
+  "theme_color": "#1c2333",
+  "icons": [
+    {
+      "src": "icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}
