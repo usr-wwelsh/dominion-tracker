@@ -328,6 +328,7 @@ router.get('/:id/scores', async (req, res, next) => {
         ss.game_id,
         ss.player_id,
         p.name as player_name,
+        p.color as player_color,
         ss.score,
         ss.timestamp
       FROM score_snapshots ss

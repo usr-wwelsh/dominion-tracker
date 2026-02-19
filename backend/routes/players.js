@@ -87,4 +87,29 @@ router.get('/:id/stats', async (req, res, next) => {
   }
 });
 
+// PATCH /api/players/:id/color - Update player color
+router.patch('/:id/color', async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const { color } = req.body;
+
+    if (!color || !/^#[0-9a-fA-F]{6}$/.test(color)) {
+      return res.status(400).json({ error: 'Valid hex color required' });
+    }
+
+    const result = await query(
+      'UPDATE players SET color = $1 WHERE id = $2 RETURNING *',
+      [color, id]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Player not found' });
+    }
+
+    res.json(result.rows[0]);
+  } catch (error) {
+    next(error);
+  }
+});
+
 module.exports = router;

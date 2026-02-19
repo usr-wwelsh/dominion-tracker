@@ -2,6 +2,7 @@ const express = require('express');
 const cors = require('cors');
 const basicAuth = require('express-basic-auth');
 require('dotenv').config();
+const { migrate } = require('./migrate');
 
 const playersRoutes = require('./routes/players');
 const buildsRoutes = require('./routes/builds');
@@ -79,7 +80,15 @@ app.use((req, res) => {
 });
 
 // Start server
-app.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
-  console.log(`API available at http://localhost:${PORT}`);
+async function start() {
+  await migrate();
+  app.listen(PORT, () => {
+    console.log(`Server running on port ${PORT}`);
+    console.log(`API available at http://localhost:${PORT}`);
+  });
+}
+
+start().catch(err => {
+  console.error('Failed to start server:', err);
+  process.exit(1);
 });

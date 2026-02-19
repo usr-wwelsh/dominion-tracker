@@ -1,13 +1,93 @@
 // Leaderboard page logic
 
+const PRESET_COLORS = [
+  '#e05c5c', '#ff8c42', '#f5a623', '#ffd700',
+  '#6ddb6d', '#00e0c0', '#4db8ff', '#5c7eff',
+  '#c47eff', '#ff4da6', '#c0a464', '#b5e853',
+  '#00bcd4', '#80cbc4', '#ff8a80', '#cfcfcf',
+];
+
 let leaderboardData = [];
 let currentSort = {
   column: 'total_league_points',
   direction: 'desc'
 };
 
+// Single shared popover
+let activeSwatchEl = null;
+let activePlayerId = null;
+
+function buildPopover() {
+  const popover = document.createElement('div');
+  popover.id = 'color-popover';
+
+  const grid = document.createElement('div');
+  grid.className = 'color-popover-grid';
+
+  PRESET_COLORS.forEach(hex => {
+    const dot = document.createElement('button');
+    dot.className = 'color-option';
+    dot.style.background = hex;
+    dot.dataset.color = hex;
+    dot.title = hex;
+    dot.addEventListener('click', () => selectColor(hex));
+    grid.appendChild(dot);
+  });
+
+  popover.appendChild(grid);
+  document.body.appendChild(popover);
+
+  document.addEventListener('click', e => {
+    if (!popover.contains(e.target) && e.target !== activeSwatchEl) {
+      closePopover();
+    }
+  });
+
+  return popover;
+}
+
+function openPopover(swatchEl, playerId) {
+  const popover = document.getElementById('color-popover');
+  activeSwatchEl = swatchEl;
+  activePlayerId = playerId;
+
+  const rect = swatchEl.getBoundingClientRect();
+  popover.style.top = `${rect.bottom + window.scrollY + 8}px`;
+  popover.style.left = `${rect.left + window.scrollX}px`;
+  popover.classList.add('open');
+
+  // Highlight current color
+  const currentColor = swatchEl.style.background;
+  popover.querySelectorAll('.color-option').forEach(dot => {
+    dot.classList.toggle('active', dot.dataset.color.toLowerCase() === currentColor.toLowerCase());
+  });
+}
+
+function closePopover() {
+  document.getElementById('color-popover')?.classList.remove('open');
+  activeSwatchEl = null;
+  activePlayerId = null;
+}
+
+async function selectColor(hex) {
+  if (!activeSwatchEl || !activePlayerId) return;
+  const swatchEl = activeSwatchEl;
+  const playerId = activePlayerId;
+  const prevColor = swatchEl.style.background;
+  swatchEl.style.background = hex;
+  closePopover();
+  try {
+    await playersAPI.updateColor(playerId, hex);
+    const player = leaderboardData.find(p => String(p.id) === String(playerId));
+    if (player) player.color = hex;
+  } catch {
+    swatchEl.style.background = prevColor;
+  }
+}
+
 // Initialize page
 document.addEventListener('DOMContentLoaded', () => {
+  buildPopover();
   loadLeaderboard();
   setupSorting();
 });
@@ -48,15 +128,18 @@ function renderLeaderboard() {
   const tbody = document.getElementById('leaderboard-body');
   tbody.innerHTML = '';
 
-  // Sort data
   const sortedData = sortData(leaderboardData, currentSort.column, currentSort.direction);
 
   sortedData.forEach((player, index) => {
     const row = document.createElement('tr');
+    const color = player.color || '#4db8ff';
 
     row.innerHTML = `
       <td>${index + 1}</td>
-      <td class="player-name">${escapeHtml(player.name)}</td>
+      <td class="player-name">
+        <span class="player-color-swatch" data-player-id="${player.id}" style="background:${color}" title="Click to change color"></span>
+        ${escapeHtml(player.name)}
+      </td>
       <td class="stat-highlight">${player.total_league_points}</td>
       <td>${player.avg_league_points}</td>
       <td>${player.total_wins}</td>
@@ -65,6 +148,17 @@ function renderLeaderboard() {
     `;
 
     tbody.appendChild(row);
+  });
+
+  tbody.querySelectorAll('.player-color-swatch').forEach(swatch => {
+    swatch.addEventListener('click', e => {
+      e.stopPropagation();
+      if (activeSwatchEl === swatch) {
+        closePopover();
+      } else {
+        openPopover(swatch, swatch.dataset.playerId);
+      }
+    });
   });
 
   updateSortIndicators();
@@ -109,12 +203,8 @@ function sortData(data, column, direction) {
     let aVal = a[column];
     let bVal = b[column];
 
-    // Handle rank specially
-    if (column === 'rank') {
-      return 0; // Rank is determined by position, not sorted
-    }
+    if (column === 'rank') return 0;
 
-    // Handle string comparison
     if (typeof aVal === 'string') {
       aVal = aVal.toLowerCase();
       bVal = bVal.toLowerCase();
@@ -123,7 +213,6 @@ function sortData(data, column, direction) {
         : bVal.localeCompare(aVal);
     }
 
-    // Handle numeric comparison
     aVal = parseFloat(aVal) || 0;
     bVal = parseFloat(bVal) || 0;
 

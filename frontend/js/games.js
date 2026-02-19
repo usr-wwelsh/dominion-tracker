@@ -244,6 +244,7 @@ function drawScoreChart(canvas, scoreHistory) {
     if (!playerScores[snapshot.player_id]) {
       playerScores[snapshot.player_id] = {
         name: snapshot.player_name,
+        color: snapshot.player_color,
         scores: []
       };
     }
@@ -263,10 +264,10 @@ function drawScoreChart(canvas, scoreHistory) {
   const chartWidth = width - padding.left - padding.right;
   const chartHeight = height - padding.top - padding.bottom;
 
-  const colors = ['#8b7355', '#a38968', '#6b6355', '#c4b5a9', '#9a8a72', '#7a6a52'];
+  const fallbackColors = ['#e05c5c', '#4db8ff', '#6ddb6d', '#f5a623', '#c47eff', '#00e0c0'];
 
   const playerData = Object.values(playerScores).map((player, index) => {
-    const color = colors[index % colors.length];
+    const color = player.color || fallbackColors[index % fallbackColors.length];
     const scores = player.scores.sort((a, b) => a.timestamp - b.timestamp);
 
     if (scores.length === 0) return null;

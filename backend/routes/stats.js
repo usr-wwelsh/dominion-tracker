@@ -9,6 +9,7 @@ router.get('/leaderboard', async (req, res, next) => {
       SELECT
         p.id,
         p.name,
+        p.color,
         COUNT(gp.id) as total_games,
         COALESCE(SUM(gp.league_points), 0) as total_league_points,
         COALESCE(ROUND(AVG(gp.league_points), 2), 0) as avg_league_points,
@@ -18,7 +19,7 @@ router.get('/leaderboard', async (req, res, next) => {
       LEFT JOIN game_players gp ON p.id = gp.player_id
       LEFT JOIN games g ON gp.game_id = g.id
       WHERE g.ended_at IS NOT NULL OR g.ended_at IS NULL
-      GROUP BY p.id, p.name
+      GROUP BY p.id, p.name, p.color
       HAVING COUNT(gp.id) > 0
       ORDER BY total_league_points DESC, total_wins DESC, avg_score DESC
     `);

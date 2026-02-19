@@ -56,6 +56,11 @@ const playersAPI = {
     method: 'POST',
     body: JSON.stringify({ name }),
   }),
+
+  updateColor: (id, color) => apiRequest(`/players/${id}/color`, {
+    method: 'PATCH',
+    body: JSON.stringify({ color }),
+  }),
 };
 
 // Builds API
