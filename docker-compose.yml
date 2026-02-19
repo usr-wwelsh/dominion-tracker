@@ -21,7 +21,11 @@ services:
     networks:
       - proxy
       - internal
-    build: ./backend
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    ports:
+      - "3002:3000"
     environment:
       DB_HOST: db
       DB_PORT: 5432
@@ -29,20 +33,11 @@ services:
       DB_USER: postgres
       DB_PASSWORD: ${DB_PASSWORD:-changeme}
       PORT: 3000
+      AUTH_USER: ${AUTH_USER:-admin}
+      AUTH_PASS: ${AUTH_PASS:-changeme}
     depends_on:
       db:
         condition: service_healthy
-    restart: unless-stopped
-
-  frontend:
-    build: ./frontend
-    networks:
-      - proxy
-      - internal
-    ports:
-      - "3002:80"
-    depends_on:
-      - backend
     restart: unless-stopped
 
 networks:

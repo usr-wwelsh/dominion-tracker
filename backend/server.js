@@ -1,5 +1,6 @@
 const express = require('express');
 const cors = require('cors');
+const basicAuth = require('express-basic-auth');
 require('dotenv').config();
 
 const playersRoutes = require('./routes/players');
@@ -12,6 +13,12 @@ const PORT = process.env.PORT || 3000;
 
 // Middleware
 app.use(cors());
+if (process.env.AUTH_USER && process.env.AUTH_PASS) {
+  app.use(basicAuth({
+    users: { [process.env.AUTH_USER]: process.env.AUTH_PASS },
+    challenge: true,
+  }));
+}
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
@@ -20,6 +27,9 @@ app.use((req, res, next) => {
   console.log(`${new Date().toISOString()} - ${req.method} ${req.path}`);
   next();
 });
+
+// Serve frontend
+app.use(express.static('../frontend'));
 
 // Routes
 app.use('/api/players', playersRoutes);
