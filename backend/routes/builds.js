@@ -9,12 +9,14 @@ router.get('/', async (req, res, next) => {
     const result = await query(`
       SELECT
         b.*,
-        COUNT(g.id) as games_played,
-        COALESCE(ROUND(AVG(gp.final_score), 2), 0) as avg_score_per_game
+        (SELECT COUNT(*) FROM games WHERE build_id = b.id AND ended_at IS NOT NULL) AS games_played,
+        COALESCE((
+          SELECT ROUND(AVG(gp.final_score), 2)
+          FROM game_players gp
+          JOIN games g ON gp.game_id = g.id
+          WHERE g.build_id = b.id AND g.ended_at IS NOT NULL
+        ), 0) AS avg_score_per_game
       FROM builds b
-      LEFT JOIN games g ON b.id = g.build_id
-      LEFT JOIN game_players gp ON g.id = gp.game_id
-      GROUP BY b.id
       ORDER BY b.created_at DESC
     `);
     res.json(result.rows);
@@ -62,13 +64,15 @@ router.get('/:id', async (req, res, next) => {
     const result = await query(`
       SELECT
         b.*,
-        COUNT(g.id) as games_played,
-        COALESCE(ROUND(AVG(gp.final_score), 2), 0) as avg_score_per_game
+        (SELECT COUNT(*) FROM games WHERE build_id = b.id AND ended_at IS NOT NULL) AS games_played,
+        COALESCE((
+          SELECT ROUND(AVG(gp.final_score), 2)
+          FROM game_players gp
+          JOIN games g ON gp.game_id = g.id
+          WHERE g.build_id = b.id AND g.ended_at IS NOT NULL
+        ), 0) AS avg_score_per_game
       FROM builds b
-      LEFT JOIN games g ON b.id = g.build_id
-      LEFT JOIN game_players gp ON g.id = gp.game_id
       WHERE b.id = $1
-      GROUP BY b.id
     `, [id]);
 
     if (result.rows.length === 0) {
@@ -104,12 +108,13 @@ router.get('/:id/comments', async (req, res, next) => {
     const { id } = req.params;
     const result = await query(`
       SELECT bc.*, p.name as player_name, p.color as player_color,
-             gp.placement
+             gp.placement, g.started_at as game_started_at
       FROM build_comments bc
       JOIN players p ON bc.player_id = p.id
       JOIN game_players gp ON gp.game_id = bc.game_id AND gp.player_id = bc.player_id
+      JOIN games g ON g.id = bc.game_id
       WHERE bc.build_id = $1
-      ORDER BY bc.created_at DESC
+      ORDER BY g.started_at DESC, bc.created_at ASC
     `, [id]);
     res.json(result.rows);
   } catch (error) {

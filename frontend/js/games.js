@@ -311,6 +311,7 @@ function buildGameDetailsHTML(game) {
 
   const commentSection = game.build_id ? `
     <div class="game-comment-form">
+      <div class="game-comments-list" id="comments-${game.id}"></div>
       <h3>Leave a Comment</h3>
       <div class="form-group">
         <label>Player</label>
@@ -401,6 +402,7 @@ async function toggleGameCard(card, game) {
             feedback.className = 'comment-feedback success-inline';
             detailsEl.querySelector(`#comment-text-${gameId}`).value = '';
             setTimeout(() => { feedback.textContent = ''; feedback.className = 'comment-feedback'; }, 3000);
+            await loadComments(game, detailsEl);
           } catch (err) {
             feedback.textContent = err.message || 'Failed to post comment.';
             feedback.className = 'comment-feedback error-inline';
@@ -420,6 +422,9 @@ async function toggleGameCard(card, game) {
             }
           });
         }
+
+        // Load existing comments
+        await loadComments(game, detailsEl);
       }
     }
 
@@ -573,11 +578,19 @@ function drawScoreChart(canvas, scoreHistory) {
     const elapsed = currentTime - startTime;
     const progress = Math.min(elapsed / totalDuration, 1);
 
+    // Animate by time position: all players draw up to the same x coordinate each frame
+    const animX = padding.left + (progress * chartWidth);
+
     ctx.clearRect(0, 0, width, height);
     drawChartStaticElements(ctx, width, height, padding, chartWidth, chartHeight, minScore, scoreRange, globalTimeRange);
 
     playerData.forEach((player, playerIndex) => {
-      const pointsToDraw = Math.floor(player.points.length * progress);
+      // Find how many full points fall at or before animX
+      let pointsToDraw = 0;
+      for (let i = 0; i < player.points.length; i++) {
+        if (player.points[i].x <= animX) pointsToDraw = i + 1;
+        else break;
+      }
       if (pointsToDraw < 1) return;
 
       ctx.strokeStyle = player.color;
@@ -595,14 +608,15 @@ function drawScoreChart(canvas, scoreHistory) {
         }
       }
 
+      // Interpolate partial segment to animX if there's a next point
       if (progress < 1 && pointsToDraw < player.points.length) {
-        const partialProgress = (player.points.length * progress) % 1;
-        if (partialProgress > 0) {
-          const lastPoint = player.points[pointsToDraw - 1];
-          const nextPoint = player.points[pointsToDraw];
-          const currentX = lastPoint.x + (nextPoint.x - lastPoint.x) * partialProgress;
-          const currentY = lastPoint.y + (nextPoint.y - lastPoint.y) * partialProgress;
-          ctx.lineTo(currentX, currentY);
+        const lastPoint = player.points[pointsToDraw - 1];
+        const nextPoint = player.points[pointsToDraw];
+        const segProgress = (animX - lastPoint.x) / (nextPoint.x - lastPoint.x);
+        if (segProgress > 0) {
+          const interpX = animX;
+          const interpY = lastPoint.y + (nextPoint.y - lastPoint.y) * segProgress;
+          ctx.lineTo(interpX, interpY);
         }
       }
 
@@ -612,9 +626,10 @@ function drawScoreChart(canvas, scoreHistory) {
       for (let i = 0; i < pointsToDraw; i++) {
         const point = player.points[i];
         if (!point.isData) continue;
-        const pointProgress = Math.max(0, (progress * player.points.length - i) * 2);
-        const pointScale = Math.min(1, pointProgress);
-        const pointAlpha = Math.min(1, pointProgress);
+        // Fade in dot as animX passes through it
+        const dotProgress = Math.min(1, Math.max(0, (animX - point.x) / (chartWidth * 0.02 + 1)) * 2);
+        const pointScale = dotProgress;
+        const pointAlpha = dotProgress;
 
         ctx.fillStyle = player.color;
         ctx.globalAlpha = pointAlpha;
@@ -761,6 +776,36 @@ function formatWinnerNames(winners) {
   );
   if (spans.length === 1) return spans[0];
   return spans.slice(0, -1).join(', ') + ' &amp; ' + spans[spans.length - 1];
+}
+
+// Load and render existing comments for a game into its details element
+async function loadComments(game, detailsEl) {
+  const container = detailsEl.querySelector(`#comments-${game.id}`);
+  if (!container) return;
+
+  try {
+    const allComments = await buildsAPI.getComments(game.build_id);
+    const comments = allComments.filter(c => String(c.game_id) === String(game.id));
+
+    if (comments.length === 0) {
+      container.innerHTML = '';
+      return;
+    }
+
+    container.innerHTML = `
+      <h3>Comments</h3>
+      <ul class="comments-list">
+        ${comments.map(c => `
+          <li class="comment-item">
+            <span class="comment-author" ${c.player_color ? `style="color:${c.player_color}"` : ''}>${escapeHtml(c.player_name)}</span>
+            <span class="comment-text">${escapeHtml(c.comment_text)}</span>
+          </li>
+        `).join('')}
+      </ul>
+    `;
+  } catch (err) {
+    // Silently ignore — comments are non-critical
+  }
 }
 
 // Escape HTML to prevent XSS

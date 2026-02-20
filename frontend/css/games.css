@@ -482,6 +482,44 @@
   font-weight: bold;
 }
 
+/* Existing comments inside game details */
+.game-comments-list h3 {
+  font-size: 1rem;
+  margin-bottom: var(--spacing-sm);
+  color: var(--color-text-secondary);
+}
+
+.comments-list {
+  list-style: none;
+  padding: 0;
+  margin: 0 0 var(--spacing-md) 0;
+}
+
+.comment-item {
+  padding: var(--spacing-xs) 0;
+  border-bottom: 1px solid rgba(255,255,255,0.06);
+  display: flex;
+  gap: var(--spacing-sm);
+  align-items: baseline;
+}
+
+.comment-item:last-child {
+  border-bottom: none;
+}
+
+.comment-author {
+  font-weight: bold;
+  font-size: 0.85rem;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.comment-text {
+  font-size: 0.9rem;
+  color: var(--color-text-secondary);
+  word-break: break-word;
+}
+
 /* Comment form inside game details */
 .game-comment-form {
   margin-top: var(--spacing-lg);

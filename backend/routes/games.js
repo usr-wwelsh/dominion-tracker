@@ -182,7 +182,7 @@ router.put('/:id/end', async (req, res, next) => {
 
       if (previousScore !== null && player.final_score !== previousScore) {
         // Assign placement and points to all players with the previous score
-        const avgPoints = calculateAverageLeaguePoints(currentPlacement, playersWithSameScore.length);
+        const avgPoints = calculateAverageLeaguePoints(currentPlacement, playersWithSameScore.length, players.length);
 
         for (const p of playersWithSameScore) {
           await client.query(
@@ -201,7 +201,7 @@ router.put('/:id/end', async (req, res, next) => {
 
     // Handle the last group
     if (playersWithSameScore.length > 0) {
-      const avgPoints = calculateAverageLeaguePoints(currentPlacement, playersWithSameScore.length);
+      const avgPoints = calculateAverageLeaguePoints(currentPlacement, playersWithSameScore.length, players.length);
 
       for (const p of playersWithSameScore) {
         await client.query(
@@ -301,16 +301,12 @@ router.delete('/:id', requireAuth, async (req, res, next) => {
 });
 
 // Helper function to calculate average league points for tied players
-function calculateAverageLeaguePoints(startPlacement, numPlayers) {
-  const pointsMap = { 1: 5, 2: 3, 3: 1 };
-  let totalPoints = 0;
-
-  for (let i = 0; i < numPlayers; i++) {
-    const placement = startPlacement + i;
-    totalPoints += pointsMap[placement] || 0;
-  }
-
-  return Math.round(totalPoints / numPlayers);
+// Formula: LP = 100 * (n - p) / (n - 1), where n = total players, p = placement
+// Tied players receive the average across the slots they occupy
+function calculateAverageLeaguePoints(startPlacement, numTied, totalPlayers) {
+  const n = totalPlayers;
+  const avg = 100 * (n - startPlacement - (numTied - 1) / 2) / (n - 1);
+  return Math.round(avg * 100) / 100;
 }
 
 // POST /api/games/:id/scores - Update player score

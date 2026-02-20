@@ -261,7 +261,6 @@ function renderLeaderboard() {
     const color = player.color || '#4db8ff';
 
     const trendHtml = renderTrendArrow(player.rank_trend);
-    const winRate = player.win_rate != null ? `${player.win_rate}%` : '—';
     const recentForm = JSON.stringify(player.recent_form || []);
 
     row.innerHTML = `
@@ -272,7 +271,6 @@ function renderLeaderboard() {
       </td>
       <td class="stat-highlight">${player.total_league_points}</td>
       <td>${player.avg_league_points}</td>
-      <td>${winRate}</td>
       <td>${player.total_wins}</td>
       <td>${player.total_games}</td>
       <td>${player.avg_score}</td>

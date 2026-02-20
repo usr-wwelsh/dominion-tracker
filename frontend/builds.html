@@ -43,6 +43,11 @@
       <div id="loading" class="loading">Loading builds</div>
 
       <div id="builds-container" style="display: none;">
+        <div class="builds-sort-bar">
+          <span class="sort-label">Sort:</span>
+          <button class="sort-btn active" data-sort="recent">Most Recent</button>
+          <button class="sort-btn" data-sort="alpha">Alphabetical</button>
+        </div>
         <div id="builds-list">
           <!-- Populated by JavaScript -->
         </div>
@@ -112,38 +117,28 @@
           </div>
         </div>
 
-        <!-- Landmarks (Empires) -->
-        <div class="form-group">
-          <label>Landmarks — Empires <span class="supplemental-note">(optional, no limit)</span></label>
-          <div class="expansion-sections">
-            <div class="expansion-section">
-              <div class="card-grid" id="empires-landmarks"></div>
-            </div>
+        <div class="expansion-sections">
+          <!-- Landmarks (Empires) -->
+          <div class="expansion-section collapsed">
+            <h3 class="expansion-header">Landmarks — Empires <span class="supplemental-note">(optional, no limit)</span></h3>
+            <div class="card-grid" id="empires-landmarks"></div>
           </div>
-        </div>
 
-        <!-- Events -->
-        <div class="form-group">
-          <label>Events <span class="supplemental-note">(optional, no limit)</span></label>
-          <div class="expansion-sections">
-            <div class="expansion-section">
-              <h3 class="expansion-header">Empires</h3>
+          <!-- Events -->
+          <div class="expansion-section collapsed">
+            <h3 class="expansion-header">Events <span class="supplemental-note">(optional, no limit)</span></h3>
+            <div class="expansion-body">
+              <div class="supplemental-group-label">Empires</div>
               <div class="card-grid" id="empires-events"></div>
-            </div>
-            <div class="expansion-section">
-              <h3 class="expansion-header">Rising Sun</h3>
+              <div class="supplemental-group-label">Rising Sun</div>
               <div class="card-grid" id="rising-sun-events"></div>
             </div>
           </div>
-        </div>
 
-        <!-- Prophecies (Rising Sun) -->
-        <div class="form-group">
-          <label>Prophecies — Rising Sun <span class="supplemental-note">(optional, no limit)</span></label>
-          <div class="expansion-sections">
-            <div class="expansion-section">
-              <div class="card-grid" id="rising-sun-prophecies"></div>
-            </div>
+          <!-- Prophecies (Rising Sun) -->
+          <div class="expansion-section collapsed">
+            <h3 class="expansion-header">Prophecies — Rising Sun <span class="supplemental-note">(optional, no limit)</span></h3>
+            <div class="card-grid" id="rising-sun-prophecies"></div>
           </div>
         </div>
 

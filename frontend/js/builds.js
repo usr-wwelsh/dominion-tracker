@@ -94,14 +94,27 @@ let selectedCards = new Set();
 let selectedLandmarks = new Set();
 let selectedEvents = new Set();
 let selectedProphecies = new Set();
+let currentSort = 'recent';
 
 // Initialize page
 document.addEventListener('DOMContentLoaded', () => {
   renderCardCheckboxes();
   setupCollapsibleSections();
   setupFormHandlers();
+  setupSortButtons();
   loadBuilds();
 });
+
+function setupSortButtons() {
+  document.querySelectorAll('.sort-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.sort-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      currentSort = btn.dataset.sort;
+      renderBuilds();
+    });
+  });
+}
 
 // Make expansion headers collapsible; collapse all by default on mobile
 function setupCollapsibleSections() {
@@ -141,7 +154,7 @@ function renderCardCheckboxes() {
 function renderExpansionCards(expansion, containerId, type) {
   const container = document.getElementById(containerId);
   if (!container) return;
-  const cards = DOMINION_CARDS[expansion];
+  const cards = DOMINION_CARDS[expansion].slice().sort((a, b) => a.localeCompare(b));
 
   cards.forEach(card => {
     container.appendChild(buildCheckbox(type, expansion, card));
@@ -153,7 +166,7 @@ function renderSupplementalCards(cards, containerId, type) {
   const container = document.getElementById(containerId);
   if (!container) return;
 
-  cards.forEach(card => {
+  cards.slice().sort((a, b) => a.localeCompare(b)).forEach(card => {
     container.appendChild(buildCheckbox(type, type, card));
   });
 }
@@ -316,7 +329,13 @@ function renderBuilds() {
   const buildsList = document.getElementById('builds-list');
   buildsList.innerHTML = '';
 
-  buildsData.forEach(build => {
+  const sorted = buildsData.slice().sort((a, b) => {
+    if (currentSort === 'alpha') return a.nickname.localeCompare(b.nickname);
+    // most recent: API already returns created_at DESC, preserve that order
+    return 0;
+  });
+
+  sorted.forEach(build => {
     const buildItem = createBuildItem(build);
     buildsList.appendChild(buildItem);
   });
@@ -332,7 +351,7 @@ function renderTagGroup(label, items) {
 // Create build item element
 function createBuildItem(build) {
   const div = document.createElement('div');
-  div.className = 'build-item';
+  div.className = 'build-item collapsed';
   div.dataset.buildId = build.id;
 
   const gamesPlayed = parseInt(build.games_played) || 0;
@@ -340,29 +359,42 @@ function createBuildItem(build) {
 
   div.innerHTML = `
     <div class="build-header">
-      <div>
+      <div class="build-header-main">
         <div class="build-title">${escapeHtml(build.nickname)}</div>
         <div class="build-stats">
-          <span>Games Played: ${gamesPlayed}</span>
+          <span>Games: ${gamesPlayed}</span>
           <span>Avg Score: ${avgScore.toFixed(2)}</span>
-          <span>Kingdom Cards: ${build.cards ? build.cards.length : 0}</span>
           ${build.use_platinum_colony ? '<span class="platinum-colony-badge">Platinum / Colony</span>' : ''}
         </div>
       </div>
-      <div class="build-actions">
+      <div class="build-header-right">
         <button class="btn btn-danger btn-sm js-delete-build">Delete</button>
+        <span class="build-expand-icon">▼</span>
       </div>
     </div>
-    <div class="build-cards">
-      ${renderTagGroup('Kingdom', build.cards)}
-      ${renderTagGroup('Landmarks', build.landmarks)}
-      ${renderTagGroup('Events', build.events)}
-      ${renderTagGroup('Prophecies', build.prophecies)}
-    </div>
-    <div class="build-comments" id="comments-${build.id}">
-      <div class="comments-loading">Loading comments...</div>
+    <div class="build-body">
+      <div class="build-cards">
+        ${renderTagGroup('Kingdom', build.cards)}
+        ${renderTagGroup('Landmarks', build.landmarks)}
+        ${renderTagGroup('Events', build.events)}
+        ${renderTagGroup('Prophecies', build.prophecies)}
+      </div>
+      <div class="build-comments" id="comments-${build.id}">
+        <div class="comments-loading">Loading comments...</div>
+      </div>
     </div>
   `;
+
+  // Toggle expand on header click (not delete button)
+  div.querySelector('.build-header').addEventListener('click', (e) => {
+    if (e.target.closest('.js-delete-build')) return;
+    const wasCollapsed = div.classList.contains('collapsed');
+    div.classList.toggle('collapsed');
+    if (wasCollapsed && !div.dataset.commentsLoaded) {
+      div.dataset.commentsLoaded = '1';
+      loadBuildComments(build.id, div.querySelector(`#comments-${build.id}`));
+    }
+  });
 
   div.querySelector('.js-delete-build').addEventListener('click', () => {
     showDeleteModal(`Delete build "${build.nickname}"?`, async (credentials) => {
@@ -371,8 +403,6 @@ function createBuildItem(build) {
       loadBuilds();
     });
   });
-
-  loadBuildComments(build.id, div.querySelector(`#comments-${build.id}`));
 
   return div;
 }
@@ -400,24 +430,45 @@ function renderBuildComments(buildId, comments, container) {
     return;
   }
 
-  const items = comments.map(c => {
-    const date = new Date(c.created_at).toLocaleDateString('en-US', {
-      year: 'numeric', month: 'short', day: 'numeric'
-    });
-    return `
+  // Group comments by game_id, preserving order (games already sorted by started_at DESC)
+  const gameGroups = [];
+  const seenGames = new Map();
+  comments.forEach(c => {
+    if (!seenGames.has(c.game_id)) {
+      const gameDate = c.game_started_at
+        ? new Date(c.game_started_at).toLocaleString('en-US', {
+            year: 'numeric', month: 'short', day: 'numeric',
+            hour: '2-digit', minute: '2-digit'
+          })
+        : 'Unknown date';
+      const group = { game_id: c.game_id, gameDate, comments: [] };
+      seenGames.set(c.game_id, group);
+      gameGroups.push(group);
+    }
+    seenGames.get(c.game_id).comments.push(c);
+  });
+
+  const groupsHtml = gameGroups.map(group => {
+    const commentsHtml = group.comments.map(c => `
       <div class="build-comment" data-comment-id="${c.id}">
         <div class="comment-meta">
           <span class="comment-player" style="color:${escapeHtml(c.player_color || '#4db8ff')}">${escapeHtml(c.player_name)}</span>
           <span class="comment-placement">${placementLabel(c.placement)}</span>
-          <span class="comment-date">${date}</span>
           <button class="btn btn-danger btn-sm js-delete-comment" data-comment-id="${c.id}">✕</button>
         </div>
         <div class="comment-text">${escapeHtml(c.comment_text)}</div>
       </div>
+    `).join('');
+
+    return `
+      <div class="comment-game-group">
+        <div class="comment-game-header">${group.gameDate}</div>
+        ${commentsHtml}
+      </div>
     `;
   }).join('');
 
-  container.innerHTML = `<div class="comments-list">${items}</div>`;
+  container.innerHTML = `<div class="comments-list">${groupsHtml}</div>`;
 
   container.querySelectorAll('.js-delete-comment').forEach(btn => {
     const commentId = btn.dataset.commentId;
