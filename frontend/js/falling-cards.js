@@ -1,6 +1,15 @@
 /* Falling card background animation */
 (function () {
   const CARDS = [
+    '300px-Alley-100x160.jpg','300px-Daimyo-100x160.jpg',' 300px-Litter-100x160.jpg',
+    '300px-Rice_Broker-100x160.jpg',' 300px-Rustic_Village-100x160.jpg',
+    '300px-Aristocrat-100x160.jpg','300px-Fishmonger-100x160.jpg','300px-Mountain_Shrine-100x160.jpg',
+    '300px-River_Shrine-100x160.jpg','300px-Samurai-100x160.jpg','300px-Artist-100x160.jpg',
+    '300px-Gold_Mine-100x160.jpg','300px-Ninja-100x160.jpg',' 300px-Riverboat-100x160.jpg',
+    '300px-Snake_Witch-100x160.jpg','300px-Change-100x160.jpg','300px-Imperial_Envoy-100x160.jpg',
+    '300px-Poet-100x160.jpg','300px-Ronin-100x160.jpg','300px-Tanuki-100x160.jpg',
+    '300px-Craftsman-100x160.jpg',' 300px-Kitsune-100x160.jpg','300px-Rice-100x160.jpg',
+    '300px-Root_Cellar-100x160.jpg',' 300px-Tea_House-100x160.jpg',
     'anvil-100x160.jpg','archive-100x160.jpg','artisan-100x159.jpg',
     'astrolabe-100x160.jpg','bandit-100x160.jpg','bank-100x159.jpg',
     'baron-100x161.jpg','bazaar-100x159.jpg','bishop-100x160.jpg',
