@@ -176,6 +176,12 @@
 /* ── Podium ── */
 #podium-section {
   margin: var(--spacing-xl) 0 var(--spacing-lg);
+  background: var(--color-bg-secondary);
+  border: 2px solid var(--color-border);
+  border-radius: var(--border-radius-md);
+  padding: var(--spacing-lg) var(--spacing-md) 0;
+  position: relative;
+  z-index: 1;
 }
 
 .podium {
