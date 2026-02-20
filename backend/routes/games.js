@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const { query, getClient } = require('../db');
+const { requireAuth } = require('../middleware/auth');
 
 // GET /api/games - List completed games with pagination
 router.get('/', async (req, res, next) => {
@@ -241,8 +242,36 @@ router.put('/:id/end', async (req, res, next) => {
   }
 });
 
-// DELETE /api/games/:id - Delete a game and all related data
-router.delete('/:id', async (req, res, next) => {
+// DELETE /api/games/:id/cancel - Cancel an in-progress game (no auth required, only works if not yet ended)
+router.delete('/:id/cancel', async (req, res, next) => {
+  const client = await getClient();
+  try {
+    const { id } = req.params;
+    await client.query('BEGIN');
+    const gameResult = await client.query('SELECT id, ended_at FROM games WHERE id = $1', [id]);
+    if (gameResult.rows.length === 0) {
+      await client.query('ROLLBACK');
+      return res.status(404).json({ error: 'Game not found' });
+    }
+    if (gameResult.rows[0].ended_at !== null) {
+      await client.query('ROLLBACK');
+      return res.status(409).json({ error: 'Cannot cancel a game that has already ended' });
+    }
+    await client.query('DELETE FROM score_snapshots WHERE game_id = $1', [id]);
+    await client.query('DELETE FROM game_players WHERE game_id = $1', [id]);
+    await client.query('DELETE FROM games WHERE id = $1', [id]);
+    await client.query('COMMIT');
+    res.json({ success: true });
+  } catch (error) {
+    await client.query('ROLLBACK');
+    next(error);
+  } finally {
+    client.release();
+  }
+});
+
+// DELETE /api/games/:id - Delete a game and all related data (requires auth)
+router.delete('/:id', requireAuth, async (req, res, next) => {
   const client = await getClient();
 
   try {

@@ -1,6 +1,5 @@
 const express = require('express');
 const cors = require('cors');
-const basicAuth = require('express-basic-auth');
 require('dotenv').config();
 const { migrate } = require('./migrate');
 
@@ -14,12 +13,6 @@ const PORT = process.env.PORT || 3000;
 
 // Middleware
 app.use(cors());
-if (process.env.AUTH_USER && process.env.AUTH_PASS) {
-  app.use(basicAuth({
-    users: { [process.env.AUTH_USER]: process.env.AUTH_PASS },
-    challenge: true,
-  }));
-}
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 

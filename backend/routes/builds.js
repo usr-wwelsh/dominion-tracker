@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const { query } = require('../db');
+const { requireAuth } = require('../middleware/auth');
 
 // GET /api/builds - List all builds
 router.get('/', async (req, res, next) => {
@@ -80,8 +81,8 @@ router.get('/:id', async (req, res, next) => {
   }
 });
 
-// DELETE /api/builds/:id - Delete a build
-router.delete('/:id', async (req, res, next) => {
+// DELETE /api/builds/:id - Delete a build (requires auth)
+router.delete('/:id', requireAuth, async (req, res, next) => {
   try {
     const { id } = req.params;
 
@@ -92,6 +93,76 @@ router.delete('/:id', async (req, res, next) => {
     }
 
     res.json({ message: 'Build deleted successfully', build: result.rows[0] });
+  } catch (error) {
+    next(error);
+  }
+});
+
+// GET /api/builds/:id/comments - Get all comments for a build
+router.get('/:id/comments', async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const result = await query(`
+      SELECT bc.*, p.name as player_name, p.color as player_color,
+             gp.placement
+      FROM build_comments bc
+      JOIN players p ON bc.player_id = p.id
+      JOIN game_players gp ON gp.game_id = bc.game_id AND gp.player_id = bc.player_id
+      WHERE bc.build_id = $1
+      ORDER BY bc.created_at DESC
+    `, [id]);
+    res.json(result.rows);
+  } catch (error) {
+    next(error);
+  }
+});
+
+// POST /api/builds/:id/comments - Add a comment to a build
+router.post('/:id/comments', async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const { game_id, player_id, comment_text } = req.body;
+
+    if (!game_id || !player_id || !comment_text || comment_text.trim() === '') {
+      return res.status(400).json({ error: 'game_id, player_id, and comment_text are required' });
+    }
+
+    // Validate player participated in the game and the game used this build
+    const valid = await query(`
+      SELECT gp.id FROM game_players gp
+      JOIN games g ON gp.game_id = g.id
+      WHERE gp.game_id = $1 AND gp.player_id = $2 AND g.build_id = $3
+    `, [game_id, player_id, id]);
+
+    if (valid.rows.length === 0) {
+      return res.status(400).json({ error: 'Player did not participate in this game or game does not use this build' });
+    }
+
+    const result = await query(
+      'INSERT INTO build_comments (build_id, game_id, player_id, comment_text) VALUES ($1, $2, $3, $4) RETURNING *',
+      [id, game_id, player_id, comment_text.trim()]
+    );
+
+    res.status(201).json(result.rows[0]);
+  } catch (error) {
+    next(error);
+  }
+});
+
+// DELETE /api/builds/:buildId/comments/:commentId - Delete a comment (requires auth)
+router.delete('/:buildId/comments/:commentId', requireAuth, async (req, res, next) => {
+  try {
+    const { buildId, commentId } = req.params;
+    const result = await query(
+      'DELETE FROM build_comments WHERE id = $1 AND build_id = $2 RETURNING *',
+      [commentId, buildId]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Comment not found' });
+    }
+
+    res.json({ message: 'Comment deleted successfully' });
   } catch (error) {
     next(error);
   }

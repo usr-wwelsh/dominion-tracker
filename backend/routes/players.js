@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const { query } = require('../db');
+const { requireAuth } = require('../middleware/auth');
 
 // GET /api/players - List all players
 router.get('/', async (req, res, next) => {
@@ -144,6 +145,42 @@ router.patch('/:id/color', async (req, res, next) => {
     }
 
     res.json(result.rows[0]);
+  } catch (error) {
+    next(error);
+  }
+});
+
+// DELETE /api/players/:id - Delete a player (requires auth, player must have no game history)
+router.delete('/:id', requireAuth, async (req, res, next) => {
+  try {
+    const { id } = req.params;
+
+    const gamesCheck = await query(
+      `SELECT gp.id FROM game_players gp
+       JOIN games g ON gp.game_id = g.id
+       WHERE gp.player_id = $1 AND g.ended_at IS NOT NULL
+       LIMIT 1`,
+      [id]
+    );
+
+    if (gamesCheck.rows.length > 0) {
+      return res.status(409).json({ error: 'Player has completed game history and cannot be deleted' });
+    }
+
+    // Also clean up any orphaned in-progress game_players rows
+    await query(
+      `DELETE FROM game_players WHERE player_id = $1
+       AND game_id IN (SELECT id FROM games WHERE ended_at IS NULL)`,
+      [id]
+    );
+
+    const result = await query('DELETE FROM players WHERE id = $1 RETURNING *', [id]);
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Player not found' });
+    }
+
+    res.json({ message: 'Player deleted successfully', player: result.rows[0] });
   } catch (error) {
     next(error);
   }
