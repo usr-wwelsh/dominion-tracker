@@ -66,7 +66,7 @@
   }
   100% {
     opacity: 1;
-    max-height: 1000px;
+    max-height: 9999px;
     transform: translateY(0);
   }
 }
@@ -323,7 +323,6 @@
   display: none;
   padding: var(--spacing-lg);
   border-top: 1px solid var(--color-border);
-  overflow: hidden;
 }
 
 .game-card.expanded .game-details {
@@ -481,6 +480,38 @@
 
 #no-games a {
   font-weight: bold;
+}
+
+/* Comment form inside game details */
+.game-comment-form {
+  margin-top: var(--spacing-lg);
+  padding-top: var(--spacing-md);
+  border-top: 1px solid var(--color-border);
+}
+
+.game-comment-form h3 {
+  font-size: 1rem;
+  margin-bottom: var(--spacing-md);
+  color: var(--color-text-secondary);
+}
+
+.game-comment-form .comment-player-select,
+.game-comment-form .comment-textarea {
+  margin-bottom: var(--spacing-sm);
+}
+
+.comment-feedback {
+  margin-top: var(--spacing-xs);
+  font-size: 0.9rem;
+  min-height: 1.2em;
+}
+
+.error-inline {
+  color: #f0c0c0;
+}
+
+.success-inline {
+  color: #c0f0c0;
 }
 
 @media (max-width: 768px) {

@@ -248,3 +248,64 @@
     margin-bottom: var(--spacing-sm);
   }
 }
+
+/* Build Comments */
+.build-comments {
+  margin-top: var(--spacing-md);
+  padding-top: var(--spacing-md);
+  border-top: 1px solid var(--color-border);
+}
+
+.comments-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-sm);
+}
+
+.build-comment {
+  background: var(--color-bg-tertiary);
+  border: 1px solid var(--color-border);
+  border-radius: var(--border-radius-sm);
+  padding: var(--spacing-sm) var(--spacing-md);
+}
+
+.comment-meta {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  margin-bottom: var(--spacing-xs);
+  flex-wrap: wrap;
+}
+
+.comment-player {
+  font-weight: 600;
+  font-size: 0.9rem;
+}
+
+.comment-placement {
+  font-size: 0.8rem;
+  color: var(--color-accent);
+  border: 1px solid var(--color-accent);
+  padding: 0 4px;
+  border-radius: 2px;
+}
+
+.comment-date {
+  font-size: 0.8rem;
+  color: var(--color-text-dim);
+  margin-left: auto;
+}
+
+.comment-text {
+  font-size: 0.95rem;
+  color: var(--color-text-primary);
+  line-height: 1.5;
+}
+
+.js-delete-comment {
+  padding: 1px 6px;
+  font-size: 0.75rem;
+  line-height: 1.4;
+  margin-left: auto;
+}
+

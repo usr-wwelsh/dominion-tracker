@@ -333,6 +333,7 @@ function renderTagGroup(label, items) {
 function createBuildItem(build) {
   const div = document.createElement('div');
   div.className = 'build-item';
+  div.dataset.buildId = build.id;
 
   const gamesPlayed = parseInt(build.games_played) || 0;
   const avgScore = parseFloat(build.avg_score_per_game) || 0;
@@ -349,7 +350,7 @@ function createBuildItem(build) {
         </div>
       </div>
       <div class="build-actions">
-        <button class="btn btn-danger btn-sm" onclick="deleteBuild(${build.id})">Delete</button>
+        <button class="btn btn-danger btn-sm js-delete-build">Delete</button>
       </div>
     </div>
     <div class="build-cards">
@@ -358,24 +359,75 @@ function createBuildItem(build) {
       ${renderTagGroup('Events', build.events)}
       ${renderTagGroup('Prophecies', build.prophecies)}
     </div>
+    <div class="build-comments" id="comments-${build.id}">
+      <div class="comments-loading">Loading comments...</div>
+    </div>
   `;
+
+  div.querySelector('.js-delete-build').addEventListener('click', () => {
+    showDeleteModal(`Delete build "${build.nickname}"?`, async (credentials) => {
+      await buildsAPI.delete(build.id, credentials);
+      showSuccess('Build deleted successfully');
+      loadBuilds();
+    });
+  });
+
+  loadBuildComments(build.id, div.querySelector(`#comments-${build.id}`));
 
   return div;
 }
 
-// Delete build
-async function deleteBuild(buildId) {
-  if (!confirm('Are you sure you want to delete this build?')) {
+// Load and render comments for a build
+async function loadBuildComments(buildId, container) {
+  try {
+    const comments = await buildsAPI.getComments(buildId);
+    renderBuildComments(buildId, comments, container);
+  } catch (error) {
+    container.innerHTML = '';
+  }
+}
+
+function placementLabel(n) {
+  if (n === 1) return '1st';
+  if (n === 2) return '2nd';
+  if (n === 3) return '3rd';
+  return `${n}th`;
+}
+
+function renderBuildComments(buildId, comments, container) {
+  if (comments.length === 0) {
+    container.innerHTML = '';
     return;
   }
 
-  try {
-    await buildsAPI.delete(buildId);
-    showSuccess('Build deleted successfully');
-    loadBuilds();
-  } catch (error) {
-    showError(`Failed to delete build: ${error.message}`);
-  }
+  const items = comments.map(c => {
+    const date = new Date(c.created_at).toLocaleDateString('en-US', {
+      year: 'numeric', month: 'short', day: 'numeric'
+    });
+    return `
+      <div class="build-comment" data-comment-id="${c.id}">
+        <div class="comment-meta">
+          <span class="comment-player" style="color:${escapeHtml(c.player_color || '#4db8ff')}">${escapeHtml(c.player_name)}</span>
+          <span class="comment-placement">${placementLabel(c.placement)}</span>
+          <span class="comment-date">${date}</span>
+          <button class="btn btn-danger btn-sm js-delete-comment" data-comment-id="${c.id}">✕</button>
+        </div>
+        <div class="comment-text">${escapeHtml(c.comment_text)}</div>
+      </div>
+    `;
+  }).join('');
+
+  container.innerHTML = `<div class="comments-list">${items}</div>`;
+
+  container.querySelectorAll('.js-delete-comment').forEach(btn => {
+    const commentId = btn.dataset.commentId;
+    btn.addEventListener('click', () => {
+      showDeleteModal('Delete this comment?', async (credentials) => {
+        await buildsAPI.deleteComment(buildId, commentId, credentials);
+        loadBuildComments(buildId, container);
+      });
+    });
+  });
 }
 
 // Show error message

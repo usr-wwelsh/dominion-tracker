@@ -71,7 +71,7 @@ function renderPlayerRoster() {
 // Update build dropdown
 function updateBuildDropdown() {
   const select = document.getElementById('build-select');
-  select.innerHTML = '<option value="">No build selected</option>';
+  select.innerHTML = '<option value="">— Select a build —</option>';
 
   allBuilds.forEach(build => {
     const option = document.createElement('option');
@@ -79,6 +79,8 @@ function updateBuildDropdown() {
     option.textContent = build.nickname;
     select.appendChild(option);
   });
+
+  select.addEventListener('change', updateStartButton);
 }
 
 // Setup event listeners
@@ -149,13 +151,18 @@ async function addNewPlayer() {
 // Update start button state
 function updateStartButton() {
   const startBtn = document.getElementById('start-game-btn');
-  startBtn.disabled = selectedPlayers.length < 2;
+  const buildId = document.getElementById('build-select').value;
+  startBtn.disabled = selectedPlayers.length < 2 || !buildId;
 }
 
 // Start game
 async function startGame() {
   const buildSelect = document.getElementById('build-select');
-  const buildId = buildSelect.value || null;
+  const buildId = buildSelect.value;
+  if (!buildId) {
+    showError('Please select a build before starting.');
+    return;
+  }
 
   try {
     // Create players if they don't exist
@@ -310,7 +317,7 @@ function showEndGameModal(endedGameInfo) {
   document.getElementById('result-points').textContent = winner.league_points;
   
   const buildSelect = document.getElementById('restart-build-select');
-  buildSelect.innerHTML = '<option value="">No build selected</option>';
+  buildSelect.innerHTML = '<option value="">— Select a build —</option>';
   allBuilds.forEach(build => {
     const option = document.createElement('option');
     option.value = build.id;
@@ -336,7 +343,11 @@ async function restartGame() {
   const modal = document.getElementById('end-game-modal');
   const endedGameInfo = JSON.parse(modal.dataset.endedGameInfo);
   const buildSelect = document.getElementById('restart-build-select');
-  const newBuildId = buildSelect.value || null;
+  const newBuildId = buildSelect.value;
+  if (!newBuildId) {
+    showError('Please select a build before restarting.');
+    return;
+  }
 
   hideEndGameModal();
 
@@ -369,9 +380,16 @@ function cancelGame() {
   document.getElementById('confirm-cancel-modal').style.display = 'flex';
 }
 
-function doCancelGame() {
+async function doCancelGame() {
   document.getElementById('confirm-cancel-modal').style.display = 'none';
   stopTimer();
+  if (currentGame) {
+    try {
+      await gamesAPI.cancel(currentGame.id);
+    } catch (err) {
+      console.error('Failed to delete cancelled game:', err);
+    }
+  }
   resetGame();
   showSuccess('Game cancelled');
 }

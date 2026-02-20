@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Dominion Tracker - Live Scoreboard</title>
+  <title>Dominion Tracker - Play Game</title>
   <link rel="manifest" href="manifest.json">
   <meta name="theme-color" content="#1c2333">
   <link rel="stylesheet" href="css/main.css">
@@ -24,13 +24,14 @@
         <li><a href="index.html">Leaderboard</a></li>
         <li><a href="games.html">Recent Games</a></li>
         <li><a href="builds.html">Builds</a></li>
-        <li><a href="scoreboard.html" class="active">Live Scoreboard</a></li>
+        <li><a href="players.html">Players</a></li>
+        <li><a href="scoreboard.html" class="active">Play Game</a></li>
       </ul>
     </nav>
   </header>
 
   <div class="container">
-    <div class="page-banner"><h1>Live Scoreboard</h1></div>
+    <div class="page-banner"><h1>Play Game</h1></div>
 
     <div id="error-message" class="error" style="display: none;"></div>
     <div id="success-message" class="success" style="display: none;"></div>
@@ -40,7 +41,7 @@
       <div class="card-header">Game Setup</div>
 
       <div class="form-group">
-        <label for="build-select">Select Build (Optional)</label>
+        <label for="build-select">Select Build *</label>
         <select id="build-select">
           <option value="">No build selected</option>
         </select>

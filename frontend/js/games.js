@@ -283,21 +283,19 @@ function createGameCard(game) {
     <div class="game-details"></div>
   `;
 
-  // Click anywhere on card (except delete btn) to expand/collapse
-  card.addEventListener('click', () => {
+  // Click anywhere on card (except delete btn or comment form) to expand/collapse
+  card.addEventListener('click', (e) => {
+    if (e.target.closest('.game-comment-form')) return;
     toggleGameCard(card, game);
   });
 
   // Delete button — stop propagation so it doesn't also expand the card
-  card.querySelector('.delete-game-btn').addEventListener('click', async (e) => {
+  card.querySelector('.delete-game-btn').addEventListener('click', (e) => {
     e.stopPropagation();
-    if (!confirm(`Delete this game? This cannot be undone.`)) return;
-    try {
-      await gamesAPI.delete(game.id);
+    showDeleteModal('Delete this game?', async (credentials) => {
+      await gamesAPI.delete(game.id, credentials);
       card.remove();
-    } catch (error) {
-      alert(`Failed to delete game: ${error.message}`);
-    }
+    });
   });
 
   return card;
@@ -305,7 +303,29 @@ function createGameCard(game) {
 
 // Build the inner HTML for game details (chart first, then standings)
 function buildGameDetailsHTML(game) {
-  const winners = game.players ? game.players.filter(p => p.placement === 1) : [];
+  const playerOptions = game.players
+    ? game.players.map(p =>
+        `<option value="${p.player_id}">${escapeHtml(p.player_name)}</option>`
+      ).join('')
+    : '';
+
+  const commentSection = game.build_id ? `
+    <div class="game-comment-form">
+      <h3>Leave a Comment</h3>
+      <div class="form-group">
+        <label>Player</label>
+        <select id="comment-player-${game.id}" class="comment-player-select">
+          <option value="">Select player...</option>
+          ${playerOptions}
+        </select>
+      </div>
+      <div class="form-group">
+        <textarea id="comment-text-${game.id}" class="comment-textarea" rows="3" placeholder="Your thoughts on this build..."></textarea>
+      </div>
+      <button class="btn btn-primary btn-sm js-submit-comment" data-game-id="${game.id}" data-build-id="${game.build_id}">Post Comment</button>
+      <div class="comment-feedback" id="comment-feedback-${game.id}"></div>
+    </div>
+  ` : '';
 
   return `
     <div class="chart-container">
@@ -340,6 +360,7 @@ function buildGameDetailsHTML(game) {
         </tbody>
       </table>
     </div>
+    ${commentSection}
   `;
 }
 
@@ -357,7 +378,49 @@ async function toggleGameCard(card, game) {
     // Inject details HTML on first expand
     if (!card.dataset.rendered) {
       card.dataset.rendered = '1';
-      card.querySelector('.game-details').innerHTML = buildGameDetailsHTML(game);
+      const detailsEl = card.querySelector('.game-details');
+      detailsEl.innerHTML = buildGameDetailsHTML(game);
+
+      // Wire up comment submit if present
+      const submitBtn = detailsEl.querySelector('.js-submit-comment');
+      if (submitBtn) {
+        async function submitComment() {
+          const gameId = submitBtn.dataset.gameId;
+          const buildId = submitBtn.dataset.buildId;
+          const playerId = detailsEl.querySelector(`#comment-player-${gameId}`).value;
+          const commentText = detailsEl.querySelector(`#comment-text-${gameId}`).value.trim();
+          const feedback = detailsEl.querySelector(`#comment-feedback-${gameId}`);
+
+          if (!playerId) { feedback.textContent = 'Please select a player.'; feedback.className = 'comment-feedback error-inline'; return; }
+          if (!commentText) { feedback.textContent = 'Please enter a comment.'; feedback.className = 'comment-feedback error-inline'; return; }
+
+          submitBtn.disabled = true;
+          try {
+            await buildsAPI.addComment(buildId, { game_id: parseInt(gameId), player_id: parseInt(playerId), comment_text: commentText });
+            feedback.textContent = 'Comment posted!';
+            feedback.className = 'comment-feedback success-inline';
+            detailsEl.querySelector(`#comment-text-${gameId}`).value = '';
+            setTimeout(() => { feedback.textContent = ''; feedback.className = 'comment-feedback'; }, 3000);
+          } catch (err) {
+            feedback.textContent = err.message || 'Failed to post comment.';
+            feedback.className = 'comment-feedback error-inline';
+          } finally {
+            submitBtn.disabled = false;
+          }
+        }
+
+        submitBtn.addEventListener('click', submitComment);
+
+        const textarea = detailsEl.querySelector(`#comment-text-${submitBtn.dataset.gameId}`);
+        if (textarea) {
+          textarea.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
+              e.preventDefault();
+              submitComment();
+            }
+          });
+        }
+      }
     }
 
     // Load score history if not cached

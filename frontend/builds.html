@@ -24,7 +24,8 @@
         <li><a href="index.html">Leaderboard</a></li>
         <li><a href="games.html">Recent Games</a></li>
         <li><a href="builds.html" class="active">Builds</a></li>
-        <li><a href="scoreboard.html">Live Scoreboard</a></li>
+        <li><a href="players.html">Players</a></li>
+        <li><a href="scoreboard.html">Play Game</a></li>
       </ul>
     </nav>
   </header>
@@ -35,8 +36,25 @@
     <div id="error-message" class="error" style="display: none;"></div>
     <div id="success-message" class="success" style="display: none;"></div>
 
-    <!-- Create Build Section -->
+    <!-- Existing Builds Section -->
     <div class="card">
+      <div class="card-header">Existing Builds</div>
+
+      <div id="loading" class="loading">Loading builds</div>
+
+      <div id="builds-container" style="display: none;">
+        <div id="builds-list">
+          <!-- Populated by JavaScript -->
+        </div>
+
+        <div id="no-builds" class="text-center mt-lg" style="display: none;">
+          <p>No builds created yet. Create your first build below!</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Create Build Section -->
+    <div class="card mt-xl">
       <div class="card-header">Create New Build</div>
 
       <form id="create-build-form">
@@ -139,23 +157,6 @@
         <button type="submit" class="btn btn-primary">Create Build</button>
         <button type="button" class="btn" id="clear-form">Clear Form</button>
       </form>
-    </div>
-
-    <!-- Existing Builds Section -->
-    <div class="card mt-xl">
-      <div class="card-header">Existing Builds</div>
-
-      <div id="loading" class="loading">Loading builds</div>
-
-      <div id="builds-container" style="display: none;">
-        <div id="builds-list">
-          <!-- Populated by JavaScript -->
-        </div>
-
-        <div id="no-builds" class="text-center mt-lg" style="display: none;">
-          <p>No builds created yet. Create your first build above!</p>
-        </div>
-      </div>
     </div>
   </div>
 
