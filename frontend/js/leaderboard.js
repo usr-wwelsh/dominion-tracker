@@ -1,10 +1,16 @@
 // Leaderboard page logic
 
 const PRESET_COLORS = [
-  '#e05c5c', '#ff8c42', '#f5a623', '#ffd700',
-  '#6ddb6d', '#00e0c0', '#4db8ff', '#5c7eff',
-  '#c47eff', '#ff4da6', '#c0a464', '#b5e853',
-  '#00bcd4', '#80cbc4', '#ff8a80', '#cfcfcf',
+  // reds / pinks
+  '#c0392b', '#e05c5c', '#ff8a80', '#ff4da6', '#e91e8c', '#c2185b',
+  // oranges / yellows
+  '#e67e22', '#ff8c42', '#f5a623', '#ffd700', '#f9e23c', '#b5e853',
+  // greens / teals
+  '#27ae60', '#6ddb6d', '#00c853', '#00e0c0', '#1de9b6', '#80cbc4',
+  // blues / purples
+  '#00bcd4', '#4db8ff', '#2196f3', '#5c7eff', '#7c4dff', '#c47eff',
+  // neutrals
+  '#c0a464', '#a0826d', '#8d6e63', '#90a4ae', '#cfcfcf', '#ffffff',
 ];
 
 const FORM_COLORS = ['#6ddb6d', '#ffd700', '#ff8c42', '#e05c5c'];
