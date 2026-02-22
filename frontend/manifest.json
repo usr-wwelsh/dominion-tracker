@@ -1,6 +1,6 @@
 {
   "name": "Dominion Tracker",
-  "short_name": "Dominion",
+  "short_name": "Dominion Tracker",
   "description": "Track Dominion game scores, builds, and league standings",
   "start_url": "/",
   "display": "standalone",
