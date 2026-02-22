@@ -1,4 +1,4 @@
-const CACHE_NAME = 'dominion-v6';
+const CACHE_NAME = 'dominion-v7';
 
 self.addEventListener('install', (event) => {
   self.skipWaiting();
