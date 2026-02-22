@@ -252,6 +252,37 @@
   color: var(--color-text-primary);
 }
 
+.build-kingdom-section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-xs);
+}
+
+.build-expansion-group {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--spacing-xs);
+}
+
+.build-expansion-label {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--color-text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  white-space: nowrap;
+  min-width: 72px;
+}
+
+.card-cost {
+  font-size: 0.75rem;
+  color: var(--color-accent);
+  font-weight: 600;
+  margin-left: 2px;
+  opacity: 0.85;
+}
+
 .build-actions {
   display: flex;
   gap: var(--spacing-sm);

@@ -89,6 +89,78 @@ const DOMINION_PROPHECIES = {
   ],
 };
 
+// Card costs keyed by exact card name
+const CARD_COSTS = {
+  // Base Set
+  'Cellar': '$2', 'Chapel': '$2', 'Moat': '$2',
+  'Harbinger': '$3', 'Merchant': '$3', 'Vassal': '$3', 'Village': '$3', 'Workshop': '$3',
+  'Bureaucrat': '$4', 'Gardens': '$4', 'Militia': '$4', 'Moneylender': '$4', 'Poacher': '$4',
+  'Remodel': '$4', 'Smithy': '$4', 'Throne Room': '$4',
+  'Bandit': '$5', 'Council Room': '$5', 'Festival': '$5', 'Laboratory': '$5', 'Library': '$5',
+  'Market': '$5', 'Mine': '$5', 'Sentry': '$5', 'Witch': '$5',
+  'Artisan': '$6',
+  // Intrigue 2e
+  'Courtyard': '$2', 'Lurker': '$2', 'Pawn': '$2',
+  'Masquerade': '$3', 'Shanty Town': '$3', 'Steward': '$3', 'Swindler': '$3', 'Wishing Well': '$3',
+  'Baron': '$4', 'Bridge': '$4', 'Conspirator': '$4', 'Diplomat': '$4', 'Ironworks': '$4',
+  'Mill': '$4', 'Mining Village': '$4', 'Secret Passage': '$4',
+  'Courtier': '$5', 'Duke': '$5', 'Minion': '$5', 'Patrol': '$5', 'Replace': '$5',
+  'Torturer': '$5', 'Trading Post': '$5', 'Upgrade': '$5',
+  'Harem': '$6', 'Nobles': '$6',
+  // Seaside 2e
+  'Haven': '$2', 'Lighthouse': '$2', 'Native Village': '$2',
+  'Astrolabe': '$3', 'Fishing Village': '$3', 'Lookout': '$3', 'Monkey': '$3',
+  'Sea Chart': '$3', 'Smugglers': '$3', 'Warehouse': '$3',
+  'Blockade': '$4', 'Caravan': '$4', 'Cutpurse': '$4', 'Island': '$4',
+  'Sailor': '$4', 'Salvager': '$4', 'Tide Pools': '$4', 'Treasure Map': '$4',
+  'Bazaar': '$5', 'Corsair': '$5', 'Merchant Ship': '$5', 'Outpost': '$5',
+  'Pirate': '$5', 'Sea Witch': '$5', 'Tactician': '$5', 'Treasury': '$5', 'Wharf': '$5',
+  // Prosperity 2e
+  'Anvil': '$3',
+  'Bishop': '$4', 'Clerk': '$4', 'Investment': '$4', 'Monument': '$4', 'Quarry': '$4',
+  'Tiara': '$4', 'Watchtower': '$4', "Worker's Village": '$4',
+  'Charlatan': '$5', 'City': '$5', 'Collection': '$5', 'Crystal Ball': '$5', 'Magnate': '$5',
+  'Mint': '$5', 'Rabble': '$5', 'Vault': '$5', 'War Chest': '$5',
+  'Grand Market': '$6', 'Hoard': '$6',
+  'Bank': '$7', 'Expand': '$7', 'Forge': '$7', "King's Court": '$7',
+  'Peddler': '$8*',
+  // Empires
+  'Engineer': '4D',
+  'City Quarter': '8D', 'Overlord': '8D', 'Royal Blacksmith': '8D',
+  'Encampment/Plunder': '$2', 'Patrician/Emporium': '$2', 'Settlers/Bustling Village': '$2',
+  'Castles': '$3+', 'Catapult/Rocks': '$3', 'Chariot Race': '$3', 'Enchantress': '$3',
+  "Farmers' Market": '$3', 'Gladiator/Fortune': '$3',
+  'Sacrifice': '$4', 'Temple': '$4', 'Villa': '$4',
+  'Archive': '$5', 'Capital': '$5', 'Charm': '$5', 'Crown': '$5', 'Forum': '$5',
+  'Groundskeeper': '$5', 'Legionary': '$5', 'Wild Hunt': '$5',
+  // Rising Sun
+  'Mountain Shrine': '$0',
+  'Daimyo': '6D',
+  'Artist': '8D',
+  'Fishmonger': '$2', 'Snake Witch': '$2',
+  'Aristocrat': '$3', 'Craftsman': '$3', 'Riverboat': '$5', 'Root Cellar': '$3',
+  'Alley': '$3', 'Change': '$4', 'Ninja': '$5', 'Poet': '$3', 'River Shrine': '$4', 'Rustic Village': '$3',
+  'Gold Mine': '$6', 'Imperial Envoy': '$5', 'Kitsune': '$5', 'Litter': '$5',
+  'Rice Broker': '$5', 'Ronin': '$5', 'Tanuki': '$5', 'Tea House': '$5',
+  'Samurai': '$5',
+  'Rice': '$4',
+};
+
+// Reverse lookup: card name → expansion key
+const CARD_EXPANSION_MAP = {};
+Object.entries(DOMINION_CARDS).forEach(([expansion, cards]) => {
+  cards.forEach(card => { CARD_EXPANSION_MAP[card] = expansion; });
+});
+
+const EXPANSION_DISPLAY = {
+  base: 'Base',
+  intrigue: 'Intrigue',
+  seaside: 'Seaside',
+  prosperity: 'Prosperity',
+  empires: 'Empires',
+  rising_sun: 'Rising Sun',
+};
+
 let buildsData = [];
 let selectedCards = new Set();
 let selectedLandmarks = new Set();
@@ -348,6 +420,32 @@ function renderTagGroup(label, items) {
   return `<div class="build-tag-group"><span class="tag-group-label">${label}:</span> ${tags}</div>`;
 }
 
+// Render kingdom cards grouped by expansion with costs
+function renderKingdomByExpansion(cards) {
+  if (!cards || cards.length === 0) return '';
+  const expansionOrder = ['base', 'intrigue', 'seaside', 'prosperity', 'empires', 'rising_sun'];
+  const groups = {};
+  cards.forEach(card => {
+    const exp = CARD_EXPANSION_MAP[card] || 'unknown';
+    if (!groups[exp]) groups[exp] = [];
+    groups[exp].push(card);
+  });
+  const groupsHtml = expansionOrder
+    .filter(exp => groups[exp] && groups[exp].length > 0)
+    .map(exp => {
+      const label = EXPANSION_DISPLAY[exp] || exp;
+      const sorted = groups[exp].slice().sort((a, b) => a.localeCompare(b));
+      const tags = sorted.map(card => {
+        const cost = CARD_COSTS[card] || '';
+        const costHtml = cost ? ` <span class="card-cost">${escapeHtml(cost)}</span>` : '';
+        return `<span class="card-tag">${escapeHtml(card)}${costHtml}</span>`;
+      }).join('');
+      return `<div class="build-expansion-group"><span class="build-expansion-label">${escapeHtml(label)}</span>${tags}</div>`;
+    })
+    .join('');
+  return `<div class="build-kingdom-section">${groupsHtml}</div>`;
+}
+
 // Create build item element
 function createBuildItem(build) {
   const div = document.createElement('div');
@@ -374,7 +472,7 @@ function createBuildItem(build) {
     </div>
     <div class="build-body">
       <div class="build-cards">
-        ${renderTagGroup('Kingdom', build.cards)}
+        ${renderKingdomByExpansion(build.cards)}
         ${renderTagGroup('Landmarks', build.landmarks)}
         ${renderTagGroup('Events', build.events)}
         ${renderTagGroup('Prophecies', build.prophecies)}
