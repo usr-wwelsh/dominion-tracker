@@ -84,6 +84,11 @@ const buildsAPI = {
     body: JSON.stringify({ nickname, cards, landmarks, events, prophecies, use_platinum_colony: usePlatinumColony }),
   }),
 
+  update: (id, nickname, cards, landmarks = [], events = [], prophecies = [], usePlatinumColony = false, credentials) => apiRequest(`/builds/${id}`, {
+    method: 'PUT',
+    body: JSON.stringify({ nickname, cards, landmarks, events, prophecies, use_platinum_colony: usePlatinumColony }),
+  }, credentials),
+
   delete: (id, credentials) => apiRequest(`/builds/${id}`, {
     method: 'DELETE',
   }, credentials),
@@ -142,6 +147,11 @@ const gamesAPI = {
   }),
 };
 
+// Auth API
+const authAPI = {
+  check: (credentials) => apiRequest('/auth/check', {}, credentials),
+};
+
 // Stats API
 const statsAPI = {
   getLeaderboard: () => apiRequest('/leaderboard'),
@@ -153,7 +163,8 @@ const statsAPI = {
  * @param {string} actionLabel - e.g. "Delete this build?"
  * @param {function({ user: string, pass: string }): void} onConfirm - called with credentials on confirm
  */
-function showDeleteModal(actionLabel, onConfirm) {
+function showDeleteModal(actionLabel, onConfirm, options = {}) {
+  const { confirmLabel = 'Confirm', pendingLabel = 'Deleting...' } = options;
   // Remove any existing modal
   const existing = document.getElementById('delete-confirm-modal');
   if (existing) existing.remove();
@@ -204,17 +215,19 @@ function showDeleteModal(actionLabel, onConfirm) {
     if (e.target === overlay) close();
   });
 
+  confirmBtn.textContent = confirmLabel;
+
   confirmBtn.addEventListener('click', async () => {
     errorEl.textContent = '';
     confirmBtn.disabled = true;
-    confirmBtn.textContent = 'Deleting...';
+    confirmBtn.textContent = pendingLabel;
     try {
       await onConfirm({ user: userInput.value, pass: passInput.value });
       close();
     } catch (err) {
       errorEl.textContent = err.message || 'Failed';
       confirmBtn.disabled = false;
-      confirmBtn.textContent = 'Confirm';
+      confirmBtn.textContent = confirmLabel;
     }
   });
 

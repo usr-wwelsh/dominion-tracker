@@ -466,6 +466,7 @@ function createBuildItem(build) {
         </div>
       </div>
       <div class="build-header-right">
+        <button class="btn btn-sm js-edit-build">Edit</button>
         <button class="btn btn-danger btn-sm js-delete-build">Delete</button>
         <span class="build-expand-icon">▼</span>
       </div>
@@ -483,15 +484,22 @@ function createBuildItem(build) {
     </div>
   `;
 
-  // Toggle expand on header click (not delete button)
+  // Toggle expand on header click (not action buttons)
   div.querySelector('.build-header').addEventListener('click', (e) => {
-    if (e.target.closest('.js-delete-build')) return;
+    if (e.target.closest('.js-delete-build') || e.target.closest('.js-edit-build')) return;
     const wasCollapsed = div.classList.contains('collapsed');
     div.classList.toggle('collapsed');
     if (wasCollapsed && !div.dataset.commentsLoaded) {
       div.dataset.commentsLoaded = '1';
       loadBuildComments(build.id, div.querySelector(`#comments-${build.id}`));
     }
+  });
+
+  div.querySelector('.js-edit-build').addEventListener('click', () => {
+    showDeleteModal(`Edit build "${build.nickname}"?`, async (credentials) => {
+      await authAPI.check(credentials);
+      showEditModal(build, credentials);
+    }, { confirmLabel: 'Continue', pendingLabel: 'Verifying...' });
   });
 
   div.querySelector('.js-delete-build').addEventListener('click', () => {
@@ -503,6 +511,235 @@ function createBuildItem(build) {
   });
 
   return div;
+}
+
+function showEditModal(build, credentials) {
+  const existing = document.getElementById('edit-build-modal');
+  if (existing) existing.remove();
+
+  let editCards = new Set(build.cards || []);
+  let editLandmarks = new Set(build.landmarks || []);
+  let editEvents = new Set(build.events || []);
+  let editProphecies = new Set(build.prophecies || []);
+
+  const overlay = document.createElement('div');
+  overlay.id = 'edit-build-modal';
+  overlay.className = 'edit-modal-overlay';
+  overlay.innerHTML = `
+    <div class="edit-modal-box">
+      <div class="edit-modal-title">Edit Build</div>
+      <div class="form-group">
+        <label for="em-nickname">Build Nickname</label>
+        <input type="text" id="em-nickname">
+      </div>
+      <div id="em-card-count" class="card-count">0 / 10 kingdom cards selected</div>
+      <div class="expansion-sections" id="em-kingdom-sections"></div>
+      <div class="expansion-sections" id="em-supplemental-sections"></div>
+      <div class="form-group">
+        <label class="toggle-label">
+          <input type="checkbox" id="em-platinum-colony">
+          Use Platinum &amp; Colony
+        </label>
+      </div>
+      <div class="edit-modal-error" id="em-error"></div>
+      <div class="edit-modal-actions">
+        <button class="btn btn-primary" id="em-confirm">Save Changes</button>
+        <button class="btn" id="em-cancel">Cancel</button>
+      </div>
+    </div>
+  `;
+
+  document.body.appendChild(overlay);
+
+  overlay.querySelector('#em-nickname').value = build.nickname;
+  overlay.querySelector('#em-platinum-colony').checked = !!build.use_platinum_colony;
+
+  function getEditSet(type) {
+    switch (type) {
+      case 'landmark': return editLandmarks;
+      case 'event':    return editEvents;
+      case 'prophecy': return editProphecies;
+      default:         return editCards;
+    }
+  }
+
+  function updateEditCardCount() {
+    const countEl = overlay.querySelector('#em-card-count');
+    countEl.textContent = `${editCards.size} / 10 kingdom cards selected`;
+    countEl.classList.toggle('limit-reached', editCards.size >= 10);
+  }
+
+  function buildEditCheckbox(type, namespace, card) {
+    const div = document.createElement('div');
+    div.className = 'card-checkbox';
+    const checkbox = document.createElement('input');
+    checkbox.type = 'checkbox';
+    checkbox.id = `em-card-${namespace}-${card.replace(/[^a-zA-Z0-9]/g, '')}`;
+    checkbox.value = card;
+    const set = getEditSet(type);
+    if (set.has(card)) {
+      checkbox.checked = true;
+      div.classList.add('selected');
+    }
+    checkbox.addEventListener('change', () => {
+      const s = getEditSet(type);
+      if (checkbox.checked) {
+        if (type === 'kingdom' && editCards.size >= 10) {
+          checkbox.checked = false;
+          return;
+        }
+        s.add(card);
+        div.classList.add('selected');
+      } else {
+        s.delete(card);
+        div.classList.remove('selected');
+      }
+      updateEditCardCount();
+    });
+    const label = document.createElement('label');
+    label.htmlFor = checkbox.id;
+    label.textContent = card;
+    div.appendChild(checkbox);
+    div.appendChild(label);
+    return div;
+  }
+
+  function renderEditExpansion(expansion, containerId) {
+    const container = overlay.querySelector(`#${containerId}`);
+    if (!container) return;
+    DOMINION_CARDS[expansion].slice().sort((a, b) => a.localeCompare(b)).forEach(card => {
+      container.appendChild(buildEditCheckbox('kingdom', expansion, card));
+    });
+  }
+
+  function renderEditSupplemental(cards, containerId, type) {
+    const container = overlay.querySelector(`#${containerId}`);
+    if (!container) return;
+    cards.slice().sort((a, b) => a.localeCompare(b)).forEach(card => {
+      container.appendChild(buildEditCheckbox(type, type, card));
+    });
+  }
+
+  function makeExpansionSection(labelHtml, gridId, hasPreselected) {
+    const section = document.createElement('div');
+    section.className = 'expansion-section' + (hasPreselected ? '' : ' collapsed');
+    section.innerHTML = `
+      <h3 class="expansion-header">${labelHtml}</h3>
+      <div class="card-grid" id="${gridId}"></div>
+    `;
+    section.querySelector('.expansion-header').addEventListener('click', () => {
+      section.classList.toggle('collapsed');
+    });
+    return section;
+  }
+
+  // Kingdom sections
+  const kingdomSections = overlay.querySelector('#em-kingdom-sections');
+  const kingdomExpansions = [
+    { key: 'base',       label: 'Base Set',    badge: null, id: 'em-base-cards' },
+    { key: 'intrigue',   label: 'Intrigue',    badge: '2e', id: 'em-intrigue-cards' },
+    { key: 'seaside',    label: 'Seaside',     badge: '2e', id: 'em-seaside-cards' },
+    { key: 'prosperity', label: 'Prosperity',  badge: '2e', id: 'em-prosperity-cards' },
+    { key: 'empires',    label: 'Empires',     badge: '1e', id: 'em-empires-cards' },
+    { key: 'rising_sun', label: 'Rising Sun',  badge: '1e', id: 'em-rising-sun-cards' },
+  ];
+  kingdomExpansions.forEach(({ key, label, badge, id }) => {
+    const badgeHtml = badge ? ` <span class="edition-badge">${badge}</span>` : '';
+    const hasPreselected = DOMINION_CARDS[key].some(c => editCards.has(c));
+    const section = makeExpansionSection(`${label}${badgeHtml}`, id, hasPreselected);
+    kingdomSections.appendChild(section);
+    renderEditExpansion(key, id);
+  });
+
+  // Supplemental sections
+  const supplementalSections = overlay.querySelector('#em-supplemental-sections');
+
+  const landmarksSection = makeExpansionSection(
+    'Landmarks — Empires <span class="supplemental-note">(optional)</span>',
+    'em-empires-landmarks',
+    DOMINION_LANDMARKS.empires.some(c => editLandmarks.has(c))
+  );
+  supplementalSections.appendChild(landmarksSection);
+  renderEditSupplemental(DOMINION_LANDMARKS.empires, 'em-empires-landmarks', 'landmark');
+
+  const eventsSection = document.createElement('div');
+  eventsSection.className = 'expansion-section' + (
+    [...DOMINION_EVENTS.empires, ...DOMINION_EVENTS.rising_sun].some(c => editEvents.has(c)) ? '' : ' collapsed'
+  );
+  eventsSection.innerHTML = `
+    <h3 class="expansion-header">Events <span class="supplemental-note">(optional)</span></h3>
+    <div class="expansion-body">
+      <div class="supplemental-group-label">Empires</div>
+      <div class="card-grid" id="em-empires-events"></div>
+      <div class="supplemental-group-label">Rising Sun</div>
+      <div class="card-grid" id="em-rising-sun-events"></div>
+    </div>
+  `;
+  eventsSection.querySelector('.expansion-header').addEventListener('click', () => {
+    eventsSection.classList.toggle('collapsed');
+  });
+  supplementalSections.appendChild(eventsSection);
+  renderEditSupplemental(DOMINION_EVENTS.empires, 'em-empires-events', 'event');
+  renderEditSupplemental(DOMINION_EVENTS.rising_sun, 'em-rising-sun-events', 'event');
+
+  const propheciesSection = makeExpansionSection(
+    'Prophecies — Rising Sun <span class="supplemental-note">(optional)</span>',
+    'em-rising-sun-prophecies',
+    DOMINION_PROPHECIES.rising_sun.some(c => editProphecies.has(c))
+  );
+  supplementalSections.appendChild(propheciesSection);
+  renderEditSupplemental(DOMINION_PROPHECIES.rising_sun, 'em-rising-sun-prophecies', 'prophecy');
+
+  updateEditCardCount();
+
+  const nicknameInput = overlay.querySelector('#em-nickname');
+  const errorEl = overlay.querySelector('#em-error');
+  const confirmBtn = overlay.querySelector('#em-confirm');
+  const cancelBtn = overlay.querySelector('#em-cancel');
+
+  nicknameInput.focus();
+
+  function close() { overlay.remove(); }
+
+  cancelBtn.addEventListener('click', close);
+  overlay.addEventListener('click', (e) => {
+    if (e.target === overlay) close();
+  });
+
+  confirmBtn.addEventListener('click', async () => {
+    errorEl.textContent = '';
+    const nickname = nicknameInput.value.trim();
+    if (!nickname) {
+      errorEl.textContent = 'Nickname is required';
+      return;
+    }
+    if (editCards.size === 0) {
+      errorEl.textContent = 'Select at least one kingdom card';
+      return;
+    }
+    confirmBtn.disabled = true;
+    confirmBtn.textContent = 'Saving...';
+    try {
+      await buildsAPI.update(
+        build.id,
+        nickname,
+        Array.from(editCards),
+        Array.from(editLandmarks),
+        Array.from(editEvents),
+        Array.from(editProphecies),
+        overlay.querySelector('#em-platinum-colony').checked,
+        credentials
+      );
+      close();
+      showSuccess('Build updated successfully');
+      loadBuilds();
+    } catch (err) {
+      errorEl.textContent = err.message || 'Failed to save';
+      confirmBtn.disabled = false;
+      confirmBtn.textContent = 'Save Changes';
+    }
+  });
+
 }
 
 // Load and render comments for a build

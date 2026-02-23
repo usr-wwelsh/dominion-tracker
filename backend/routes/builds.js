@@ -85,6 +85,43 @@ router.get('/:id', async (req, res, next) => {
   }
 });
 
+// PUT /api/builds/:id - Update a build (requires auth)
+router.put('/:id', requireAuth, async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const { nickname, cards, landmarks, events, prophecies, use_platinum_colony } = req.body;
+
+    if (!nickname || nickname.trim() === '') {
+      return res.status(400).json({ error: 'Build nickname is required' });
+    }
+
+    if (!cards || !Array.isArray(cards) || cards.length === 0) {
+      return res.status(400).json({ error: 'Cards array is required and must not be empty' });
+    }
+
+    const result = await query(
+      'UPDATE builds SET nickname = $1, cards = $2, landmarks = $3, events = $4, prophecies = $5, use_platinum_colony = $6 WHERE id = $7 RETURNING *',
+      [
+        nickname.trim(),
+        cards,
+        Array.isArray(landmarks) ? landmarks : [],
+        Array.isArray(events) ? events : [],
+        Array.isArray(prophecies) ? prophecies : [],
+        use_platinum_colony === true,
+        id,
+      ]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Build not found' });
+    }
+
+    res.json(result.rows[0]);
+  } catch (error) {
+    next(error);
+  }
+});
+
 // DELETE /api/builds/:id - Delete a build (requires auth)
 router.delete('/:id', requireAuth, async (req, res, next) => {
   try {

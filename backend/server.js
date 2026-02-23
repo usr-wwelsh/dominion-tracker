@@ -3,6 +3,7 @@ const cors = require('cors');
 require('dotenv').config();
 const { migrate } = require('./migrate');
 
+const { requireAuth } = require('./middleware/auth');
 const playersRoutes = require('./routes/players');
 const buildsRoutes = require('./routes/builds');
 const gamesRoutes = require('./routes/games');
@@ -30,6 +31,11 @@ app.use('/api/players', playersRoutes);
 app.use('/api/builds', buildsRoutes);
 app.use('/api/games', gamesRoutes);
 app.use('/api', statsRoutes);
+
+// Auth check endpoint
+app.get('/api/auth/check', requireAuth, (req, res) => {
+  res.json({ ok: true });
+});
 
 // Health check endpoint
 app.get('/health', (req, res) => {
