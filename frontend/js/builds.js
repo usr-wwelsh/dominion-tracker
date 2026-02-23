@@ -152,6 +152,14 @@ Object.entries(DOMINION_CARDS).forEach(([expansion, cards]) => {
   cards.forEach(card => { CARD_EXPANSION_MAP[card] = expansion; });
 });
 
+// Reverse lookup for supplemental cards (landmarks, events, prophecies)
+const SUPPLEMENTAL_EXPANSION_MAP = {};
+[DOMINION_LANDMARKS, DOMINION_EVENTS, DOMINION_PROPHECIES].forEach(group => {
+  Object.entries(group).forEach(([expansion, cards]) => {
+    cards.forEach(card => { SUPPLEMENTAL_EXPANSION_MAP[card] = expansion; });
+  });
+});
+
 const EXPANSION_DISPLAY = {
   base: 'Base',
   intrigue: 'Intrigue',
@@ -167,6 +175,7 @@ let selectedLandmarks = new Set();
 let selectedEvents = new Set();
 let selectedProphecies = new Set();
 let currentSort = 'recent';
+let activeExpansionFilter = null; // null = no filter
 
 // Initialize page
 document.addEventListener('DOMContentLoaded', () => {
@@ -174,6 +183,7 @@ document.addEventListener('DOMContentLoaded', () => {
   setupCollapsibleSections();
   setupFormHandlers();
   setupSortButtons();
+  document.getElementById('filter-builds-btn').addEventListener('click', showFilterModal);
   loadBuilds();
 });
 
@@ -401,16 +411,103 @@ function renderBuilds() {
   const buildsList = document.getElementById('builds-list');
   buildsList.innerHTML = '';
 
-  const sorted = buildsData.slice().sort((a, b) => {
+  let sorted = buildsData.slice().sort((a, b) => {
     if (currentSort === 'alpha') return a.nickname.localeCompare(b.nickname);
     // most recent: API already returns created_at DESC, preserve that order
     return 0;
   });
 
+  if (activeExpansionFilter) {
+    sorted = sorted.filter(buildMatchesFilter);
+  }
+
+  if (sorted.length === 0) {
+    buildsList.innerHTML = '<p class="builds-no-results">No builds match the selected expansions.</p>';
+    return;
+  }
+
   sorted.forEach(build => {
-    const buildItem = createBuildItem(build);
-    buildsList.appendChild(buildItem);
+    buildsList.appendChild(createBuildItem(build));
   });
+}
+
+function buildMatchesFilter(build) {
+  for (const card of (build.cards || [])) {
+    const exp = CARD_EXPANSION_MAP[card];
+    if (exp && !activeExpansionFilter.has(exp)) return false;
+  }
+  for (const card of [...(build.landmarks || []), ...(build.events || []), ...(build.prophecies || [])]) {
+    const exp = SUPPLEMENTAL_EXPANSION_MAP[card];
+    if (exp && !activeExpansionFilter.has(exp)) return false;
+  }
+  return true;
+}
+
+function showFilterModal() {
+  const existing = document.getElementById('filter-builds-modal');
+  if (existing) existing.remove();
+
+  const allExpansions = Object.keys(EXPANSION_DISPLAY);
+  const currentFilter = activeExpansionFilter || new Set(allExpansions);
+
+  const overlay = document.createElement('div');
+  overlay.id = 'filter-builds-modal';
+  overlay.className = 'delete-modal-overlay';
+
+  const checkboxesHtml = allExpansions.map(key => `
+    <label class="filter-expansion-option">
+      <input type="checkbox" value="${key}" ${currentFilter.has(key) ? 'checked' : ''}>
+      ${EXPANSION_DISPLAY[key]}
+    </label>
+  `).join('');
+
+  overlay.innerHTML = `
+    <div class="delete-modal-box">
+      <div class="delete-modal-title">Filter by Expansions</div>
+      <div class="filter-expansion-list">${checkboxesHtml}</div>
+      <div class="delete-modal-actions">
+        <button class="btn btn-primary" id="fm-apply">Apply</button>
+        <button class="btn" id="fm-clear">Show All</button>
+        <button class="btn" id="fm-cancel">Cancel</button>
+      </div>
+    </div>
+  `;
+
+  document.body.appendChild(overlay);
+
+  function close() { overlay.remove(); }
+
+  overlay.querySelector('#fm-cancel').addEventListener('click', close);
+  overlay.addEventListener('click', (e) => { if (e.target === overlay) close(); });
+
+  overlay.querySelector('#fm-clear').addEventListener('click', () => {
+    activeExpansionFilter = null;
+    updateFilterButton();
+    renderBuilds();
+    close();
+  });
+
+  overlay.querySelector('#fm-apply').addEventListener('click', () => {
+    const checked = Array.from(overlay.querySelectorAll('.filter-expansion-list input:checked')).map(el => el.value);
+    activeExpansionFilter = (checked.length === 0 || checked.length === allExpansions.length)
+      ? null
+      : new Set(checked);
+    updateFilterButton();
+    renderBuilds();
+    close();
+  });
+}
+
+function updateFilterButton() {
+  const btn = document.getElementById('filter-builds-btn');
+  if (!btn) return;
+  if (activeExpansionFilter) {
+    btn.classList.add('active');
+    btn.textContent = `Expansions (${activeExpansionFilter.size})`;
+  } else {
+    btn.classList.remove('active');
+    btn.textContent = 'Expansions';
+  }
 }
 
 // Render a tag group row (label + tags), returns '' if no items

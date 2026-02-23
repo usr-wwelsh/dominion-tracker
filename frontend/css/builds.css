@@ -129,6 +129,14 @@
   align-items: center;
   gap: var(--spacing-sm);
   margin-bottom: var(--spacing-md);
+  flex-wrap: wrap;
+}
+
+.sort-bar-divider {
+  width: 1px;
+  height: 1.2em;
+  background: var(--color-border);
+  margin: 0 var(--spacing-xs);
 }
 
 .sort-label {
@@ -441,6 +449,38 @@
   font-size: 0.75rem;
   line-height: 1.4;
   margin-left: auto;
+}
+
+/* Expansion Filter Modal */
+.filter-expansion-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-sm);
+  margin-bottom: var(--spacing-md);
+}
+
+.filter-expansion-option {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  cursor: pointer;
+  font-size: 0.95rem;
+  color: var(--color-text-primary);
+}
+
+.filter-expansion-option input[type="checkbox"] {
+  width: 1.1rem;
+  height: 1.1rem;
+  cursor: pointer;
+  accent-color: var(--color-accent);
+  flex-shrink: 0;
+}
+
+.builds-no-results {
+  color: var(--color-text-secondary);
+  font-style: italic;
+  text-align: center;
+  padding: var(--spacing-lg);
 }
 
 /* Edit Build Modal */
