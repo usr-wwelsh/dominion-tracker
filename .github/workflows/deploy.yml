@@ -1,11 +1,31 @@
-name: Deploy to Hostinger
+name: Build and Deploy
 
 on:
   push:
     branches: [main]
 
 jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Build and push
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: backend/Dockerfile
+          push: true
+          tags: wwelsh/dominion-tracker:latest
+
   deploy:
+    needs: build
     runs-on: ubuntu-latest
     steps:
       - name: Deploy via SSH
@@ -18,4 +38,5 @@ jobs:
           script: |
             cd ~/dominion-app/dominion-tracker
             git pull origin main
-            docker compose up --build -d
+            docker compose pull
+            docker compose up -d
