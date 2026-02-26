@@ -118,35 +118,55 @@ Navigate to `http://localhost:8000`.
 
 ## League Points System
 
-- 1st place: 5 points
-- 2nd place: 3 points
-- 3rd place: 1 point
-- 4th+ place: 0 points
+Points scale with the number of players using the formula:
 
-Ties: Points are averaged (e.g., two players tied for 1st each get 4 points)
+`LP = 100 × (n − p) / (n − 1)`
+
+Where `n` = total players and `p` = placement. First place always gets 100, last place always gets 0, and everyone else is evenly distributed in between.
+
+Example (4 players): 1st = 100, 2nd = 66.67, 3rd = 33.33, 4th = 0
+
+Ties: tied players receive the average of the points slots they occupy.
 
 ## API Endpoints
 
 ### Players
 - `GET /api/players` - List all players
-- `POST /api/players` - Create a new player
+- `POST /api/players` - Create a player
+- `GET /api/players/:id` - Get player details
+- `DELETE /api/players/:id` - Delete a player
 - `GET /api/players/:id/stats` - Get player statistics
+- `GET /api/players/:id/h2h` - Get head-to-head stats
+- `PATCH /api/players/:id/color` - Update player color
 
 ### Builds
 - `GET /api/builds` - List all builds
-- `POST /api/builds` - Create a new build
+- `POST /api/builds` - Create a build
 - `GET /api/builds/:id` - Get build details
+- `PUT /api/builds/:id` - Update a build
+- `DELETE /api/builds/:id` - Delete a build
+- `GET /api/builds/:id/comments` - List comments on a build
+- `POST /api/builds/:id/comments` - Add a comment to a build
+- `DELETE /api/builds/:buildId/comments/:commentId` - Delete a comment
 
 ### Games
 - `GET /api/games` - List all games
-- `POST /api/games` - Create a new game
+- `POST /api/games` - Create a game
+- `GET /api/games/:id` - Get game details
 - `PUT /api/games/:id/start` - Start a game
 - `PUT /api/games/:id/end` - End a game
-- `POST /api/games/:id/scores` - Update player score
+- `DELETE /api/games/:id/cancel` - Cancel an in-progress game
+- `DELETE /api/games/:id` - Delete a game
+- `POST /api/games/:id/scores` - Update a player score
 - `GET /api/games/:id/scores` - Get score history
 
 ### Statistics
 - `GET /api/leaderboard` - Get player leaderboard
+- `GET /api/stats/extras` - Get extra stats
+
+### Other
+- `GET /api/auth/check` - Check auth status
+- `GET /health` - Health check
 
 ## License
 
