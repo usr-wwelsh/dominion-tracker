@@ -48,13 +48,13 @@ Vanilla JS with no build step. Each page is self-contained:
 | Builds | `builds.html` | `js/builds.js` |
 | Live Scoreboard | `scoreboard.html` | `js/scoreboard.js` |
 
-- `js/api.js` — centralized fetch wrapper; exports `playersAPI`, `buildsAPI`, `gamesAPI`, `statsAPI`. All pages load this first via `<script>`.
+- `js/api.js` — centralized fetch wrapper; exports `playersAPI`, `buildsAPI`, `gamesAPI`, `statsAPI`, `authAPI`. All pages load this first via `<script>`.
 - `css/main.css` — all CSS variables, stone-tile background, theme. Page-specific CSS files extend it.
 
 ### Key Data Flow
 1. **Starting a game**: `POST /api/games` creates the game + `game_players` rows (initial `final_score = 3`, initial snapshot inserted) → `PUT /api/games/:id/start` timestamps it.
 2. **Score updates**: `POST /api/games/:id/scores` updates `game_players.final_score` AND inserts a `score_snapshots` row. Frontend debounces 500ms before sending.
-3. **Ending a game**: `PUT /api/games/:id/end` calculates placements by score DESC, assigns league points (1st=5, 2nd=3, 3rd=1, 4th+=0), averages points for ties.
+3. **Ending a game**: `PUT /api/games/:id/end` calculates placements by score DESC, assigns league points using the formula `LP = 100 × (n − p) / (n − 1)`, averaging points for ties.
 4. **Leaderboard**: single aggregation query in `routes/stats.js` — no caching layer.
 
 ### League Points (ties)

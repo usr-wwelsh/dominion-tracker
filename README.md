@@ -33,7 +33,7 @@ cp .env.example .env
 # edit .env and set DB_PASSWORD
 ```
 
-3. Build and start all services:
+3. Start all services (images will be pulled if not present):
 ```bash
 docker compose up -d
 ```
@@ -104,7 +104,11 @@ Navigate to `http://localhost:8000`.
 1. Install Docker on the server
 2. Copy the project folder to the server (e.g. via `scp` or `git clone`)
 3. Set `DB_PASSWORD` and optionally `APP_PORT` in `.env`
-4. Run `docker compose up -d`
+4. Pull and run the Docker services:
+```bash
+docker compose pull
+docker compose up -d
+```
 5. The app is live on port 80 (or whichever `APP_PORT` you set)
 
 ## Usage
