@@ -12,7 +12,7 @@ npm run dev        # watch mode (node --watch, no nodemon needed)
 
 **Frontend**: serve `frontend/` with any static file server:
 ```bash
-python3 -m http.server 8000
+python3 -m http.server 8000 --directory frontend
 ```
 
 **Kill orphaned servers** (if ports 3000/8000 are stuck after a crash):

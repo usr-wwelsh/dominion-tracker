@@ -103,13 +103,13 @@ Navigate to `http://localhost:8000`.
 
 1. Install Docker on the server
 2. Copy the project folder to the server (e.g. via `scp` or `git clone`)
-3. Set `DB_PASSWORD` and optionally `APP_PORT` in `.env`
+3. Set `DB_PASSWORD` in `.env`
 4. Pull and run the Docker services:
 ```bash
 docker compose pull
 docker compose up -d
 ```
-5. The app is live on port 80 (or whichever `APP_PORT` you set)
+5. The app is live on port 80 (assuming default Docker Compose port mapping)
 
 ## Usage
 
