@@ -113,7 +113,7 @@ docker compose up -d
 
 ## Usage
 
-1. **Create Players**: Players are created automatically when added to a game
+1. **Create Players**: Players are typically created automatically when first added to a game, but can also be managed directly via the API.
 2. **Create a Build**: Go to the Builds page and select cards for your game
 3. **Start a Game**: Use the Scoreboard page to set up a game with players
 4. **Track Scores**: Update scores during the game using +/- buttons
