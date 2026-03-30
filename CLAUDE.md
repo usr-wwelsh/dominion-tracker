@@ -28,6 +28,8 @@ psql -U postgres -d dominion_tracker -f backend/schema.sql
 
 **Re-initialize schema** (destructive — drops all tables):
 ```bash
+dropdb -U postgres dominion_tracker
+createdb -U postgres dominion_tracker
 psql -U postgres -d dominion_tracker -f backend/schema.sql
 ```
 
@@ -52,7 +54,7 @@ Vanilla JS with no build step. Each page is self-contained:
 - `css/main.css` — all CSS variables, stone-tile background, theme. Page-specific CSS files extend it.
 
 ### Key Data Flow
-1. **Starting a game**: `POST /api/games` creates the game + `game_players` rows (initial `final_score = 3`, initial snapshot inserted) → `PUT /api/games/:id/start` timestamps it.
+1. **Starting a game**: `POST /api/games` creates the game + `game_players` rows (initial `final_score = 0`, initial snapshot inserted) → `PUT /api/games/:id/start` timestamps it.
 2. **Score updates**: `POST /api/games/:id/scores` updates `game_players.final_score` AND inserts a `score_snapshots` row. Frontend debounces 500ms before sending.
 3. **Ending a game**: `PUT /api/games/:id/end` calculates placements by score DESC, assigns league points using the formula `LP = 100 × (n − p) / (n − 1)`, averaging points for ties.
 4. **Leaderboard**: single aggregation query in `routes/stats.js` — no caching layer.
