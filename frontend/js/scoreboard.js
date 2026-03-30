@@ -310,11 +310,14 @@ async function doEndGame() {
 // Show end game modal with restart options
 function showEndGameModal(endedGameInfo) {
   const modal = document.getElementById('end-game-modal');
-  const winner = endedGameInfo.game.players[0];
-  
-  document.getElementById('result-winner').textContent = winner.player_name;
-  document.getElementById('result-score').textContent = winner.final_score;
-  document.getElementById('result-points').textContent = winner.league_points;
+  const topPlacement = endedGameInfo.game.players[0].placement;
+  const winners = endedGameInfo.game.players.filter(p => p.placement === topPlacement);
+  const isTie = winners.length > 1;
+
+  document.getElementById('result-label-winner').textContent = isTie ? 'Tied:' : 'Winner:';
+  document.getElementById('result-winner').textContent = winners.map(w => w.player_name).join(', ');
+  document.getElementById('result-score').textContent = winners[0].final_score;
+  document.getElementById('result-points').textContent = winners[0].league_points + ' each';
   
   const buildSelect = document.getElementById('restart-build-select');
   buildSelect.innerHTML = '<option value="">— Select a build —</option>';
