@@ -27,10 +27,11 @@ git clone https://github.com/usr-wwelsh/dominion-tracker.git
 cd dominion-tracker
 ```
 
-2. Set your database password (or skip to use the default `changeme`):
+2. Set your database password (or skip to use the default `changeme`).
+   Create a `.env` file in the project root with the `DB_PASSWORD` variable, e.g.:
 ```bash
-cp .env.example .env
-# edit .env and set DB_PASSWORD
+echo "DB_PASSWORD=my_secure_password" > .env
+# If you omit this step, Docker Compose will use 'changeme' as the default password.
 ```
 
 3. Start all services (images will be pulled if not present):
