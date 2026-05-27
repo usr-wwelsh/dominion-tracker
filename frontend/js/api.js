@@ -158,6 +158,32 @@ const statsAPI = {
   getExtras: () => apiRequest('/extras'),
 };
 
+// Tournaments API
+const tournamentsAPI = {
+  getAll: () => apiRequest('/tournaments'),
+
+  getById: (id) => apiRequest(`/tournaments/${id}`),
+
+  create: (name, playerIds, bestOf, credentials) => apiRequest('/tournaments', {
+    method: 'POST',
+    body: JSON.stringify({ name, player_ids: playerIds, best_of: bestOf }),
+  }, credentials),
+
+  playMatch: (id, matchId, buildId) => apiRequest(`/tournaments/${id}/matches/${matchId}/play`, {
+    method: 'POST',
+    body: JSON.stringify({ build_id: buildId || null }),
+  }),
+
+  setWinner: (id, matchId, playerId, credentials) => apiRequest(`/tournaments/${id}/matches/${matchId}/winner`, {
+    method: 'POST',
+    body: JSON.stringify({ player_id: playerId }),
+  }, credentials),
+
+  delete: (id, credentials) => apiRequest(`/tournaments/${id}`, {
+    method: 'DELETE',
+  }, credentials),
+};
+
 /**
  * Show a credentials-gated delete confirmation modal.
  * @param {string} actionLabel - e.g. "Delete this build?"
@@ -243,5 +269,6 @@ if (typeof module !== 'undefined' && module.exports) {
     buildsAPI,
     gamesAPI,
     statsAPI,
+    tournamentsAPI,
   };
 }

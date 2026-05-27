@@ -7,13 +7,80 @@ let currentGame = null;
 let gameTimer = null;
 let gameStartTime = null;
 let scoreUpdateDebounce = {};
+let resumeTournamentId = null;
+let resumeMatchId = null;
 
 // Initialize page
 document.addEventListener('DOMContentLoaded', () => {
-  loadPlayers();
-  loadBuilds();
-  setupEventListeners();
+  const params = new URLSearchParams(window.location.search);
+  const resumeGameId = params.get('game');
+
+  if (resumeGameId) {
+    // Tournament match: resume an already-created, in-progress game.
+    resumeTournamentId = params.get('tournament');
+    resumeMatchId = params.get('match');
+    loadBuilds();
+    setupEventListeners();
+    resumeExistingGame(resumeGameId);
+  } else {
+    loadPlayers();
+    loadBuilds();
+    setupEventListeners();
+  }
 });
+
+// Resume an existing in-progress game (used for tournament matches)
+async function resumeExistingGame(gameId) {
+  // Hide setup up front so a slow or failed load never drops the user into
+  // the manual game-setup flow for what is supposed to be an existing match.
+  document.getElementById('setup-section').style.display = 'none';
+
+  try {
+    const game = await gamesAPI.getById(gameId);
+
+    if (!game || game.ended_at) {
+      // Match already finished — send the user back to the bracket.
+      if (resumeTournamentId) {
+        window.location.href = 'tournament.html?id=' + resumeTournamentId;
+        return;
+      }
+      throw new Error('This game has already ended');
+    }
+
+    currentGame = game;
+    selectedPlayers = (game.players || []).map(p => ({
+      id: p.player_id,
+      name: p.player_name,
+      color: p.player_color || '#4db8ff',
+      score: p.final_score,
+    }));
+
+    gameStartTime = game.started_at ? new Date(game.started_at) : new Date();
+    startTimer();
+
+    document.getElementById('game-section').style.display = 'block';
+
+    // Cancelling a tournament match would orphan the bracket slot; hide it.
+    if (resumeTournamentId) {
+      const cancelBtn = document.getElementById('cancel-game-btn');
+      if (cancelBtn) cancelBtn.style.display = 'none';
+      const banner = document.querySelector('.page-banner h1');
+      if (banner) banner.textContent = 'Tournament Match';
+    }
+
+    renderScoreboard();
+    updateLiveChart();
+  } catch (error) {
+    showError(`Failed to load match: ${error.message}`);
+    if (resumeTournamentId) {
+      setTimeout(() => {
+        window.location.href = 'tournament.html?id=' + resumeTournamentId;
+      }, 1500);
+    } else {
+      document.getElementById('setup-section').style.display = 'block';
+    }
+  }
+}
 
 // Load all players for autocomplete
 async function loadPlayers() {
@@ -290,6 +357,16 @@ async function doEndGame() {
     const finalGame = await gamesAPI.end(currentGame.id);
 
     stopTimer();
+
+    // Tournament match: the server advances the bracket; return to it.
+    if (resumeTournamentId) {
+      showSuccess('Match complete! Returning to bracket…');
+      setTimeout(() => {
+        window.location.href = 'tournament.html?id=' + resumeTournamentId;
+      }, 900);
+      return;
+    }
+
     showSuccess('Game ended! Calculating results...');
 
     const endedGameInfo = {
