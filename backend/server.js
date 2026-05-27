@@ -7,6 +7,7 @@ const { requireAuth } = require('./middleware/auth');
 const playersRoutes = require('./routes/players');
 const buildsRoutes = require('./routes/builds');
 const gamesRoutes = require('./routes/games');
+const tournamentsRoutes = require('./routes/tournaments');
 const statsRoutes = require('./routes/stats');
 
 const app = express();
@@ -30,6 +31,7 @@ app.use(express.static('../frontend'));
 app.use('/api/players', playersRoutes);
 app.use('/api/builds', buildsRoutes);
 app.use('/api/games', gamesRoutes);
+app.use('/api/tournaments', tournamentsRoutes);
 app.use('/api', statsRoutes);
 
 // Auth check endpoint

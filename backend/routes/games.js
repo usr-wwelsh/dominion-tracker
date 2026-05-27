@@ -55,27 +55,7 @@ router.post('/', async (req, res, next) => {
 
     await client.query('BEGIN');
 
-    // Create the game
-    const gameResult = await client.query(
-      'INSERT INTO games (build_id) VALUES ($1) RETURNING *',
-      [build_id || null]
-    );
-
-    const game = gameResult.rows[0];
-
-    // Add players to the game (everyone starts with 3 victory points in Dominion)
-    for (const player_id of player_ids) {
-      await client.query(
-        'INSERT INTO game_players (game_id, player_id, final_score) VALUES ($1, $2, 3)',
-        [game.id, player_id]
-      );
-
-      // Record initial score snapshot
-      await client.query(
-        'INSERT INTO score_snapshots (game_id, player_id, score) VALUES ($1, $2, 3)',
-        [game.id, player_id]
-      );
-    }
+    const game = await createGameTx(client, { build_id, player_ids });
 
     await client.query('COMMIT');
 
@@ -213,6 +193,15 @@ router.put('/:id/end', async (req, res, next) => {
 
     await client.query('COMMIT');
 
+    // Advance the tournament bracket if this game backs a tournament match.
+    // Runs on its own connection; failures here must not fail the game-end response.
+    try {
+      const { maybeAdvanceTournament } = require('./tournaments');
+      await maybeAdvanceTournament(id);
+    } catch (advanceErr) {
+      console.error('Tournament advancement failed:', advanceErr);
+    }
+
     // Fetch the complete game with updated data
     const completeGame = await query(`
       SELECT
@@ -309,6 +298,30 @@ function calculateAverageLeaguePoints(startPlacement, numTied, totalPlayers) {
   return Math.round(avg * 100) / 100;
 }
 
+// Create a game with its players (everyone starts at 3 VP in Dominion) and
+// initial score snapshots. Caller owns the BEGIN/COMMIT. Returns the games row.
+// Shared by POST /games and the tournament match-play endpoint.
+async function createGameTx(client, { build_id, player_ids }) {
+  const gameResult = await client.query(
+    'INSERT INTO games (build_id) VALUES ($1) RETURNING *',
+    [build_id || null]
+  );
+  const game = gameResult.rows[0];
+
+  for (const player_id of player_ids) {
+    await client.query(
+      'INSERT INTO game_players (game_id, player_id, final_score) VALUES ($1, $2, 3)',
+      [game.id, player_id]
+    );
+    await client.query(
+      'INSERT INTO score_snapshots (game_id, player_id, score) VALUES ($1, $2, 3)',
+      [game.id, player_id]
+    );
+  }
+
+  return game;
+}
+
 // POST /api/games/:id/scores - Update player score
 router.post('/:id/scores', async (req, res, next) => {
   const client = await getClient();
@@ -390,6 +403,7 @@ router.get('/:id', async (req, res, next) => {
           json_build_object(
             'player_id', gp.player_id,
             'player_name', p.name,
+            'player_color', p.color,
             'final_score', gp.final_score,
             'placement', gp.placement,
             'league_points', gp.league_points
@@ -414,3 +428,4 @@ router.get('/:id', async (req, res, next) => {
 });
 
 module.exports = router;
+module.exports.createGameTx = createGameTx;

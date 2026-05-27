@@ -1,0 +1,184 @@
+/* Tournament bracket page */
+
+/* --- Player roster (create view) --- */
+.player-count-label {
+  color: var(--color-text-dim);
+  font-size: 0.85rem;
+  font-weight: normal;
+}
+.player-roster {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--spacing-sm);
+  margin-bottom: var(--spacing-sm);
+}
+.roster-empty {
+  color: var(--color-text-dim);
+  font-style: italic;
+}
+.roster-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.4rem 0.75rem;
+  background: var(--color-bg-tertiary);
+  border: var(--border-width) solid var(--color-border);
+  border-radius: var(--border-radius-md);
+  color: var(--color-text-secondary);
+  font-family: var(--font-primary);
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+.roster-btn:hover { border-color: var(--color-blue); color: var(--color-text-primary); }
+.roster-btn-selected {
+  border-color: var(--color-accent);
+  background: var(--color-blue-dim);
+  color: var(--color-text-primary);
+}
+.roster-dot { width: 12px; height: 12px; border-radius: 50%; flex-shrink: 0; }
+.roster-check { color: var(--color-accent); font-weight: bold; }
+.seed-hint {
+  font-size: 0.85rem;
+  color: var(--color-text-dim);
+  font-style: italic;
+  margin: 0 0 var(--spacing-md);
+}
+
+/* --- Tournament list --- */
+.tournament-list-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: var(--spacing-md);
+  border: var(--border-width) solid var(--color-border);
+  border-radius: var(--border-radius-md);
+  margin-bottom: var(--spacing-sm);
+  text-decoration: none;
+  color: var(--color-text-primary);
+  transition: border-color 0.15s ease;
+}
+.tournament-list-item:hover { border-color: var(--color-blue); }
+.tl-name { font-weight: bold; }
+.tl-status { font-size: 0.85rem; color: var(--color-text-dim); text-transform: capitalize; }
+.tl-status.status-complete { color: var(--color-accent); }
+.tl-status.status-active { color: var(--color-blue-hover); }
+
+/* --- Bracket --- */
+.bracket {
+  display: flex;
+  gap: var(--spacing-xl);
+  overflow-x: auto;
+  padding: var(--spacing-md) 0;
+}
+.bracket-round {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-around;
+  gap: var(--spacing-md);
+  min-width: 200px;
+}
+.bracket-round-title {
+  text-align: center;
+  font-family: var(--font-secondary);
+  color: var(--color-accent);
+  letter-spacing: 0.05em;
+  margin-bottom: var(--spacing-sm);
+  text-transform: uppercase;
+  font-size: 0.85rem;
+}
+.match-box {
+  background: var(--color-bg-secondary);
+  border: var(--border-width) solid var(--color-border);
+  border-radius: var(--border-radius-md);
+  padding: var(--spacing-sm);
+  box-shadow: var(--shadow-sm);
+}
+.match-box.status-ready { border-color: var(--color-blue); }
+.match-box.status-in_progress { border-color: var(--color-accent); }
+.match-box.status-tie { border-color: var(--color-warning); }
+.match-player {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.35rem 0.4rem;
+  border-radius: var(--border-radius-sm);
+}
+.match-player + .match-player { margin-top: 2px; }
+.match-player-empty { color: var(--color-text-dim); font-style: italic; }
+.match-winner {
+  background: var(--color-blue-dim);
+  font-weight: bold;
+  color: var(--color-text-primary);
+}
+.mp-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+.mp-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.match-action {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem;
+  margin-top: var(--spacing-sm);
+  padding-top: var(--spacing-sm);
+  border-top: 1px solid var(--color-border);
+}
+.match-live { color: var(--color-error); font-size: 0.8rem; animation: pulse 1.4s ease-in-out infinite; }
+.match-tie-note { width: 100%; font-size: 0.8rem; color: var(--color-warning); }
+@keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.35; } }
+
+/* --- Champion banner --- */
+#champion-banner {
+  text-align: center;
+  background: var(--color-bg-secondary);
+  border: var(--border-width) solid var(--color-accent);
+  border-radius: var(--border-radius-md);
+  padding: var(--spacing-xl);
+  margin-bottom: var(--spacing-lg);
+  box-shadow: var(--shadow-lg);
+}
+.champion-crown { font-size: 3rem; color: var(--color-accent); line-height: 1; }
+.champion-label {
+  text-transform: uppercase;
+  letter-spacing: 0.2em;
+  color: var(--color-text-dim);
+  font-size: 0.8rem;
+  margin-top: var(--spacing-sm);
+}
+.champion-name {
+  font-family: var(--font-secondary);
+  font-size: 2rem;
+  color: var(--color-accent-hover);
+  margin: var(--spacing-xs) 0;
+}
+.champion-sub { color: var(--color-text-secondary); }
+
+/* --- Play modal --- */
+.modal {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.7);
+  display: none;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+.modal-content {
+  background: var(--color-bg-secondary);
+  border: var(--border-width) solid var(--color-border);
+  border-radius: var(--border-radius-md);
+  max-width: 360px;
+  width: 90%;
+  box-shadow: var(--shadow-lg);
+}
+.modal-header {
+  padding: var(--spacing-md);
+  font-family: var(--font-secondary);
+  color: var(--color-accent);
+  border-bottom: 1px solid var(--color-border);
+}
+.modal-body { padding: var(--spacing-md); }
+.confirm-buttons { display: flex; gap: var(--spacing-sm); margin-top: var(--spacing-md); }
+
+@media (max-width: 768px) {
+  .bracket { gap: var(--spacing-md); }
+  .bracket-round { min-width: 160px; }
+}

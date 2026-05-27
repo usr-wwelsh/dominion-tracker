@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Dominion Tracker - Tournament</title>
+  <link rel="manifest" href="manifest.json">
+  <link rel="apple-touch-icon" href="/icon-192.png">
+  <meta name="theme-color" content="#1c2333">
+  <link rel="stylesheet" href="css/main.css">
+  <link rel="stylesheet" href="css/tournament.css">
+  <script>if ('serviceWorker' in navigator) navigator.serviceWorker.register('/sw.js');</script>
+</head>
+<body>
+  <header class="site-header">
+    <a href="index.html" class="site-brand">
+      <img class="brand-icon" src="/icon-192.png" alt="">
+      <span class="brand-name">Dominion Tracker</span>
+    </a>
+    <button class="nav-toggle" id="nav-toggle" aria-label="Menu" aria-expanded="false">
+      <span></span><span></span><span></span>
+    </button>
+    <nav id="main-nav">
+      <ul>
+        <li><a href="index.html">Leaderboard</a></li>
+        <li><a href="games.html">Recent Games</a></li>
+        <li><a href="builds.html">Builds</a></li>
+        <li><a href="players.html">Players</a></li>
+        <li><a href="scoreboard.html">Play Game</a></li>
+        <li><a href="tournament.html" class="active">Tournament</a></li>
+      </ul>
+    </nav>
+  </header>
+
+  <div class="container">
+    <div class="page-banner"><h1>Tournament</h1></div>
+
+    <div id="error-message" class="error" style="display: none;"></div>
+    <div id="success-message" class="success" style="display: none;"></div>
+
+    <!-- List + create view -->
+    <div id="list-view" style="display: none;">
+      <div class="card">
+        <div class="card-header">New Tournament</div>
+        <div class="form-group">
+          <label for="tournament-name">Name</label>
+          <input type="text" id="tournament-name" placeholder="e.g. Spring Invitational" maxlength="80">
+        </div>
+        <div class="form-group">
+          <label>Players <span id="player-count-label" class="player-count-label"></span></label>
+          <div id="player-roster" class="player-roster"></div>
+        </div>
+        <p class="seed-hint">When the turnout isn't 4 or 8, the lowest-ranked players get a round-one bye — newcomers skip ahead, top players play from the start.</p>
+        <button id="create-tournament-btn" class="btn btn-primary" disabled>Create Bracket</button>
+      </div>
+
+      <div class="card">
+        <div class="card-header">Tournaments</div>
+        <div id="tournament-list"></div>
+      </div>
+    </div>
+
+    <!-- Bracket view -->
+    <div id="bracket-view" style="display: none;">
+      <div id="champion-banner" style="display: none;"></div>
+      <div id="bracket" class="bracket"></div>
+    </div>
+  </div>
+
+  <!-- Build picker modal -->
+  <div id="play-modal" class="modal">
+    <div class="modal-content">
+      <div class="modal-header">Start Match</div>
+      <div class="modal-body">
+        <div class="form-group">
+          <label for="play-build-select">Build (optional)</label>
+          <select id="play-build-select">
+            <option value="">No build</option>
+          </select>
+        </div>
+        <div class="confirm-buttons">
+          <button id="play-start-btn" class="btn btn-success">Start</button>
+          <button id="play-cancel-btn" class="btn">Cancel</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="js/api.js"></script>
+  <script src="js/header.js"></script>
+  <script src="js/confetti.js"></script>
+  <script src="js/tournament.js"></script>
+  <script src="js/falling-cards.js"></script>
+</body>
+</html>
