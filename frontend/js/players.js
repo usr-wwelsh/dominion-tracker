@@ -54,7 +54,7 @@ function renderPlayers() {
     row.innerHTML = `
       <div class="player-row-info">
         <span class="player-color-swatch" style="background:${escapeHtml(player.color || '#4db8ff')}"></span>
-        <span class="player-name">${escapeHtml(player.name)}</span>
+        <a class="player-name" href="profile.html?id=${player.id}">${escapeHtml(player.name)}</a>
         <span class="player-games">${gamesPlayed} game${gamesPlayed !== 1 ? 's' : ''}</span>
       </div>
       <div class="player-row-actions">

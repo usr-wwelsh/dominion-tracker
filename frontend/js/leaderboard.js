@@ -183,7 +183,7 @@ function renderPodium(data) {
 <div class="podium-avatar" style="border-color:${color}; box-shadow: 0 0 12px ${color}40">
           <span class="podium-initial" style="color:${color}">${escapeHtml(player.name[0].toUpperCase())}</span>
         </div>
-        <div class="podium-name" style="color:${color}">${escapeHtml(player.name)}</div>
+        <a class="podium-name" href="profile.html?id=${player.id}" style="color:${color};text-decoration:none;">${escapeHtml(player.name)}</a>
         <div class="podium-lp">${player.avg_league_points} avg LP</div>
         <div class="podium-stats">${player.total_league_points} total LP</div>
       </div>
@@ -273,7 +273,7 @@ function renderLeaderboard() {
       <td class="col-rank">${index + 1}${trendHtml}</td>
       <td class="player-name">
         <span class="player-color-swatch" data-player-id="${player.id}" style="background:${color}" title="Click to change color"></span>
-        <span class="player-name-link" data-player-id="${player.id}" data-player-name="${escapeHtml(player.name)}" data-recent-form="${escapeHtml(recentForm)}" title="View stats &amp; head-to-head">${escapeHtml(player.name)}</span>
+        <a class="player-name-link" href="profile.html?id=${player.id}" data-player-id="${player.id}" data-player-name="${escapeHtml(player.name)}" data-recent-form="${escapeHtml(recentForm)}" title="View profile">${escapeHtml(player.name)}</a>
       </td>
       <td class="stat-highlight">${player.total_league_points}</td>
       <td>${player.avg_league_points}</td>
@@ -293,14 +293,6 @@ function renderLeaderboard() {
       } else {
         openPopover(swatch, swatch.dataset.playerId);
       }
-    });
-  });
-
-  tbody.querySelectorAll('.player-name-link').forEach(link => {
-    link.addEventListener('click', e => {
-      e.stopPropagation();
-      const recentForm = JSON.parse(link.dataset.recentForm || '[]');
-      openH2HModal(link.dataset.playerId, link.dataset.playerName, recentForm);
     });
   });
 
