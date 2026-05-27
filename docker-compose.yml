@@ -1,48 +1,28 @@
 services:
-  db:
-    networks:
-      - internal
-    image: postgres:16-alpine
-    environment:
-      POSTGRES_DB: dominion_tracker
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: ${DB_PASSWORD:-changeme}
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres"]
-      interval: 5s
-      timeout: 5s
-      retries: 10
-    restart: unless-stopped
-
   backend:
     networks:
       - proxy
-      - internal
     image: wwelsh/dominion-tracker:latest
     ports:
       - "3002:3000"
     environment:
-      DB_HOST: db
-      DB_PORT: 5432
-      DB_NAME: dominion_tracker
-      DB_USER: postgres
-      DB_PASSWORD: ${DB_PASSWORD:-changeme}
+      SQLITE_PATH: /data/dominion.db
       PORT: 3000
       AUTH_USER: ${AUTH_USER:-admin}
       AUTH_PASS: ${AUTH_PASS:-changeme}
-    depends_on:
-      db:
-        condition: service_healthy
+      VAPID_PUBLIC: ${VAPID_PUBLIC:-}
+      VAPID_PRIVATE: ${VAPID_PRIVATE:-}
+      VAPID_SUBJECT: ${VAPID_SUBJECT:-mailto:admin@example.com}
+    volumes:
+      - sqlite_data:/data
     restart: unless-stopped
 
 networks:
-  internal:
-    driver: bridge
   proxy:
     external: true
     name: proxy
 
 volumes:
+  sqlite_data:
+  # Keep postgres_data declared until pg-to-sqlite.js migration is verified
   postgres_data:

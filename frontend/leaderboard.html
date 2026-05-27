@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Dominion Tracker - Leaderboard</title>
+  <link rel="manifest" href="manifest.json">
+  <link rel="apple-touch-icon" href="/icon-192.png">
+  <meta name="theme-color" content="#181f30">
+  <link rel="stylesheet" href="css/main.css">
+  <link rel="stylesheet" href="css/leaderboard.css">
+  <script>if ('serviceWorker' in navigator) navigator.serviceWorker.register('/sw.js');</script>
+</head>
+<body>
+  <div id="admin-banner-bar"></div>
+
+  <header class="site-header">
+    <a href="index.html" class="site-brand">
+      <img class="brand-icon" src="/icon-192.png" alt="">
+      <span class="brand-name">Dominion Tracker</span>
+    </a>
+    <button class="nav-toggle" id="nav-toggle" aria-label="Menu" aria-expanded="false">
+      <span></span><span></span><span></span>
+    </button>
+    <nav id="main-nav">
+      <ul>
+        <li><a href="index.html">Home</a></li>
+        <li><a href="leaderboard.html" class="active">Leaderboard</a></li>
+        <li><a href="games.html">Recent Games</a></li>
+        <li><a href="builds.html">Builds</a></li>
+        <li><a href="players.html">Players</a></li>
+        <li><a href="scoreboard.html">Play Game</a></li>
+        <li><a href="tournament.html">Tournament</a></li>
+        <li><a href="live.html">Live</a></li>
+        <li><a href="history.html">History</a></li>
+      </ul>
+    </nav>
+  </header>
+
+  <div class="container">
+    <div class="page-banner"><h1>Player Leaderboard</h1></div>
+
+    <div id="error-message" class="error" style="display: none;"></div>
+    <div id="loading" class="loading">Loading leaderboard</div>
+
+    <div id="leaderboard-container" style="display: none;">
+      <div id="podium-section" style="display: none;"></div>
+      <div id="extras-section" style="display: none;"></div>
+
+      <table id="leaderboard-table">
+        <thead>
+          <tr>
+            <th class="sortable" data-column="rank">#</th>
+            <th class="sortable" data-column="name">Player</th>
+            <th class="sortable" data-column="total_league_points">Total LP</th>
+            <th class="sortable" data-column="avg_league_points">Avg LP / Game</th>
+            <th class="sortable" data-column="total_wins">Wins</th>
+            <th class="sortable" data-column="total_games">Games</th>
+            <th class="sortable" data-column="avg_score">Avg Score</th>
+          </tr>
+        </thead>
+        <tbody id="leaderboard-body"></tbody>
+      </table>
+
+      <div id="no-data" class="text-center mt-xl" style="display: none;">
+        <p>No provinces claimed yet.</p>
+        <p>Forge a new kingdom in the <a href="scoreboard.html">Live Scoreboard</a>.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- H2H Modal -->
+  <div id="h2h-modal" class="modal-overlay" style="display: none;">
+    <div class="modal-box">
+      <div class="modal-header">
+        <span id="h2h-title">Head-to-Head</span>
+        <button class="modal-close" id="h2h-close">✕</button>
+      </div>
+      <div id="h2h-body"></div>
+    </div>
+  </div>
+
+  <script src="js/api.js"></script>
+  <script src="js/header.js"></script>
+  <script src="js/leaderboard.js"></script>
+  <script src="js/falling-cards.js"></script>
+  <script>
+    // Load admin banner
+    apiRequest('/banner').then(({ banner }) => {
+      const bar = document.getElementById('admin-banner-bar');
+      if (banner) { bar.className = 'site-banner-bar'; bar.textContent = banner; }
+    }).catch(() => {});
+  </script>
+</body>
+</html>

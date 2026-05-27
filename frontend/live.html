@@ -1,0 +1,316 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Dominion Tracker - Live Games</title>
+  <link rel="manifest" href="manifest.json">
+  <link rel="apple-touch-icon" href="/icon-192.png">
+  <meta name="theme-color" content="#181f30">
+  <link rel="stylesheet" href="css/main.css">
+  <style>
+    .live-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: var(--spacing-lg); }
+    .live-card {
+      background: var(--color-bg-secondary);
+      border: 2px solid var(--color-border);
+      border-radius: var(--border-radius-md);
+      padding: var(--spacing-lg);
+      cursor: pointer;
+      transition: border-color 0.2s, box-shadow 0.2s;
+    }
+    .live-card:hover { border-color: var(--color-blue); box-shadow: var(--shadow-md); }
+    .live-card h3 { margin-bottom: var(--spacing-sm); font-size: 1rem; }
+    .live-card .players-preview { color: var(--color-text-secondary); font-size: 0.9rem; }
+
+    /* Watch view */
+    #watch-view { display: none; }
+    .watch-header {
+      display: flex; align-items: center; gap: var(--spacing-md);
+      margin-bottom: var(--spacing-lg);
+    }
+    .back-btn { cursor: pointer; }
+    .score-rows { display: flex; flex-direction: column; gap: var(--spacing-sm); }
+    .score-row {
+      display: flex; align-items: center; justify-content: space-between;
+      background: var(--color-bg-secondary);
+      border: 1px solid var(--color-border);
+      border-radius: var(--border-radius-sm);
+      padding: var(--spacing-sm) var(--spacing-md);
+    }
+    .score-row .player-name { font-size: 1rem; }
+    .score-row .score-val {
+      font-size: 1.6rem; font-weight: 700;
+      color: var(--color-accent-hover);
+      min-width: 50px; text-align: right;
+      transition: color 0.2s;
+    }
+    .score-controls { display: none; gap: var(--spacing-sm); align-items: center; }
+    .score-controls.unlocked { display: flex; }
+    .score-btn {
+      width: 32px; height: 32px;
+      border-radius: 50%;
+      font-size: 1.2rem;
+      display: flex; align-items: center; justify-content: center;
+      padding: 0;
+    }
+
+    .token-section {
+      margin-top: var(--spacing-lg);
+      background: var(--color-bg-tertiary);
+      border: 1px solid var(--color-border);
+      border-radius: var(--border-radius-sm);
+      padding: var(--spacing-md);
+    }
+    .token-section p { color: var(--color-text-secondary); font-size: 0.9rem; margin-bottom: var(--spacing-sm); }
+    .token-input-row { display: flex; gap: var(--spacing-sm); }
+    .token-input-row input { flex: 1; }
+  </style>
+</head>
+<body>
+  <div id="admin-banner-bar"></div>
+
+  <header class="site-header">
+    <a href="index.html" class="site-brand">
+      <img class="brand-icon" src="/icon-192.png" alt="">
+      <span class="brand-name">Dominion Tracker</span>
+    </a>
+    <button class="nav-toggle" id="nav-toggle" aria-label="Menu" aria-expanded="false">
+      <span></span><span></span><span></span>
+    </button>
+    <nav id="main-nav">
+      <ul>
+        <li><a href="index.html">Home</a></li>
+        <li><a href="leaderboard.html">Leaderboard</a></li>
+        <li><a href="games.html">Recent Games</a></li>
+        <li><a href="builds.html">Builds</a></li>
+        <li><a href="players.html">Players</a></li>
+        <li><a href="scoreboard.html">Play Game</a></li>
+        <li><a href="tournament.html">Tournament</a></li>
+        <li><a href="live.html" class="active">Live</a></li>
+        <li><a href="history.html">History</a></li>
+      </ul>
+    </nav>
+  </header>
+
+  <div class="container">
+    <!-- Game list view -->
+    <div id="list-view">
+      <div class="page-banner">
+        <h1>Live Games</h1>
+      </div>
+      <div id="loading" class="loading">Loading live games</div>
+      <div id="no-live" style="display:none;" class="text-center mt-xl">
+        <p style="color:var(--color-text-dim)">No games in progress right now.</p>
+        <p><a href="scoreboard.html">Start a game</a> to see it here.</p>
+      </div>
+      <div class="live-list" id="live-list"></div>
+    </div>
+
+    <!-- Watch view -->
+    <div id="watch-view">
+      <div class="watch-header">
+        <button class="btn btn-sm back-btn" id="back-btn">← All Games</button>
+        <h2 id="watch-title" style="margin:0;font-size:1.2rem;"></h2>
+        <span class="live-badge"><span class="live-dot"></span>LIVE</span>
+      </div>
+      <div class="score-rows" id="score-rows"></div>
+      <div class="token-section">
+        <p>Have the edit token? Enter it to unlock score editing.</p>
+        <div class="token-input-row">
+          <input type="text" id="token-input" placeholder="Edit token (from game creator)" maxlength="20">
+          <button class="btn btn-sm" id="unlock-btn">Unlock</button>
+        </div>
+        <p id="token-error" style="color:var(--color-error);margin-top:var(--spacing-xs);display:none;"></p>
+      </div>
+    </div>
+  </div>
+
+  <script src="js/api.js"></script>
+  <script src="js/header.js"></script>
+  <script>
+  const API = (window.location.port === '8000')
+    ? `http://${window.location.hostname}:3000/api`
+    : '/api';
+
+  let currentGameId = null;
+  let currentPlayers = [];
+  let editToken = null;
+  let eventSource = null;
+  let debounceTimers = {};
+
+  document.addEventListener('DOMContentLoaded', async () => {
+    apiRequest('/banner').then(({ banner }) => {
+      const bar = document.getElementById('admin-banner-bar');
+      if (banner) { bar.className = 'site-banner-bar'; bar.textContent = banner; }
+    }).catch(() => {});
+
+    document.getElementById('back-btn').addEventListener('click', showList);
+    document.getElementById('unlock-btn').addEventListener('click', tryUnlock);
+
+    await loadList();
+    setInterval(loadList, 10000); // refresh list every 10s
+  });
+
+  async function loadList() {
+    if (currentGameId) return; // don't refresh list while watching
+    try {
+      const { games } = await apiRequest('/games?live=1&limit=50');
+
+      document.getElementById('loading').style.display = 'none';
+      const listEl = document.getElementById('live-list');
+      listEl.innerHTML = '';
+
+      if (!games || games.length === 0) {
+        document.getElementById('no-live').style.display = 'block';
+        return;
+      }
+      document.getElementById('no-live').style.display = 'none';
+
+      games.forEach(g => {
+        const card = document.createElement('div');
+        card.className = 'live-card';
+        const names = (g.players || []).map(p => p.player_name).join(', ');
+        card.innerHTML = `
+          <h3>Game #${g.id}${g.build_nickname ? ' · ' + g.build_nickname : ''}</h3>
+          <p class="players-preview">${names || '—'}</p>
+          <span class="live-badge" style="font-size:0.75rem;margin-top:var(--spacing-xs);display:inline-flex;"><span class="live-dot"></span>In progress</span>`;
+        card.addEventListener('click', () => watchGame(g.id, g.players || []));
+        listEl.appendChild(card);
+      });
+    } catch (err) {
+      document.getElementById('loading').textContent = 'Failed to load live games.';
+      console.error(err);
+    }
+  }
+
+  async function watchGame(gameId, players) {
+    currentGameId = gameId;
+    currentPlayers = players;
+    editToken = null;
+
+    document.getElementById('list-view').style.display = 'none';
+    document.getElementById('watch-view').style.display = 'block';
+    document.getElementById('watch-title').textContent = `Game #${gameId}`;
+    document.getElementById('token-error').style.display = 'none';
+    document.getElementById('token-input').value = '';
+
+    renderScores(players);
+    connectSSE(gameId);
+  }
+
+  function renderScores(players) {
+    const container = document.getElementById('score-rows');
+    container.innerHTML = '';
+    players.forEach(p => {
+      const row = document.createElement('div');
+      row.className = 'score-row';
+      row.dataset.playerId = p.player_id;
+      row.innerHTML = `
+        <div class="player-name">${p.player_name}</div>
+        <div style="display:flex;align-items:center;gap:var(--spacing-sm);">
+          <div class="score-controls" id="ctrl-${p.player_id}">
+            <button class="btn btn-sm score-btn" data-pid="${p.player_id}" data-delta="-1">−</button>
+          </div>
+          <div class="score-val" id="score-${p.player_id}">${p.final_score ?? 0}</div>
+          <div class="score-controls" id="ctrl2-${p.player_id}">
+            <button class="btn btn-sm score-btn" data-pid="${p.player_id}" data-delta="1">+</button>
+          </div>
+        </div>`;
+      container.appendChild(row);
+    });
+
+    container.addEventListener('click', e => {
+      const btn = e.target.closest('.score-btn');
+      if (!btn || !editToken) return;
+      const pid = Number(btn.dataset.pid);
+      const delta = Number(btn.dataset.delta);
+      const scoreEl = document.getElementById('score-' + pid);
+      const newScore = (Number(scoreEl.textContent) || 0) + delta;
+      scoreEl.textContent = newScore;
+      scoreEl.classList.remove('score-bump');
+      void scoreEl.offsetWidth;
+      scoreEl.classList.add('score-bump');
+      debounceScore(pid, newScore);
+    });
+  }
+
+  function debounceScore(pid, score) {
+    clearTimeout(debounceTimers[pid]);
+    debounceTimers[pid] = setTimeout(() => {
+      apiRequest(`/games/${currentGameId}/scores`, {
+        method: 'POST',
+        body: JSON.stringify({ player_id: pid, score, edit_token: editToken }),
+      }).catch(console.error);
+    }, 500);
+  }
+
+  function connectSSE(gameId) {
+    if (eventSource) { eventSource.close(); eventSource = null; }
+    const url = `${API}/games/${gameId}/stream`;
+    eventSource = new EventSource(url);
+
+    eventSource.addEventListener('init', e => {
+      const players = JSON.parse(e.data);
+      players.forEach(p => {
+        const el = document.getElementById('score-' + p.player_id);
+        if (el) el.textContent = p.final_score ?? 0;
+      });
+    });
+
+    eventSource.addEventListener('score', e => {
+      const { player_id, score } = JSON.parse(e.data);
+      const el = document.getElementById('score-' + player_id);
+      if (el) {
+        el.textContent = score;
+        el.classList.remove('score-bump');
+        void el.offsetWidth;
+        el.classList.add('score-bump');
+      }
+    });
+
+    eventSource.addEventListener('ended', () => {
+      alert('This game has ended.');
+      showList();
+    });
+
+    eventSource.onerror = () => {};
+  }
+
+  async function tryUnlock() {
+    const token = document.getElementById('token-input').value.trim();
+    if (!token) return;
+    const errEl = document.getElementById('token-error');
+    errEl.style.display = 'none';
+    try {
+      // Verify by attempting a no-op score update
+      const p = currentPlayers[0];
+      if (!p) return;
+      const scoreEl = document.getElementById('score-' + p.player_id);
+      const curScore = Number(scoreEl?.textContent ?? 0);
+      await apiRequest(`/games/${currentGameId}/scores`, {
+        method: 'POST',
+        body: JSON.stringify({ player_id: p.player_id, score: curScore, edit_token: token }),
+      });
+      editToken = token;
+      document.querySelectorAll('.score-controls').forEach(c => c.classList.add('unlocked'));
+      document.querySelector('.token-section').innerHTML =
+        '<p style="color:var(--color-success)">✓ Edit mode unlocked.</p>';
+    } catch {
+      errEl.textContent = 'Invalid token.';
+      errEl.style.display = 'block';
+    }
+  }
+
+  function showList() {
+    if (eventSource) { eventSource.close(); eventSource = null; }
+    currentGameId = null;
+    currentPlayers = [];
+    editToken = null;
+    debounceTimers = {};
+    document.getElementById('watch-view').style.display = 'none';
+    document.getElementById('list-view').style.display = 'block';
+    loadList();
+  }
+  </script>
+</body>
+</html>

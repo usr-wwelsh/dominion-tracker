@@ -1,6 +1,6 @@
-FROM node:20-alpine
+FROM node:20-bookworm-slim
 
-RUN apk upgrade --no-cache
+RUN apt-get update && apt-get upgrade -y && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
 
@@ -9,6 +9,11 @@ RUN npm ci --omit=dev
 
 COPY backend/ .
 COPY frontend/ /frontend
+
+# Ensure the data directory exists for the SQLite volume mount
+RUN mkdir -p /data && chown node:node /data
+
+USER node
 
 EXPOSE 3000
 

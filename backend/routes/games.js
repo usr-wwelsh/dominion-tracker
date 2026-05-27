@@ -1,51 +1,105 @@
 const express = require('express');
+const crypto = require('crypto');
 const router = express.Router();
 const { query, getClient } = require('../db');
 const { requireAuth } = require('../middleware/auth');
 
-// GET /api/games - List completed games with pagination
+// Per-game SSE subscriber sets: gameId -> Set<res>
+const sseClients = new Map();
+
+function sseNotify(gameId, event, data) {
+  const clients = sseClients.get(Number(gameId));
+  if (!clients || clients.size === 0) return;
+  const payload = `event: ${event}\ndata: ${JSON.stringify(data)}\n\n`;
+  for (const res of clients) {
+    try { res.write(payload); } catch {}
+  }
+}
+
+// Shared helper: build the players sub-array for a game via a correlated subquery
+const PLAYERS_SUBQ = `(
+  SELECT json_group_array(json_object(
+    'player_id', gp.player_id,
+    'player_name', p.name,
+    'player_color', p.color,
+    'final_score', gp.final_score,
+    'placement', gp.placement,
+    'league_points', gp.league_points
+  ))
+  FROM (
+    SELECT gp.player_id, p.name, p.color, gp.final_score, gp.placement, gp.league_points
+    FROM game_players gp
+    JOIN players p ON gp.player_id = p.id
+    WHERE gp.game_id = g.id
+    ORDER BY gp.placement
+  ) AS gp JOIN players p ON gp.player_id = p.id
+) AS players`;
+
+// Simpler version used in the create-response (no placement yet)
+const PLAYERS_SUBQ_SIMPLE = `(
+  SELECT json_group_array(json_object(
+    'player_id', gp.player_id,
+    'player_name', p.name,
+    'final_score', gp.final_score
+  ))
+  FROM game_players gp
+  JOIN players p ON gp.player_id = p.id
+  WHERE gp.game_id = g.id
+) AS players`;
+
+function parsePlayers(row) {
+  if (row && typeof row.players === 'string') {
+    row.players = JSON.parse(row.players);
+  }
+  return row;
+}
+
+// GET /api/games  (?live=1 returns in-progress games instead)
 router.get('/', async (req, res, next) => {
   try {
-    const limit = Math.min(parseInt(req.query.limit) || 20, 100);
+    const limit  = Math.min(parseInt(req.query.limit)  || 20, 100);
     const offset = parseInt(req.query.offset) || 0;
+    const live   = req.query.live === '1';
+
+    const whereClause = live
+      ? 'g.started_at IS NOT NULL AND g.ended_at IS NULL'
+      : 'g.ended_at IS NOT NULL';
 
     const result = await query(`
-      SELECT
-        g.*,
-        b.nickname as build_nickname,
-        json_agg(
-          json_build_object(
-            'player_id', gp.player_id,
-            'player_name', p.name,
-            'player_color', p.color,
-            'final_score', gp.final_score,
-            'placement', gp.placement,
-            'league_points', gp.league_points
-          ) ORDER BY gp.placement
-        ) as players
+      SELECT g.*, b.nickname AS build_nickname,
+        (SELECT json_group_array(json_object(
+          'player_id', gp.player_id,
+          'player_name', p.name,
+          'player_color', p.color,
+          'final_score', gp.final_score,
+          'placement', gp.placement,
+          'league_points', gp.league_points
+        ))
+        FROM (
+          SELECT gp2.player_id, p2.name, p2.color, gp2.final_score, gp2.placement, gp2.league_points
+          FROM game_players gp2
+          JOIN players p2 ON gp2.player_id = p2.id
+          WHERE gp2.game_id = g.id
+          ORDER BY gp2.placement
+        ) AS gp JOIN players p ON gp.player_id = p.id) AS players
       FROM games g
       LEFT JOIN builds b ON g.build_id = b.id
-      LEFT JOIN game_players gp ON g.id = gp.game_id
-      LEFT JOIN players p ON gp.player_id = p.id
-      WHERE g.ended_at IS NOT NULL
-      GROUP BY g.id, b.nickname
-      ORDER BY g.started_at DESC NULLS LAST, g.id DESC
-      LIMIT $1 OFFSET $2
+      WHERE ${whereClause}
+      ORDER BY g.started_at DESC, g.id DESC
+      LIMIT ? OFFSET ?
     `, [limit + 1, offset]);
 
     const hasMore = result.rows.length > limit;
-    const games = hasMore ? result.rows.slice(0, limit) : result.rows;
-
+    const games = (hasMore ? result.rows.slice(0, limit) : result.rows).map(parsePlayers);
     res.json({ games, hasMore });
   } catch (error) {
     next(error);
   }
 });
 
-// POST /api/games - Create a new game
+// POST /api/games
 router.post('/', async (req, res, next) => {
   const client = await getClient();
-
   try {
     const { build_id, player_ids } = req.body;
 
@@ -54,30 +108,24 @@ router.post('/', async (req, res, next) => {
     }
 
     await client.query('BEGIN');
-
     const game = await createGameTx(client, { build_id, player_ids });
-
     await client.query('COMMIT');
 
-    // Fetch the complete game with players
     const completeGame = await query(`
-      SELECT
-        g.*,
-        json_agg(
-          json_build_object(
-            'player_id', gp.player_id,
-            'player_name', p.name,
-            'final_score', gp.final_score
-          )
-        ) as players
+      SELECT g.*,
+        (SELECT json_group_array(json_object(
+          'player_id', gp.player_id,
+          'player_name', p.name,
+          'final_score', gp.final_score
+        ))
+        FROM game_players gp
+        JOIN players p ON gp.player_id = p.id
+        WHERE gp.game_id = g.id) AS players
       FROM games g
-      LEFT JOIN game_players gp ON g.id = gp.game_id
-      LEFT JOIN players p ON gp.player_id = p.id
-      WHERE g.id = $1
-      GROUP BY g.id
+      WHERE g.id = ?
     `, [game.id]);
 
-    res.status(201).json(completeGame.rows[0]);
+    res.status(201).json(parsePlayers(completeGame.rows[0]));
   } catch (error) {
     await client.query('ROLLBACK');
     next(error);
@@ -86,106 +134,83 @@ router.post('/', async (req, res, next) => {
   }
 });
 
-// PUT /api/games/:id/start - Start a game
+// PUT /api/games/:id/start
 router.put('/:id/start', async (req, res, next) => {
   try {
-    const { id } = req.params;
-
     const result = await query(
-      'UPDATE games SET started_at = CURRENT_TIMESTAMP WHERE id = $1 RETURNING *',
-      [id]
+      'UPDATE games SET started_at = CURRENT_TIMESTAMP WHERE id = ? RETURNING *',
+      [req.params.id]
     );
-
-    if (result.rows.length === 0) {
-      return res.status(404).json({ error: 'Game not found' });
-    }
-
+    if (result.rows.length === 0) return res.status(404).json({ error: 'Game not found' });
     res.json(result.rows[0]);
   } catch (error) {
     next(error);
   }
 });
 
-// PUT /api/games/:id/end - End a game
+// PUT /api/games/:id/end
 router.put('/:id/end', async (req, res, next) => {
   const client = await getClient();
-
   try {
     const { id } = req.params;
-
     await client.query('BEGIN');
 
-    // Get game start time
-    const gameResult = await client.query(
-      'SELECT * FROM games WHERE id = $1',
-      [id]
-    );
-
+    const gameResult = await client.query('SELECT * FROM games WHERE id = ?', [id]);
     if (gameResult.rows.length === 0) {
       await client.query('ROLLBACK');
       return res.status(404).json({ error: 'Game not found' });
     }
 
     const game = gameResult.rows[0];
-
-    // Calculate duration
     let duration = null;
     if (game.started_at) {
-      duration = Math.floor((Date.now() - new Date(game.started_at).getTime()) / 1000);
+      // SQLite CURRENT_TIMESTAMP is UTC but lacks the 'Z' suffix; add it to avoid
+      // timezone misinterpretation in Date.parse().
+      const ts = game.started_at.includes('T') ? game.started_at
+        : game.started_at.replace(' ', 'T') + 'Z';
+      duration = Math.max(0, Math.floor((Date.now() - new Date(ts).getTime()) / 1000));
     }
 
-    // Update game end time and duration
     await client.query(
-      'UPDATE games SET ended_at = CURRENT_TIMESTAMP, duration = $1 WHERE id = $2',
+      'UPDATE games SET ended_at = CURRENT_TIMESTAMP, duration = ? WHERE id = ?',
       [duration, id]
     );
 
-    // Get all players with their scores, ordered by score descending
     const playersResult = await client.query(
-      `SELECT gp.*, p.name as player_name
+      `SELECT gp.*, p.name AS player_name
        FROM game_players gp
        JOIN players p ON gp.player_id = p.id
-       WHERE gp.game_id = $1
+       WHERE gp.game_id = ?
        ORDER BY gp.final_score DESC`,
       [id]
     );
 
     const players = playersResult.rows;
-
-    // Calculate placements and league points
     let currentPlacement = 1;
     let previousScore = null;
-    let playersWithSameScore = [];
+    let group = [];
 
     for (let i = 0; i < players.length; i++) {
       const player = players[i];
-
       if (previousScore !== null && player.final_score !== previousScore) {
-        // Assign placement and points to all players with the previous score
-        const avgPoints = calculateAverageLeaguePoints(currentPlacement, playersWithSameScore.length, players.length);
-
-        for (const p of playersWithSameScore) {
+        const avgPoints = calculateAverageLeaguePoints(currentPlacement, group.length, players.length);
+        for (const p of group) {
           await client.query(
-            'UPDATE game_players SET placement = $1, league_points = $2 WHERE id = $3',
+            'UPDATE game_players SET placement = ?, league_points = ? WHERE id = ?',
             [currentPlacement, avgPoints, p.id]
           );
         }
-
-        currentPlacement += playersWithSameScore.length;
-        playersWithSameScore = [];
+        currentPlacement += group.length;
+        group = [];
       }
-
-      playersWithSameScore.push(player);
+      group.push(player);
       previousScore = player.final_score;
     }
-
-    // Handle the last group
-    if (playersWithSameScore.length > 0) {
-      const avgPoints = calculateAverageLeaguePoints(currentPlacement, playersWithSameScore.length, players.length);
-
-      for (const p of playersWithSameScore) {
+    if (group.length > 0) {
+      const avgPoints = calculateAverageLeaguePoints(currentPlacement, group.length, players.length);
+      for (const p of group) {
         await client.query(
-          'UPDATE game_players SET placement = $1, league_points = $2 WHERE id = $3',
+          'UPDATE game_players SET placement = ?, league_points = ? WHERE id = ?',
           [currentPlacement, avgPoints, p.id]
         );
       }
@@ -193,8 +218,15 @@ router.put('/:id/end', async (req, res, next) => {
 
     await client.query('COMMIT');
 
-    // Advance the tournament bracket if this game backs a tournament match.
-    // Runs on its own connection; failures here must not fail the game-end response.
+    // Evaluate achievements (non-fatal)
+    try {
+      const { evaluateAchievements } = require('./achievements');
+      await evaluateAchievements(players.map(p => p.player_id));
+    } catch (achErr) {
+      console.error('Achievement evaluation failed:', achErr);
+    }
+
+    // Tournament advancement (non-fatal)
     try {
       const { maybeAdvanceTournament } = require('./tournaments');
       await maybeAdvanceTournament(id);
@@ -202,27 +234,34 @@ router.put('/:id/end', async (req, res, next) => {
       console.error('Tournament advancement failed:', advanceErr);
     }
 
-    // Fetch the complete game with updated data
+    // Push notification for rank changes (non-fatal)
+    try {
+      const { notifyRankChanges } = require('./push');
+      await notifyRankChanges();
+    } catch {}
+
     const completeGame = await query(`
-      SELECT
-        g.*,
-        json_agg(
-          json_build_object(
-            'player_id', gp.player_id,
-            'player_name', p.name,
-            'final_score', gp.final_score,
-            'placement', gp.placement,
-            'league_points', gp.league_points
-          ) ORDER BY gp.placement
-        ) as players
+      SELECT g.*,
+        (SELECT json_group_array(json_object(
+          'player_id', gp.player_id,
+          'player_name', p.name,
+          'final_score', gp.final_score,
+          'placement', gp.placement,
+          'league_points', gp.league_points
+        ))
+        FROM (
+          SELECT gp2.player_id, p2.name, gp2.final_score, gp2.placement, gp2.league_points
+          FROM game_players gp2
+          JOIN players p2 ON gp2.player_id = p2.id
+          WHERE gp2.game_id = g.id
+          ORDER BY gp2.placement
+        ) AS gp JOIN players p ON gp.player_id = p.id) AS players
       FROM games g
-      LEFT JOIN game_players gp ON g.id = gp.game_id
-      LEFT JOIN players p ON gp.player_id = p.id
-      WHERE g.id = $1
-      GROUP BY g.id
+      WHERE g.id = ?
     `, [id]);
 
-    res.json(completeGame.rows[0]);
+    sseNotify(id, 'ended', { game_id: Number(id) });
+    res.json(parsePlayers(completeGame.rows[0]));
   } catch (error) {
     await client.query('ROLLBACK');
     next(error);
@@ -231,13 +270,13 @@ router.put('/:id/end', async (req, res, next) => {
   }
 });
 
-// DELETE /api/games/:id/cancel - Cancel an in-progress game (no auth required, only works if not yet ended)
+// DELETE /api/games/:id/cancel
 router.delete('/:id/cancel', async (req, res, next) => {
   const client = await getClient();
   try {
     const { id } = req.params;
     await client.query('BEGIN');
-    const gameResult = await client.query('SELECT id, ended_at FROM games WHERE id = $1', [id]);
+    const gameResult = await client.query('SELECT id, ended_at FROM games WHERE id = ?', [id]);
     if (gameResult.rows.length === 0) {
       await client.query('ROLLBACK');
       return res.status(404).json({ error: 'Game not found' });
@@ -246,9 +285,9 @@ router.delete('/:id/cancel', async (req, res, next) => {
       await client.query('ROLLBACK');
       return res.status(409).json({ error: 'Cannot cancel a game that has already ended' });
     }
-    await client.query('DELETE FROM score_snapshots WHERE game_id = $1', [id]);
-    await client.query('DELETE FROM game_players WHERE game_id = $1', [id]);
-    await client.query('DELETE FROM games WHERE id = $1', [id]);
+    await client.query('DELETE FROM score_snapshots WHERE game_id = ?', [id]);
+    await client.query('DELETE FROM game_players WHERE game_id = ?', [id]);
+    await client.query('DELETE FROM games WHERE id = ?', [id]);
     await client.query('COMMIT');
     res.json({ success: true });
   } catch (error) {
@@ -259,27 +298,21 @@ router.delete('/:id/cancel', async (req, res, next) => {
   }
 });
 
-// DELETE /api/games/:id - Delete a game and all related data (requires auth)
+// DELETE /api/games/:id
 router.delete('/:id', requireAuth, async (req, res, next) => {
   const client = await getClient();
-
   try {
     const { id } = req.params;
-
     await client.query('BEGIN');
-
-    const gameResult = await client.query('SELECT id FROM games WHERE id = $1', [id]);
+    const gameResult = await client.query('SELECT id FROM games WHERE id = ?', [id]);
     if (gameResult.rows.length === 0) {
       await client.query('ROLLBACK');
       return res.status(404).json({ error: 'Game not found' });
     }
-
-    await client.query('DELETE FROM score_snapshots WHERE game_id = $1', [id]);
-    await client.query('DELETE FROM game_players WHERE game_id = $1', [id]);
-    await client.query('DELETE FROM games WHERE id = $1', [id]);
-
+    await client.query('DELETE FROM score_snapshots WHERE game_id = ?', [id]);
+    await client.query('DELETE FROM game_players WHERE game_id = ?', [id]);
+    await client.query('DELETE FROM games WHERE id = ?', [id]);
     await client.query('COMMIT');
-
     res.json({ success: true });
   } catch (error) {
     await client.query('ROLLBACK');
@@ -289,72 +322,41 @@ router.delete('/:id', requireAuth, async (req, res, next) => {
   }
 });
 
-// Helper function to calculate average league points for tied players
-// Formula: LP = 100 * (n - p) / (n - 1), where n = total players, p = placement
-// Tied players receive the average across the slots they occupy
-function calculateAverageLeaguePoints(startPlacement, numTied, totalPlayers) {
-  const n = totalPlayers;
-  const avg = 100 * (n - startPlacement - (numTied - 1) / 2) / (n - 1);
-  return Math.round(avg * 100) / 100;
-}
-
-// Create a game with its players (everyone starts at 3 VP in Dominion) and
-// initial score snapshots. Caller owns the BEGIN/COMMIT. Returns the games row.
-// Shared by POST /games and the tournament match-play endpoint.
-async function createGameTx(client, { build_id, player_ids }) {
-  const gameResult = await client.query(
-    'INSERT INTO games (build_id) VALUES ($1) RETURNING *',
-    [build_id || null]
-  );
-  const game = gameResult.rows[0];
-
-  for (const player_id of player_ids) {
-    await client.query(
-      'INSERT INTO game_players (game_id, player_id, final_score) VALUES ($1, $2, 3)',
-      [game.id, player_id]
-    );
-    await client.query(
-      'INSERT INTO score_snapshots (game_id, player_id, score) VALUES ($1, $2, 3)',
-      [game.id, player_id]
-    );
-  }
-
-  return game;
-}
-
-// POST /api/games/:id/scores - Update player score
+// POST /api/games/:id/scores — update player score; edit_token gating
 router.post('/:id/scores', async (req, res, next) => {
   const client = await getClient();
-
   try {
     const { id } = req.params;
-    const { player_id, score } = req.body;
+    const { player_id, score, edit_token } = req.body;
 
     if (player_id === undefined || score === undefined) {
       return res.status(400).json({ error: 'player_id and score are required' });
     }
 
-    await client.query('BEGIN');
+    // Verify edit_token if game has one set
+    const gameRow = await query('SELECT edit_token FROM games WHERE id = ?', [id]);
+    if (gameRow.rows.length === 0) return res.status(404).json({ error: 'Game not found' });
+    const stored = gameRow.rows[0].edit_token;
+    if (stored && stored !== edit_token) {
+      return res.status(403).json({ error: 'Invalid edit token' });
+    }
 
-    // Update the player's score in game_players
+    await client.query('BEGIN');
     const updateResult = await client.query(
-      'UPDATE game_players SET final_score = $1 WHERE game_id = $2 AND player_id = $3 RETURNING *',
+      'UPDATE game_players SET final_score = ? WHERE game_id = ? AND player_id = ? RETURNING *',
       [score, id, player_id]
     );
-
     if (updateResult.rows.length === 0) {
       await client.query('ROLLBACK');
       return res.status(404).json({ error: 'Player not found in this game' });
     }
-
-    // Record score snapshot
     await client.query(
-      'INSERT INTO score_snapshots (game_id, player_id, score) VALUES ($1, $2, $3)',
+      'INSERT INTO score_snapshots (game_id, player_id, score) VALUES (?, ?, ?)',
       [id, player_id, score]
     );
-
     await client.query('COMMIT');
 
+    sseNotify(id, 'score', { player_id: Number(player_id), score: Number(score) });
     res.json(updateResult.rows[0]);
   } catch (error) {
     await client.query('ROLLBACK');
@@ -364,68 +366,123 @@ router.post('/:id/scores', async (req, res, next) => {
   }
 });
 
-// GET /api/games/:id/scores - Get score history
+// GET /api/games/:id/scores
 router.get('/:id/scores', async (req, res, next) => {
   try {
-    const { id } = req.params;
-
     const result = await query(`
-      SELECT
-        ss.id,
-        ss.game_id,
-        ss.player_id,
-        p.name as player_name,
-        p.color as player_color,
-        ss.score,
-        ss.timestamp
+      SELECT ss.id, ss.game_id, ss.player_id,
+             p.name AS player_name, p.color AS player_color,
+             ss.score, ss.timestamp
       FROM score_snapshots ss
       JOIN players p ON ss.player_id = p.id
-      WHERE ss.game_id = $1
+      WHERE ss.game_id = ?
       ORDER BY ss.timestamp ASC
-    `, [id]);
-
+    `, [req.params.id]);
     res.json(result.rows);
   } catch (error) {
     next(error);
   }
 });
 
-// GET /api/games/:id - Get game by ID
+// GET /api/games/:id/stream — SSE live score feed
+router.get('/:id/stream', (req, res) => {
+  const gameId = Number(req.params.id);
+  res.set({
+    'Content-Type': 'text/event-stream',
+    'Cache-Control': 'no-cache',
+    'Connection': 'keep-alive',
+    'X-Accel-Buffering': 'no',
+  });
+  res.flushHeaders();
+
+  if (!sseClients.has(gameId)) sseClients.set(gameId, new Set());
+  sseClients.get(gameId).add(res);
+
+  // Send current scores immediately on connect
+  query(`
+    SELECT gp.player_id, p.name AS player_name, p.color AS player_color, gp.final_score
+    FROM game_players gp
+    JOIN players p ON gp.player_id = p.id
+    WHERE gp.game_id = ?
+  `, [gameId]).then(r => {
+    res.write(`event: init\ndata: ${JSON.stringify(r.rows)}\n\n`);
+  }).catch(() => {});
+
+  // Heartbeat
+  const hb = setInterval(() => { try { res.write(': ping\n\n'); } catch {} }, 25000);
+
+  req.on('close', () => {
+    clearInterval(hb);
+    const set = sseClients.get(gameId);
+    if (set) { set.delete(res); if (set.size === 0) sseClients.delete(gameId); }
+  });
+});
+
+// GET /api/games/:id
 router.get('/:id', async (req, res, next) => {
   try {
-    const { id } = req.params;
-
     const result = await query(`
-      SELECT
-        g.*,
-        b.nickname as build_nickname,
-        json_agg(
-          json_build_object(
-            'player_id', gp.player_id,
-            'player_name', p.name,
-            'player_color', p.color,
-            'final_score', gp.final_score,
-            'placement', gp.placement,
-            'league_points', gp.league_points
-          ) ORDER BY gp.placement
-        ) as players
+      SELECT g.*, b.nickname AS build_nickname,
+        (SELECT json_group_array(json_object(
+          'player_id', gp.player_id,
+          'player_name', p.name,
+          'player_color', p.color,
+          'final_score', gp.final_score,
+          'placement', gp.placement,
+          'league_points', gp.league_points
+        ))
+        FROM (
+          SELECT gp2.player_id, p2.name, p2.color, gp2.final_score, gp2.placement, gp2.league_points
+          FROM game_players gp2
+          JOIN players p2 ON gp2.player_id = p2.id
+          WHERE gp2.game_id = g.id
+          ORDER BY gp2.placement
+        ) AS gp JOIN players p ON gp.player_id = p.id) AS players
       FROM games g
       LEFT JOIN builds b ON g.build_id = b.id
-      LEFT JOIN game_players gp ON g.id = gp.game_id
-      LEFT JOIN players p ON gp.player_id = p.id
-      WHERE g.id = $1
-      GROUP BY g.id, b.nickname
-    `, [id]);
+      WHERE g.id = ?
+    `, [req.params.id]);
 
-    if (result.rows.length === 0) {
-      return res.status(404).json({ error: 'Game not found' });
-    }
-
-    res.json(result.rows[0]);
+    if (result.rows.length === 0) return res.status(404).json({ error: 'Game not found' });
+    res.json(parsePlayers(result.rows[0]));
   } catch (error) {
     next(error);
   }
 });
 
+function calculateAverageLeaguePoints(startPlacement, numTied, totalPlayers) {
+  const n = totalPlayers;
+  const avg = 100 * (n - startPlacement - (numTied - 1) / 2) / (n - 1);
+  return Math.round(avg * 100) / 100;
+}
+
+async function createGameTx(client, { build_id, player_ids }) {
+  // Determine active season
+  const seasonRow = await query('SELECT id FROM seasons WHERE ended_at IS NULL ORDER BY id DESC LIMIT 1');
+  const seasonId = seasonRow.rows[0]?.id || null;
+
+  const editToken = crypto.randomBytes(6).toString('hex');
+
+  const gameResult = await client.query(
+    'INSERT INTO games (build_id, season_id, edit_token) VALUES (?, ?, ?) RETURNING *',
+    [build_id || null, seasonId, editToken]
+  );
+  const game = gameResult.rows[0];
+
+  for (const player_id of player_ids) {
+    await client.query(
+      'INSERT INTO game_players (game_id, player_id, final_score) VALUES (?, ?, 3)',
+      [game.id, player_id]
+    );
+    await client.query(
+      'INSERT INTO score_snapshots (game_id, player_id, score) VALUES (?, ?, 3)',
+      [game.id, player_id]
+    );
+  }
+
+  return game;
+}
+
 module.exports = router;
 module.exports.createGameTx = createGameTx;
+module.exports.sseNotify = sseNotify;

@@ -3,15 +3,89 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Dominion Tracker - Leaderboard</title>
+  <title>Dominion Tracker</title>
   <link rel="manifest" href="manifest.json">
   <link rel="apple-touch-icon" href="/icon-192.png">
-  <meta name="theme-color" content="#1c2333">
+  <meta name="theme-color" content="#181f30">
   <link rel="stylesheet" href="css/main.css">
-  <link rel="stylesheet" href="css/leaderboard.css">
   <script>if ('serviceWorker' in navigator) navigator.serviceWorker.register('/sw.js');</script>
+  <style>
+    .about-hero {
+      text-align: center;
+      padding: var(--spacing-2xl) var(--spacing-xl);
+      margin-bottom: var(--spacing-xl);
+    }
+    .about-hero img {
+      width: 80px;
+      height: 80px;
+      border-radius: 50%;
+      border: 3px solid var(--color-accent);
+      box-shadow: var(--shadow-glow-gold);
+      margin-bottom: var(--spacing-md);
+    }
+    .about-hero h1 {
+      font-size: 2.8rem;
+      border: none;
+      padding: 0;
+      margin-bottom: var(--spacing-sm);
+      color: var(--color-accent-hover);
+      text-shadow: 0 2px 12px rgba(184,150,58,0.4);
+    }
+    .about-hero p {
+      color: var(--color-text-secondary);
+      font-size: 1.1rem;
+      max-width: 520px;
+      margin: 0 auto var(--spacing-lg);
+    }
+    .hero-links {
+      display: flex;
+      gap: var(--spacing-md);
+      justify-content: center;
+      flex-wrap: wrap;
+    }
+    .about-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+      gap: var(--spacing-lg);
+      margin-bottom: var(--spacing-xl);
+    }
+    .about-card {
+      background: var(--color-bg-secondary);
+      border: 2px solid var(--color-border);
+      border-radius: var(--border-radius-md);
+      padding: var(--spacing-lg);
+      transition: border-color 0.25s ease, box-shadow 0.25s ease;
+      text-decoration: none;
+      display: block;
+      color: inherit;
+    }
+    .about-card:hover {
+      border-color: var(--color-accent-dim);
+      box-shadow: var(--shadow-glow-gold);
+      text-decoration: none;
+    }
+    .about-card-icon { font-size: 2rem; margin-bottom: var(--spacing-sm); }
+    .about-card h3 { color: var(--color-accent); margin-bottom: var(--spacing-xs); font-size: 1.1rem; }
+    .about-card p  { color: var(--color-text-secondary); font-size: 0.9rem; margin: 0; }
+    .season-spotlight {
+      background: var(--color-bg-secondary);
+      border: 2px solid var(--color-accent-dim);
+      border-radius: var(--border-radius-md);
+      padding: var(--spacing-xl);
+      margin-bottom: var(--spacing-xl);
+      display: flex;
+      align-items: center;
+      gap: var(--spacing-xl);
+      flex-wrap: wrap;
+    }
+    .season-spotlight .champion-block { flex: 1; min-width: 180px; }
+    .season-spotlight h2 { color: var(--color-accent); border: none; padding: 0; font-size: 1.4rem; }
+    .champion-block p { color: var(--color-text-secondary); font-size: 0.9rem; }
+  </style>
 </head>
 <body>
+  <div id="admin-banner-bar"></div>
+
   <header class="site-header">
     <a href="index.html" class="site-brand">
       <img class="brand-icon" src="/icon-192.png" alt="">
@@ -22,69 +96,144 @@
     </button>
     <nav id="main-nav">
       <ul>
-        <li><a href="index.html" class="active">Leaderboard</a></li>
+        <li><a href="index.html" class="active">Home</a></li>
+        <li><a href="leaderboard.html">Leaderboard</a></li>
         <li><a href="games.html">Recent Games</a></li>
         <li><a href="builds.html">Builds</a></li>
         <li><a href="players.html">Players</a></li>
         <li><a href="scoreboard.html">Play Game</a></li>
         <li><a href="tournament.html">Tournament</a></li>
+        <li><a href="live.html">Live</a></li>
+        <li><a href="history.html">History</a></li>
       </ul>
     </nav>
   </header>
 
   <div class="container">
-    <div class="page-banner"><h1>Player Leaderboard</h1></div>
-
-    <div id="error-message" class="error" style="display: none;"></div>
-
-    <div id="loading" class="loading">Loading leaderboard</div>
-
-    <div id="leaderboard-container" style="display: none;">
-
-      <!-- Podium for top 3 -->
-      <div id="podium-section" style="display: none;"></div>
-
-      <!-- Extras: rivalry + high score + most played build -->
-      <div id="extras-section" style="display: none;"></div>
-
-      <table id="leaderboard-table">
-        <thead>
-          <tr>
-            <th class="sortable" data-column="rank">#</th>
-            <th class="sortable" data-column="name">Player</th>
-            <th class="sortable" data-column="total_league_points">Total LP</th>
-            <th class="sortable" data-column="avg_league_points">Avg LP / Game</th>
-            <th class="sortable" data-column="total_wins">Wins</th>
-            <th class="sortable" data-column="total_games">Games</th>
-            <th class="sortable" data-column="avg_score">Avg Score</th>
-          </tr>
-        </thead>
-        <tbody id="leaderboard-body">
-          <!-- Populated by JavaScript -->
-        </tbody>
-      </table>
-
-      <div id="no-data" class="text-center mt-xl" style="display: none;">
-        <p>No provinces claimed yet.</p>
-        <p>Forge a new kingdom in the <a href="scoreboard.html">Live Scoreboard</a>.</p>
+    <div class="about-hero">
+      <img src="/icon-192.png" alt="Dominion Tracker">
+      <h1>Dominion Tracker</h1>
+      <p>Track every kingdom, crown every champion. A private league tool for competitive Dominion.</p>
+      <div class="hero-links">
+        <a href="leaderboard.html" class="btn btn-accent">View Leaderboard</a>
+        <a href="scoreboard.html" class="btn btn-primary">Start a Game</a>
       </div>
     </div>
-  </div>
 
-  <!-- H2H Modal -->
-  <div id="h2h-modal" class="modal-overlay" style="display: none;">
-    <div class="modal-box">
-      <div class="modal-header">
-        <span id="h2h-title">Head-to-Head</span>
-        <button class="modal-close" id="h2h-close">✕</button>
+    <!-- Season spotlight -->
+    <div class="season-spotlight fade-in" id="season-spotlight" style="display:none;">
+      <div class="champion-block">
+        <h2 id="season-name">Season 2</h2>
+        <div id="spotlight-champion"></div>
       </div>
-      <div id="h2h-body"></div>
+      <div style="flex:1; min-width:180px;">
+        <a href="leaderboard.html" class="btn" style="margin-bottom:var(--spacing-sm);display:block;text-align:center;">Current Standings</a>
+        <a href="history.html" class="btn" style="display:block;text-align:center;">Past Seasons</a>
+      </div>
+    </div>
+
+    <!-- Quick-nav cards -->
+    <div class="about-grid fade-in">
+      <a href="leaderboard.html" class="about-card">
+        <div class="about-card-icon">🏆</div>
+        <h3>Leaderboard</h3>
+        <p>Season 2 standings, league points, win rates and trends.</p>
+      </a>
+      <a href="scoreboard.html" class="about-card">
+        <div class="about-card-icon">⚔️</div>
+        <h3>Play a Game</h3>
+        <p>Start a live scoreboard, track VP in real time, end and record the result.</p>
+      </a>
+      <a href="tournament.html" class="about-card">
+        <div class="about-card-icon">🎖️</div>
+        <h3>Tournament</h3>
+        <p>Single-elimination bracket. Create, seed, and run a tournament with the group.</p>
+      </a>
+      <a href="live.html" class="about-card">
+        <div class="about-card-icon">📡</div>
+        <h3>Live Games</h3>
+        <p>Watch in-progress games update in real time without refreshing.</p>
+      </a>
+      <a href="builds.html" class="about-card">
+        <div class="about-card-icon">🃏</div>
+        <h3>Builds</h3>
+        <p>Browse and save kingdom configurations you've played.</p>
+      </a>
+      <a href="history.html" class="about-card">
+        <div class="about-card-icon">📜</div>
+        <h3>Season History</h3>
+        <p>Season 1 champion, past standings, and Tournament 1 bracket.</p>
+      </a>
+    </div>
+
+    <!-- Admin banner editor (hidden unless authed) -->
+    <div id="admin-section" style="display:none;" class="card mt-xl">
+      <div class="card-header">Admin: Site Banner</div>
+      <div class="form-group">
+        <label for="banner-text">Banner text (leave empty to clear)</label>
+        <input type="text" id="banner-text" maxlength="200" placeholder="Announce a game night, winner, etc.">
+      </div>
+      <button id="save-banner-btn" class="btn btn-primary">Save Banner</button>
+      <button id="show-admin-btn" class="btn btn-sm" style="margin-left:var(--spacing-sm);">Hide</button>
+      <p id="banner-save-msg" style="margin-top:var(--spacing-sm);"></p>
+    </div>
+    <div style="text-align:right;margin-top:var(--spacing-sm);">
+      <button id="show-admin-btn-small" class="btn btn-sm" style="opacity:0.4;font-size:0.75rem;">Admin</button>
     </div>
   </div>
 
   <script src="js/api.js"></script>
   <script src="js/header.js"></script>
-  <script src="js/leaderboard.js"></script>
-  <script src="js/falling-cards.js"></script>
+  <script>
+  document.addEventListener('DOMContentLoaded', async () => {
+    // Load admin banner
+    try {
+      const { banner } = await apiRequest('/banner');
+      const bar = document.getElementById('admin-banner-bar');
+      if (banner) { bar.className = 'site-banner-bar'; bar.textContent = banner; }
+    } catch {}
+
+    // Season spotlight
+    try {
+      const season = await apiRequest('/seasons/active');
+      if (season) {
+        document.getElementById('season-name').textContent = season.name;
+        document.getElementById('season-spotlight').style.display = 'flex';
+        // Latest leaderboard leader
+        const lb = await apiRequest('/leaderboard');
+        if (lb && lb.length > 0) {
+          const leader = lb[0];
+          document.getElementById('spotlight-champion').innerHTML =
+            `<div class="champion-crown">👑</div>
+             <div class="champion-name"><a href="profile.html?id=${leader.id}">${leader.name}</a></div>
+             <div class="champion-stats">${leader.total_league_points} LP · ${leader.total_wins} wins</div>`;
+        }
+      }
+    } catch {}
+
+    // Admin panel toggle
+    const adminSect = document.getElementById('admin-section');
+    document.getElementById('show-admin-btn-small').addEventListener('click', () => {
+      adminSect.style.display = adminSect.style.display === 'none' ? 'block' : 'none';
+    });
+    document.getElementById('show-admin-btn').addEventListener('click', () => {
+      adminSect.style.display = 'none';
+    });
+
+    // Load current banner into field
+    try {
+      const { banner } = await apiRequest('/banner');
+      if (banner) document.getElementById('banner-text').value = banner;
+    } catch {}
+
+    document.getElementById('save-banner-btn').addEventListener('click', () => {
+      showDeleteModal('Save site banner (admin credentials required)', async (creds) => {
+        await apiRequest('/banner', { method: 'PUT', body: JSON.stringify({ text: document.getElementById('banner-text').value }) }, creds);
+        document.getElementById('banner-save-msg').textContent = 'Saved!';
+        setTimeout(() => { document.getElementById('banner-save-msg').textContent = ''; }, 3000);
+      }, { confirmLabel: 'Save', pendingLabel: 'Saving...' });
+    });
+  });
+  </script>
 </body>
 </html>

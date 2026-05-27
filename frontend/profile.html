@@ -1,0 +1,328 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Dominion Tracker - Player Profile</title>
+  <link rel="manifest" href="manifest.json">
+  <link rel="apple-touch-icon" href="/icon-192.png">
+  <meta name="theme-color" content="#181f30">
+  <link rel="stylesheet" href="css/main.css">
+  <style>
+    .stat-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+      gap: var(--spacing-md);
+      margin-bottom: var(--spacing-xl);
+    }
+    .stat-box {
+      background: var(--color-bg-secondary);
+      border: 1px solid var(--color-border);
+      border-radius: var(--border-radius-md);
+      padding: var(--spacing-md);
+      text-align: center;
+    }
+    .stat-box .val {
+      font-size: 1.6rem;
+      font-weight: 700;
+      color: var(--color-accent-hover);
+    }
+    .stat-box .lbl {
+      font-size: 0.8rem;
+      color: var(--color-text-dim);
+      margin-top: 2px;
+    }
+    .edit-profile-form { display: none; }
+    .edit-profile-form.open { display: block; }
+    .color-swatches { display: flex; flex-wrap: wrap; gap: 8px; margin-top: var(--spacing-sm); }
+    .color-swatch {
+      width: 28px; height: 28px;
+      border-radius: 50%;
+      border: 3px solid transparent;
+      cursor: pointer;
+      transition: border-color 0.15s, transform 0.15s;
+    }
+    .color-swatch.selected, .color-swatch:hover { border-color: var(--color-text-primary); transform: scale(1.15); }
+    .tab-bar { display: flex; gap: var(--spacing-sm); margin-bottom: var(--spacing-lg); flex-wrap: wrap; }
+    .tab-btn {
+      background: var(--color-bg-tertiary);
+      border: 1px solid var(--color-border);
+      color: var(--color-text-secondary);
+      padding: var(--spacing-xs) var(--spacing-md);
+      border-radius: 20px;
+      cursor: pointer;
+      font-size: 0.9rem;
+      transition: all 0.2s;
+    }
+    .tab-btn.active { background: var(--color-blue-dim); border-color: var(--color-blue); color: var(--color-text-primary); }
+    .tab-panel { display: none; }
+    .tab-panel.active { display: block; }
+  </style>
+</head>
+<body>
+  <div id="admin-banner-bar"></div>
+
+  <header class="site-header">
+    <a href="index.html" class="site-brand">
+      <img class="brand-icon" src="/icon-192.png" alt="">
+      <span class="brand-name">Dominion Tracker</span>
+    </a>
+    <button class="nav-toggle" id="nav-toggle" aria-label="Menu" aria-expanded="false">
+      <span></span><span></span><span></span>
+    </button>
+    <nav id="main-nav">
+      <ul>
+        <li><a href="index.html">Home</a></li>
+        <li><a href="leaderboard.html">Leaderboard</a></li>
+        <li><a href="games.html">Recent Games</a></li>
+        <li><a href="builds.html">Builds</a></li>
+        <li><a href="players.html">Players</a></li>
+        <li><a href="scoreboard.html">Play Game</a></li>
+        <li><a href="tournament.html">Tournament</a></li>
+        <li><a href="live.html">Live</a></li>
+        <li><a href="history.html">History</a></li>
+      </ul>
+    </nav>
+  </header>
+
+  <div class="container">
+    <div id="loading" class="loading">Loading profile</div>
+    <div id="profile-container" style="display:none;">
+
+      <!-- Profile header -->
+      <div class="profile-header" id="profile-header">
+        <img id="profile-bg" class="profile-bg" src="" alt="" style="display:none;">
+        <img id="profile-avatar" class="profile-avatar" src="" alt="" style="display:none;">
+        <div class="profile-info">
+          <div class="profile-name" id="profile-name"></div>
+          <div class="profile-bio" id="profile-bio"></div>
+          <div style="display:flex;gap:var(--spacing-sm);align-items:center;margin-top:var(--spacing-sm);">
+            <span class="level-badge" id="level-badge"></span>
+          </div>
+          <div class="xp-bar-wrap" style="max-width:180px;" id="xp-wrap">
+            <div class="xp-bar-fill" id="xp-bar"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Tabs -->
+      <div class="tab-bar">
+        <button class="tab-btn active" data-tab="stats">Stats</button>
+        <button class="tab-btn" data-tab="achievements">Achievements</button>
+        <button class="tab-btn" data-tab="edit">Edit Profile</button>
+      </div>
+
+      <!-- Stats tab -->
+      <div class="tab-panel active" id="tab-stats">
+        <div class="stat-grid" id="stat-grid"></div>
+      </div>
+
+      <!-- Achievements tab -->
+      <div class="tab-panel" id="tab-achievements">
+        <div class="achievement-grid" id="achievement-grid"></div>
+      </div>
+
+      <!-- Edit Profile tab -->
+      <div class="tab-panel" id="tab-edit">
+        <div class="card">
+          <div class="card-header">Edit Profile</div>
+          <p style="color:var(--color-text-secondary);font-size:0.9rem;margin-bottom:var(--spacing-md);">
+            Profile edits are open — anyone can customize. Card images come from the builds you've played.
+          </p>
+          <div class="form-group">
+            <label for="bio-input">Bio (max 500 chars)</label>
+            <textarea id="bio-input" rows="3" maxlength="500" style="resize:vertical;"></textarea>
+          </div>
+          <div class="form-group">
+            <label>Accent Color</label>
+            <div class="color-swatches" id="accent-swatches"></div>
+          </div>
+          <div class="form-group">
+            <label for="avatar-select">Avatar Card</label>
+            <select id="avatar-select"><option value="">— none —</option></select>
+          </div>
+          <div class="form-group">
+            <label for="bg-select">Background Card</label>
+            <select id="bg-select"><option value="">— none —</option></select>
+          </div>
+          <button id="save-profile-btn" class="btn btn-primary">Save Profile</button>
+          <span id="profile-save-msg" style="margin-left:var(--spacing-md);color:var(--color-success);"></span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="js/api.js"></script>
+  <script src="js/header.js"></script>
+  <script>
+  const CARDS_PATH = 'dominion-cards-used-small/';
+
+  document.addEventListener('DOMContentLoaded', async () => {
+    apiRequest('/banner').then(({ banner }) => {
+      const bar = document.getElementById('admin-banner-bar');
+      if (banner) { bar.className = 'site-banner-bar'; bar.textContent = banner; }
+    }).catch(() => {});
+
+    const params = new URLSearchParams(location.search);
+    const playerId = params.get('id');
+    if (!playerId) { document.getElementById('loading').textContent = 'No player ID specified.'; return; }
+
+    // Tab switching
+    document.querySelectorAll('.tab-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+        document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+        btn.classList.add('active');
+        document.getElementById('tab-' + btn.dataset.tab).classList.add('active');
+      });
+    });
+
+    try {
+      const [profileData, stats, levelData, achievements] = await Promise.all([
+        apiRequest(`/profiles/${playerId}`),
+        apiRequest(`/players/${playerId}/stats`),
+        apiRequest(`/players/${playerId}/level`),
+        apiRequest(`/achievements/${playerId}`),
+      ]);
+
+      document.getElementById('loading').style.display = 'none';
+      document.getElementById('profile-container').style.display = 'block';
+
+      const { player, profile, accent_presets } = profileData;
+
+      // Header
+      document.getElementById('profile-name').textContent = player.name;
+      document.title = `${player.name} — Dominion Tracker`;
+      if (profile?.bio) document.getElementById('profile-bio').textContent = profile.bio;
+
+      if (profile?.avatar_card) {
+        const av = document.getElementById('profile-avatar');
+        av.src = CARDS_PATH + profile.avatar_card;
+        av.style.display = 'block';
+      }
+      if (profile?.background_card) {
+        const bg = document.getElementById('profile-bg');
+        bg.src = CARDS_PATH + profile.background_card;
+        bg.style.display = 'block';
+      }
+      if (profile?.accent_color) {
+        document.getElementById('profile-header').style.borderColor = profile.accent_color;
+      }
+
+      // Level badge
+      document.getElementById('level-badge').textContent = `Lv ${levelData.level}`;
+      const pct = levelData.xp_for_next > 0
+        ? Math.round(levelData.xp_into_level / levelData.xp_for_next * 100)
+        : 100;
+      document.getElementById('xp-bar').style.width = pct + '%';
+      document.getElementById('xp-wrap').title =
+        `${levelData.xp_into_level} / ${levelData.xp_for_next} XP to next level`;
+
+      // Stats grid
+      const sg = document.getElementById('stat-grid');
+      const statItems = [
+        { val: stats.total_games, lbl: 'Games' },
+        { val: stats.total_wins, lbl: 'Wins' },
+        { val: stats.total_league_points, lbl: 'Total LP' },
+        { val: stats.avg_league_points, lbl: 'Avg LP' },
+        { val: stats.avg_score, lbl: 'Avg Score' },
+        { val: stats.highest_score, lbl: 'Best Score' },
+      ];
+      sg.innerHTML = statItems.map(s =>
+        `<div class="stat-box"><div class="val">${s.val ?? '—'}</div><div class="lbl">${s.lbl}</div></div>`
+      ).join('');
+
+      // Achievements
+      const ag = document.getElementById('achievement-grid');
+      ag.innerHTML = achievements.map(a => `
+        <div class="achievement-card ${a.earned ? 'earned' : 'locked'}" title="${a.description}">
+          <div class="ach-icon">🏅</div>
+          <div class="ach-name">${a.name}</div>
+          <div class="ach-desc">${a.description}</div>
+          ${a.earned ? `<div style="font-size:0.7rem;color:var(--color-accent);margin-top:4px;">Earned ${formatDate(a.earned_at)}</div>` : ''}
+        </div>`).join('');
+
+      // Edit profile form
+      // Accent swatches
+      const swatchContainer = document.getElementById('accent-swatches');
+      let selectedAccent = profile?.accent_color || '';
+      accent_presets.forEach(color => {
+        const sw = document.createElement('div');
+        sw.className = 'color-swatch' + (color === selectedAccent ? ' selected' : '');
+        sw.style.background = color;
+        sw.title = color;
+        sw.addEventListener('click', () => {
+          swatchContainer.querySelectorAll('.color-swatch').forEach(s => s.classList.remove('selected'));
+          sw.classList.add('selected');
+          selectedAccent = color;
+        });
+        swatchContainer.appendChild(sw);
+      });
+
+      // Pre-fill bio
+      if (profile?.bio) document.getElementById('bio-input').value = profile.bio;
+
+      // Populate card selects — fetch list from builds used by this player
+      try {
+        const gamesRes = await apiRequest('/games?limit=100');
+        const cardSet = new Set();
+        (gamesRes.games || []).forEach(g => {
+          if (g.players?.some(p => p.player_id === Number(playerId))) {
+            // We can't easily get build cards here — use a generic list
+          }
+        });
+        // Fall back: offer all cards from a known builds fetch
+        const buildsRes = await apiRequest('/builds');
+        buildsRes.forEach(b => {
+          (b.cards || []).forEach(c => cardSet.add(c));
+        });
+        const cards = [...cardSet].sort();
+        const avSel = document.getElementById('avatar-select');
+        const bgSel = document.getElementById('bg-select');
+        cards.forEach(c => {
+          const fn = c.toLowerCase().replace(/\s+/g, '-') + '.jpg';
+          avSel.appendChild(new Option(c, fn));
+          bgSel.appendChild(new Option(c, fn));
+        });
+        if (profile?.avatar_card) avSel.value = profile.avatar_card;
+        if (profile?.background_card) bgSel.value = profile.background_card;
+      } catch {}
+
+      document.getElementById('save-profile-btn').addEventListener('click', async () => {
+        const btn = document.getElementById('save-profile-btn');
+        btn.disabled = true;
+        btn.textContent = 'Saving…';
+        try {
+          await apiRequest(`/profiles/${playerId}`, {
+            method: 'PUT',
+            body: JSON.stringify({
+              bio: document.getElementById('bio-input').value,
+              accent_color: selectedAccent || null,
+              avatar_card: document.getElementById('avatar-select').value || null,
+              background_card: document.getElementById('bg-select').value || null,
+            }),
+          });
+          const msg = document.getElementById('profile-save-msg');
+          msg.textContent = 'Saved!';
+          setTimeout(() => { msg.textContent = ''; location.reload(); }, 1200);
+        } catch (err) {
+          alert(err.message || 'Save failed');
+        } finally {
+          btn.disabled = false;
+          btn.textContent = 'Save Profile';
+        }
+      });
+
+    } catch (err) {
+      document.getElementById('loading').textContent = 'Failed to load profile.';
+      console.error(err);
+    }
+  });
+
+  function formatDate(ts) {
+    if (!ts) return '';
+    return new Date(ts).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+  }
+  </script>
+</body>
+</html>

@@ -1,34 +1,39 @@
-/* Dominion Tracker - Medieval Theme Global Styles */
+/* Dominion Tracker - Season 2 Medieval Theme */
 
-/* CSS Variables for Medieval Theme */
+/* CSS Variables */
 :root {
-  /* Core colors */
-  --color-bg-primary: #1c2333;
-  --color-bg-secondary: #22304a;
-  --color-bg-tertiary: #2c3e58;
+  /* Core colors — slightly deeper for Season 2 */
+  --color-bg-primary: #181f30;
+  --color-bg-secondary: #1e2b42;
+  --color-bg-tertiary: #263650;
 
-  /* Medieval blue accent */
-  --color-blue: #3d6a8a;
-  --color-blue-hover: #5183a8;
-  --color-blue-dim: #2a4d66;
+  /* Medieval blue — richer, more jewel-toned */
+  --color-blue: #3a6485;
+  --color-blue-hover: #4e7fa6;
+  --color-blue-dim: #263f55;
 
-  /* Bronze/gold accent */
-  --color-accent: #a08850;
-  --color-accent-hover: #c0a464;
+  /* Bronze/gold — warmer for S2 */
+  --color-accent: #b8963a;
+  --color-accent-hover: #d4b05a;
+  --color-accent-dim: #7a621a;
 
-  /* Text - parchment tones, lightened for readability */
-  --color-text-primary: #e8dcc8;
-  --color-text-secondary: #b8a884;
-  --color-text-dim: #7a6e5a;
+  /* Crimson highlight — new S2 accent for wins/achievements */
+  --color-crimson: #8a2a2a;
+  --color-crimson-hover: #aa3a3a;
+
+  /* Text */
+  --color-text-primary: #ecdfc8;
+  --color-text-secondary: #b8a880;
+  --color-text-dim: #7a6e58;
 
   /* Borders */
-  --color-border: #344a66;
-  --color-border-light: #4a6080;
+  --color-border: #2e4260;
+  --color-border-light: #445a78;
 
-  /* Status colors */
-  --color-success: #4a7a48;
-  --color-warning: #8a6a28;
-  --color-error: #7a3030;
+  /* Status */
+  --color-success: #3d6b3b;
+  --color-warning: #8a6820;
+  --color-error: #7a2828;
 
   /* Typography */
   --font-primary: Georgia, 'Times New Roman', serif;
@@ -43,15 +48,20 @@
   --spacing-2xl: 3rem;
 
   /* Borders */
-  --border-radius-sm: 2px;
-  --border-radius-md: 4px;
+  --border-radius-sm: 3px;
+  --border-radius-md: 6px;
   --border-width: 2px;
 
-  /* Shadows */
-  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.5);
-  --shadow-md: 0 2px 6px rgba(0, 0, 0, 0.6);
-  --shadow-lg: 0 4px 12px rgba(0, 0, 0, 0.7);
-  --shadow-inset: inset 0 2px 4px rgba(0, 0, 0, 0.4);
+  /* Shadows — deeper for Season 2 */
+  --shadow-sm: 0 1px 4px rgba(0, 0, 0, 0.55);
+  --shadow-md: 0 3px 8px rgba(0, 0, 0, 0.65);
+  --shadow-lg: 0 6px 18px rgba(0, 0, 0, 0.75);
+  --shadow-inset: inset 0 2px 5px rgba(0, 0, 0, 0.45);
+  --shadow-glow-gold: 0 0 12px rgba(184, 150, 58, 0.35);
+
+  /* Transitions */
+  --transition-fast: 0.15s ease;
+  --transition-base: 0.25s ease;
 }
 
 /* Reset and Base Styles */
@@ -73,12 +83,18 @@ body {
   min-height: 100%;
   position: relative;
 
-  /* Stone tile background */
-  background-color: #161e2e;
+  /* Season 2: slightly darker, richer stone tiles */
+  background-color: #131a27;
   background-image:
-    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='100'%3E%3Crect x='1' y='1' width='97' height='47' fill='%231c2b42' rx='1'/%3E%3Crect x='102' y='1' width='97' height='47' fill='%231a2840' rx='1'/%3E%3Crect x='-49' y='52' width='97' height='46' fill='%231e2d45' rx='1'/%3E%3Crect x='52' y='52' width='96' height='46' fill='%231b2a3f' rx='1'/%3E%3Crect x='152' y='52' width='97' height='46' fill='%231c2c42' rx='1'/%3E%3C/svg%3E");
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='100'%3E%3Crect x='1' y='1' width='97' height='47' fill='%23182438' rx='1'/%3E%3Crect x='102' y='1' width='97' height='47' fill='%23162036' rx='1'/%3E%3Crect x='-49' y='52' width='97' height='46' fill='%231a273c' rx='1'/%3E%3Crect x='52' y='52' width='96' height='46' fill='%23172238' rx='1'/%3E%3Crect x='152' y='52' width='97' height='46' fill='%23182438' rx='1'/%3E%3C/svg%3E");
   background-repeat: repeat;
   background-size: 200px 100px;
+  animation: page-fade-in 0.4s ease both;
+}
+
+@keyframes page-fade-in {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: translateY(0); }
 }
 
 /* Noise grain overlay */
@@ -156,9 +172,29 @@ a:hover {
   z-index: 1;
 }
 
+/* Page section fade-in utility */
+.fade-in {
+  animation: page-fade-in 0.35s ease both;
+}
+
+/* Score bump pulse — applied by JS when a score changes */
+@keyframes score-bump {
+  0%   { transform: scale(1); }
+  40%  { transform: scale(1.18); color: var(--color-accent-hover); }
+  100% { transform: scale(1); }
+}
+.score-bump { animation: score-bump 0.4s ease; }
+
+/* Rank-change flash */
+@keyframes rank-up {
+  0%, 100% { background-color: transparent; }
+  50%  { background-color: rgba(184, 150, 58, 0.18); }
+}
+.rank-changed { animation: rank-up 1s ease; }
+
 /* Site Header */
 .site-header {
-  background: linear-gradient(to bottom, #090e18, #111927);
+  background: linear-gradient(to bottom, #07101c, #0f1c2e);
   border-bottom: 2px solid var(--color-accent);
   box-shadow: 0 2px 12px rgba(0, 0, 0, 0.8);
   position: relative;
@@ -304,7 +340,7 @@ button:hover,
   background-color: var(--color-blue);
   color: #ffffff;
   box-shadow: var(--shadow-md);
-  transform: translateY(-1px);
+  transform: translateY(-2px);
 }
 
 button:active,
@@ -669,4 +705,230 @@ tr:hover {
   th, td {
     padding: var(--spacing-sm);
   }
+}
+
+/* ── Season 2 Component Styles ── */
+
+/* Admin site banner */
+.site-banner-bar {
+  background: linear-gradient(90deg, var(--color-crimson), var(--color-bg-primary));
+  border-bottom: 1px solid var(--color-crimson-hover);
+  color: #f0c8c8;
+  padding: var(--spacing-xs) var(--spacing-xl);
+  text-align: center;
+  font-size: 0.95rem;
+  letter-spacing: 0.03em;
+}
+
+/* Level badge */
+.level-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: var(--color-bg-tertiary);
+  border: 1px solid var(--color-accent-dim);
+  border-radius: 20px;
+  padding: 2px 8px;
+  font-size: 0.8rem;
+  color: var(--color-accent);
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  vertical-align: middle;
+}
+
+/* XP progress bar */
+.xp-bar-wrap {
+  background: var(--color-bg-primary);
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
+  height: 8px;
+  overflow: hidden;
+  margin-top: 4px;
+}
+.xp-bar-fill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--color-accent-dim), var(--color-accent));
+  border-radius: 6px;
+  transition: width 0.6s ease;
+}
+
+/* Achievement grid */
+.achievement-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: var(--spacing-md);
+  margin-top: var(--spacing-md);
+}
+.achievement-card {
+  background: var(--color-bg-secondary);
+  border: 2px solid var(--color-border);
+  border-radius: var(--border-radius-md);
+  padding: var(--spacing-md);
+  text-align: center;
+  transition: border-color var(--transition-base), box-shadow var(--transition-base);
+}
+.achievement-card.earned {
+  border-color: var(--color-accent-dim);
+  box-shadow: var(--shadow-glow-gold);
+}
+.achievement-card.locked { opacity: 0.45; }
+.achievement-card .ach-icon {
+  width: 48px;
+  height: 48px;
+  margin: 0 auto var(--spacing-sm);
+  border-radius: var(--border-radius-sm);
+  object-fit: cover;
+  background: var(--color-bg-tertiary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.8rem;
+}
+.achievement-card .ach-name {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--color-text-primary);
+  margin-bottom: 2px;
+}
+.achievement-card .ach-desc {
+  font-size: 0.75rem;
+  color: var(--color-text-dim);
+  line-height: 1.3;
+}
+
+/* Player profile header */
+.profile-header {
+  position: relative;
+  border-radius: var(--border-radius-md);
+  overflow: hidden;
+  margin-bottom: var(--spacing-xl);
+  min-height: 180px;
+  display: flex;
+  align-items: flex-end;
+  padding: var(--spacing-lg);
+  background: var(--color-bg-secondary);
+  border: 2px solid var(--color-border);
+}
+.profile-bg {
+  position: absolute;
+  inset: 0;
+  object-fit: cover;
+  width: 100%;
+  height: 100%;
+  opacity: 0.22;
+}
+.profile-avatar {
+  position: relative;
+  width: 80px;
+  height: 80px;
+  border-radius: var(--border-radius-md);
+  object-fit: cover;
+  border: 3px solid var(--color-accent);
+  box-shadow: var(--shadow-md);
+  margin-right: var(--spacing-md);
+  flex-shrink: 0;
+}
+.profile-info { position: relative; }
+.profile-name {
+  font-size: 1.8rem;
+  font-weight: 700;
+  color: var(--color-text-primary);
+  text-shadow: 0 2px 8px rgba(0,0,0,0.7);
+  margin-bottom: var(--spacing-xs);
+}
+.profile-bio {
+  color: var(--color-text-secondary);
+  font-size: 0.95rem;
+  font-style: italic;
+}
+
+/* Modal generic */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.75);
+  z-index: 10000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.modal-box {
+  background: var(--color-bg-secondary);
+  border: 2px solid var(--color-accent);
+  border-radius: var(--border-radius-md);
+  padding: var(--spacing-xl);
+  width: 100%;
+  max-width: 540px;
+  box-shadow: var(--shadow-lg);
+  max-height: 90vh;
+  overflow-y: auto;
+}
+.modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: var(--spacing-lg);
+  padding-bottom: var(--spacing-sm);
+  border-bottom: 1px solid var(--color-border);
+}
+.modal-close {
+  background: none;
+  border: none;
+  color: var(--color-text-dim);
+  font-size: 1.2rem;
+  cursor: pointer;
+  padding: 4px 8px;
+  box-shadow: none;
+  transform: none;
+}
+.modal-close:hover { color: var(--color-text-primary); transform: none; box-shadow: none; }
+
+/* Season history cards */
+.season-card {
+  background: var(--color-bg-secondary);
+  border: 2px solid var(--color-border);
+  border-radius: var(--border-radius-md);
+  padding: var(--spacing-lg);
+  margin-bottom: var(--spacing-lg);
+  transition: border-color var(--transition-base);
+}
+.season-card:hover { border-color: var(--color-accent-dim); }
+.season-card h2 { color: var(--color-accent); font-size: 1.4rem; }
+.season-champion {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-md);
+  margin-top: var(--spacing-md);
+  padding: var(--spacing-md);
+  background: var(--color-bg-tertiary);
+  border-radius: var(--border-radius-sm);
+}
+.champion-crown { font-size: 2rem; }
+.champion-name { font-size: 1.1rem; font-weight: 600; color: var(--color-accent-hover); }
+.champion-stats { font-size: 0.85rem; color: var(--color-text-secondary); }
+
+/* Live game indicator */
+.live-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: rgba(138, 42, 42, 0.3);
+  border: 1px solid var(--color-crimson);
+  color: #f08080;
+  border-radius: 20px;
+  padding: 2px 10px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+}
+.live-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #f08080;
+  animation: pulse-dot 1.4s ease infinite;
+}
+@keyframes pulse-dot {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50%  { opacity: 0.4; transform: scale(0.7); }
 }

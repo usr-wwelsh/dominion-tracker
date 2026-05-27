@@ -158,6 +158,50 @@ const statsAPI = {
   getExtras: () => apiRequest('/extras'),
 };
 
+// Seasons API
+const seasonsAPI = {
+  getAll:      () => apiRequest('/seasons'),
+  getActive:   () => apiRequest('/seasons/active'),
+  getStandings:(id) => apiRequest(`/seasons/${id}/standings`),
+  getChampion: (id) => apiRequest(`/seasons/${id}/champion`),
+};
+
+// Profiles API
+const profilesAPI = {
+  get:    (playerId) => apiRequest(`/profiles/${playerId}`),
+  update: (playerId, data) => apiRequest(`/profiles/${playerId}`, {
+    method: 'PUT',
+    body: JSON.stringify(data),
+  }),
+};
+
+// Achievements API
+const achievementsAPI = {
+  getForPlayer: (playerId) => apiRequest(`/achievements/${playerId}`),
+};
+
+// Banner API
+const bannerAPI = {
+  get: () => apiRequest('/banner'),
+  set: (text, credentials) => apiRequest('/banner', {
+    method: 'PUT',
+    body: JSON.stringify({ text }),
+  }, credentials),
+};
+
+// Push API
+const pushAPI = {
+  getKey: () => apiRequest('/push/key'),
+  subscribe: (subscription, playerId) => apiRequest('/push/subscribe', {
+    method: 'POST',
+    body: JSON.stringify({ subscription, player_id: playerId }),
+  }),
+  unsubscribe: (endpoint) => apiRequest('/push/unsubscribe', {
+    method: 'POST',
+    body: JSON.stringify({ endpoint }),
+  }),
+};
+
 // Tournaments API
 const tournamentsAPI = {
   getAll: () => apiRequest('/tournaments'),

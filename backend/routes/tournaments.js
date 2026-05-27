@@ -4,63 +4,51 @@ const { query, getClient } = require('../db');
 const { requireAuth } = require('../middleware/auth');
 const { createGameTx } = require('./games');
 
-// --- Bracket helpers ---------------------------------------------------------
-
 function nextPow2(n) {
   let p = 1;
   while (p < n) p *= 2;
   return p;
 }
 
-// Standard single-elimination seeding order for a power-of-two bracket.
-// size 4 -> [1,4,2,3]; size 8 -> [1,8,4,5,2,7,3,6]. Seeds beyond the player
-// count become byes against the top seeds.
 function seedOrder(size) {
   let seeds = [1, 2];
   while (seeds.length < size) {
     const sum = seeds.length * 2 + 1;
     const next = [];
-    for (const s of seeds) {
-      next.push(s);
-      next.push(sum - s);
-    }
+    for (const s of seeds) { next.push(s); next.push(sum - s); }
     seeds = next;
   }
   return seeds;
 }
 
-// Mark a match's winner and push them into the next match (or finalize the
-// tournament). `client` owns the surrounding transaction.
 async function advanceWinner(client, match, winnerId) {
   const finalStatus = match.status === 'bye' ? 'bye' : 'complete';
   await client.query(
-    'UPDATE tournament_matches SET winner_player_id = $1, status = $2 WHERE id = $3',
+    'UPDATE tournament_matches SET winner_player_id = ?, status = ? WHERE id = ?',
     [winnerId, finalStatus, match.id]
   );
 
   if (match.next_match_id) {
     const col = match.next_slot === 1 ? 'player1_id' : 'player2_id';
     await client.query(
-      `UPDATE tournament_matches SET ${col} = $1 WHERE id = $2`,
+      `UPDATE tournament_matches SET ${col} = ? WHERE id = ?`,
       [winnerId, match.next_match_id]
     );
-    const nm = await client.query('SELECT * FROM tournament_matches WHERE id = $1', [match.next_match_id]);
+    const nm = await client.query('SELECT * FROM tournament_matches WHERE id = ?', [match.next_match_id]);
     const next = nm.rows[0];
-    if (next.player1_id && next.player2_id && next.status === 'pending') {
-      await client.query("UPDATE tournament_matches SET status = 'ready' WHERE id = $1", [next.id]);
+    if (next && next.player1_id && next.player2_id && next.status === 'pending') {
+      await client.query("UPDATE tournament_matches SET status = 'ready' WHERE id = ?", [next.id]);
     }
   } else {
-    // Final match completed -> crown the tournament champion and snapshot Season 1.
     await client.query(
-      "UPDATE tournaments SET status = 'complete', winner_player_id = $1, completed_at = CURRENT_TIMESTAMP WHERE id = $2",
+      "UPDATE tournaments SET status = 'complete', winner_player_id = ?, completed_at = CURRENT_TIMESTAMP WHERE id = ?",
       [winnerId, match.tournament_id]
     );
-    await snapshotSeason1(client, match.tournament_id);
+    await snapshotSeason(client, match.tournament_id);
   }
 }
 
-// Capture the current leaderboard #1 as the Season 1 champion (once).
-async function snapshotSeason1(client, tournamentId) {
+async function snapshotSeason(client, tournamentId) {
   const existing = await client.query("SELECT id FROM season_snapshots WHERE label = 'Season 1'");
   if (existing.rows.length > 0) return;
 
@@ -68,14 +56,13 @@ async function snapshotSeason1(client, tournamentId) {
     SELECT p.id, p.name,
       COUNT(*) AS total_games,
       SUM(gp.league_points) AS total_lp,
-      SUM(CASE WHEN gp.placement = 1 THEN 1 ELSE 0 END) AS total_wins,
-      AVG(gp.final_score) AS avg_score
+      SUM(CASE WHEN gp.placement = 1 THEN 1 ELSE 0 END) AS total_wins
     FROM players p
     JOIN game_players gp ON gp.player_id = p.id
     JOIN games g ON gp.game_id = g.id
     WHERE g.ended_at IS NOT NULL
     GROUP BY p.id, p.name
-    ORDER BY total_lp DESC, total_wins DESC, avg_score DESC
+    ORDER BY total_lp DESC, total_wins DESC
     LIMIT 1
   `);
   if (rows.length === 0) return;
@@ -84,28 +71,25 @@ async function snapshotSeason1(client, tournamentId) {
   await client.query(
     `INSERT INTO season_snapshots
        (label, player_id, player_name, total_league_points, total_wins, total_games, tournament_id)
-     VALUES ('Season 1', $1, $2, $3, $4, $5, $6)`,
+     VALUES ('Season 1', ?, ?, ?, ?, ?, ?)`,
     [w.id, w.name, w.total_lp, w.total_wins, w.total_games, tournamentId]
   );
 }
 
-// Called by games.js after a game ends: if the game backs a tournament match,
-// advance the winner. A tied match (no single placement-1) is parked as 'tie'
-// for the operator to resolve manually.
 async function maybeAdvanceTournament(gameId) {
-  const { rows } = await query('SELECT * FROM tournament_matches WHERE game_id = $1', [gameId]);
+  const { rows } = await query('SELECT * FROM tournament_matches WHERE game_id = ?', [gameId]);
   if (rows.length === 0) return;
 
   const match = rows[0];
   if (match.status === 'complete' || match.status === 'bye') return;
 
   const { rows: winners } = await query(
-    'SELECT player_id FROM game_players WHERE game_id = $1 AND placement = 1',
+    'SELECT player_id FROM game_players WHERE game_id = ? AND placement = 1',
     [gameId]
   );
 
   if (winners.length !== 1) {
-    await query("UPDATE tournament_matches SET status = 'tie' WHERE id = $1", [match.id]);
+    await query("UPDATE tournament_matches SET status = 'tie' WHERE id = ?", [match.id]);
     return;
   }
 
@@ -113,7 +97,7 @@ async function maybeAdvanceTournament(gameId) {
   const client = await getClient();
   try {
     await client.query('BEGIN');
-    const fresh = await client.query('SELECT * FROM tournament_matches WHERE id = $1', [match.id]);
+    const fresh = await client.query('SELECT * FROM tournament_matches WHERE id = ?', [match.id]);
     await advanceWinner(client, fresh.rows[0], winnerId);
     await client.query('COMMIT');
   } catch (error) {
@@ -124,13 +108,12 @@ async function maybeAdvanceTournament(gameId) {
   }
 }
 
-// Assemble the full bracket response: tournament row + rounds (array of arrays).
 async function getBracket(tournamentId) {
   const tRes = await query(
     `SELECT t.*, w.name AS winner_name
      FROM tournaments t
      LEFT JOIN players w ON t.winner_player_id = w.id
-     WHERE t.id = $1`,
+     WHERE t.id = ?`,
     [tournamentId]
   );
   if (tRes.rows.length === 0) return null;
@@ -146,7 +129,7 @@ async function getBracket(tournamentId) {
     LEFT JOIN players p2 ON tm.player2_id = p2.id
     LEFT JOIN players w ON tm.winner_player_id = w.id
     LEFT JOIN games g ON tm.game_id = g.id
-    WHERE tm.tournament_id = $1
+    WHERE tm.tournament_id = ?
     ORDER BY tm.round, tm.match_index
   `, [tournamentId]);
 
@@ -160,9 +143,6 @@ async function getBracket(tournamentId) {
   return { tournament: tRes.rows[0], rounds };
 }
 
-// --- Routes ------------------------------------------------------------------
-
-// GET /api/tournaments - list tournaments
 router.get('/', async (req, res, next) => {
   try {
     const result = await query(
@@ -177,7 +157,6 @@ router.get('/', async (req, res, next) => {
   }
 });
 
-// GET /api/tournaments/:id - full bracket
 router.get('/:id', async (req, res, next) => {
   try {
     const bracket = await getBracket(req.params.id);
@@ -188,7 +167,6 @@ router.get('/:id', async (req, res, next) => {
   }
 });
 
-// POST /api/tournaments - create a tournament and generate the bracket
 router.post('/', async (req, res, next) => {
   const client = await getClient();
   try {
@@ -214,19 +192,18 @@ router.post('/', async (req, res, next) => {
     await client.query('BEGIN');
 
     const tRes = await client.query(
-      'INSERT INTO tournaments (name, status, best_of) VALUES ($1, $2, $3) RETURNING *',
+      'INSERT INTO tournaments (name, status, best_of) VALUES (?, ?, ?) RETURNING *',
       [name.trim(), 'pending', best_of && best_of > 0 ? best_of : 1]
     );
     const tournament = tRes.rows[0];
 
     for (let i = 0; i < n; i++) {
       await client.query(
-        'INSERT INTO tournament_players (tournament_id, player_id, seed) VALUES ($1, $2, $3)',
+        'INSERT INTO tournament_players (tournament_id, player_id, seed) VALUES (?, ?, ?)',
         [tournament.id, player_ids[i], i + 1]
       );
     }
 
-    // Create all matches; remember their ids by round/index.
     const matchIds = {};
     for (let r = 1; r <= totalRounds; r++) {
       const numMatches = size / Math.pow(2, r);
@@ -240,29 +217,27 @@ router.post('/', async (req, res, next) => {
         const ins = await client.query(
           `INSERT INTO tournament_matches
              (tournament_id, round, match_index, player1_id, player2_id, status)
-           VALUES ($1, $2, $3, $4, $5, $6) RETURNING id`,
+           VALUES (?, ?, ?, ?, ?, ?) RETURNING id`,
           [tournament.id, r, m, p1, p2, status]
         );
         matchIds[`${r}_${m}`] = ins.rows[0].id;
       }
     }
 
-    // Link each match to its parent (second pass, since parents are created last).
     for (let r = 1; r < totalRounds; r++) {
       const numMatches = size / Math.pow(2, r);
       for (let m = 0; m < numMatches; m++) {
         const nextId = matchIds[`${r + 1}_${Math.floor(m / 2)}`];
         const nextSlot = (m % 2 === 0) ? 1 : 2;
         await client.query(
-          'UPDATE tournament_matches SET next_match_id = $1, next_slot = $2 WHERE id = $3',
+          'UPDATE tournament_matches SET next_match_id = ?, next_slot = ? WHERE id = ?',
           [nextId, nextSlot, matchIds[`${r}_${m}`]]
         );
       }
     }
 
-    // Auto-resolve first-round byes and propagate the present player onward.
     for (let m = 0; m < size / 2; m++) {
-      const mr = await client.query('SELECT * FROM tournament_matches WHERE id = $1', [matchIds[`1_${m}`]]);
+      const mr = await client.query('SELECT * FROM tournament_matches WHERE id = ?', [matchIds[`1_${m}`]]);
       const match = mr.rows[0];
       if (match.status === 'bye') {
         const winner = match.player1_id || match.player2_id;
@@ -282,7 +257,6 @@ router.post('/', async (req, res, next) => {
   }
 });
 
-// POST /api/tournaments/:id/matches/:matchId/play - create the backing game
 router.post('/:id/matches/:matchId/play', async (req, res, next) => {
   const client = await getClient();
   try {
@@ -292,7 +266,7 @@ router.post('/:id/matches/:matchId/play', async (req, res, next) => {
     await client.query('BEGIN');
 
     const mr = await client.query(
-      'SELECT * FROM tournament_matches WHERE id = $1 AND tournament_id = $2',
+      'SELECT * FROM tournament_matches WHERE id = ? AND tournament_id = ?',
       [matchId, id]
     );
     if (mr.rows.length === 0) {
@@ -313,12 +287,12 @@ router.post('/:id/matches/:matchId/play', async (req, res, next) => {
       build_id: build_id || null,
       player_ids: [match.player1_id, match.player2_id],
     });
-    await client.query('UPDATE games SET started_at = CURRENT_TIMESTAMP WHERE id = $1', [game.id]);
+    await client.query('UPDATE games SET started_at = CURRENT_TIMESTAMP WHERE id = ?', [game.id]);
     await client.query(
-      "UPDATE tournament_matches SET game_id = $1, status = 'in_progress' WHERE id = $2",
+      "UPDATE tournament_matches SET game_id = ?, status = 'in_progress' WHERE id = ?",
       [game.id, match.id]
     );
-    await client.query("UPDATE tournaments SET status = 'active' WHERE id = $1 AND status = 'pending'", [id]);
+    await client.query("UPDATE tournaments SET status = 'active' WHERE id = ? AND status = 'pending'", [id]);
 
     await client.query('COMMIT');
     res.json({ game_id: game.id });
@@ -330,7 +304,6 @@ router.post('/:id/matches/:matchId/play', async (req, res, next) => {
   }
 });
 
-// POST /api/tournaments/:id/matches/:matchId/winner - resolve a tied match
 router.post('/:id/matches/:matchId/winner', async (req, res, next) => {
   const client = await getClient();
   try {
@@ -339,7 +312,7 @@ router.post('/:id/matches/:matchId/winner', async (req, res, next) => {
 
     await client.query('BEGIN');
     const mr = await client.query(
-      'SELECT * FROM tournament_matches WHERE id = $1 AND tournament_id = $2',
+      'SELECT * FROM tournament_matches WHERE id = ? AND tournament_id = ?',
       [matchId, id]
     );
     if (mr.rows.length === 0) {
@@ -369,12 +342,11 @@ router.post('/:id/matches/:matchId/winner', async (req, res, next) => {
   }
 });
 
-// POST /api/tournaments/:id/snapshot-season - manually capture the Season 1 champion
 router.post('/:id/snapshot-season', requireAuth, async (req, res, next) => {
   const client = await getClient();
   try {
     await client.query('BEGIN');
-    await snapshotSeason1(client, req.params.id);
+    await snapshotSeason(client, req.params.id);
     await client.query('COMMIT');
     res.json({ success: true });
   } catch (error) {
@@ -385,13 +357,10 @@ router.post('/:id/snapshot-season', requireAuth, async (req, res, next) => {
   }
 });
 
-// DELETE /api/tournaments/:id - remove a tournament (backing games are kept)
 router.delete('/:id', requireAuth, async (req, res, next) => {
   try {
-    const result = await query('DELETE FROM tournaments WHERE id = $1 RETURNING id', [req.params.id]);
-    if (result.rows.length === 0) {
-      return res.status(404).json({ error: 'Tournament not found' });
-    }
+    const result = await query('DELETE FROM tournaments WHERE id = ? RETURNING id', [req.params.id]);
+    if (result.rows.length === 0) return res.status(404).json({ error: 'Tournament not found' });
     res.json({ success: true });
   } catch (error) {
     next(error);
