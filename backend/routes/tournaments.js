@@ -160,6 +160,137 @@ async function getBracket(tournamentId) {
   return { tournament: tRes.rows[0], rounds };
 }
 
+// --- Swiss (pods) ------------------------------------------------------------
+
+// Split n players into pods of mostly 3. The leftover is absorbed into a 4
+// (or a single 2-pod for n=5) so every count from 5 up works. Larger pods come
+// last, i.e. they hold the lower-ranked players when filling top-down.
+// 5->[3,2] 6->[3,3] 7->[3,4] 8->[4,4] 9->[3,3,3] 10->[3,3,4] 11->[3,4,4]
+function podSizes(n) {
+  if (n < 3) return [n];
+  const pods = Math.floor(n / 3);
+  const rem = n % 3;
+  const sizes = new Array(pods).fill(3);
+  if (rem === 1) {
+    sizes[pods - 1] += 1;
+  } else if (rem === 2) {
+    if (pods >= 2) { sizes[pods - 1] += 1; sizes[pods - 2] += 1; }
+    else sizes.push(2);
+  }
+  return sizes;
+}
+
+function shuffle(arr) {
+  for (let i = arr.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [arr[i], arr[j]] = [arr[j], arr[i]];
+  }
+  return arr;
+}
+
+// Create a round's pods. Each pod is a normal game (started immediately) linked
+// back via tournament_games. `orderedIds` is consumed top-down into the pods.
+async function createSwissPodsTx(client, tournamentId, round, orderedIds, buildId) {
+  const sizes = podSizes(orderedIds.length);
+  let cursor = 0;
+  for (let i = 0; i < sizes.length; i++) {
+    const podIds = orderedIds.slice(cursor, cursor + sizes[i]);
+    cursor += sizes[i];
+    const game = await createGameTx(client, { build_id: buildId || null, player_ids: podIds });
+    await client.query('UPDATE games SET started_at = CURRENT_TIMESTAMP WHERE id = $1', [game.id]);
+    await client.query(
+      'INSERT INTO tournament_games (tournament_id, round, pod_index, game_id) VALUES ($1, $2, $3, $4)',
+      [tournamentId, round, i, game.id]
+    );
+  }
+}
+
+// Standings: SUM(league_points) over the tournament's games. Only ended pods
+// have league_points, so in-progress pods don't count yet. Ordered best-first.
+async function getStandings(tournamentId, client = null) {
+  const run = client ? client.query.bind(client) : query;
+  const { rows } = await run(`
+    SELECT p.id AS player_id, p.name, p.color,
+      COALESCE(SUM(gp.league_points), 0) AS total_lp,
+      COALESCE(SUM(CASE WHEN gp.placement = 1 THEN 1 ELSE 0 END), 0) AS wins,
+      COUNT(gp.id) FILTER (WHERE g.ended_at IS NOT NULL) AS games_played,
+      COALESCE(AVG(gp.final_score) FILTER (WHERE g.ended_at IS NOT NULL), 0) AS avg_score
+    FROM tournament_players tp
+    JOIN players p ON p.id = tp.player_id
+    LEFT JOIN tournament_games tg ON tg.tournament_id = tp.tournament_id
+    LEFT JOIN game_players gp ON gp.game_id = tg.game_id AND gp.player_id = tp.player_id
+    LEFT JOIN games g ON g.id = tg.game_id
+    WHERE tp.tournament_id = $1
+    GROUP BY p.id, p.name, p.color
+    ORDER BY total_lp DESC, wins DESC, avg_score DESC, p.name ASC
+  `, [tournamentId]);
+  return rows;
+}
+
+// Assemble the full swiss response: tournament + standings + per-round pods.
+async function getSwiss(tournamentId) {
+  const tRes = await query(
+    `SELECT t.*, w.name AS winner_name
+     FROM tournaments t
+     LEFT JOIN players w ON t.winner_player_id = w.id
+     WHERE t.id = $1`,
+    [tournamentId]
+  );
+  if (tRes.rows.length === 0) return null;
+  const tournament = tRes.rows[0];
+
+  const standings = await getStandings(tournamentId);
+
+  const podRes = await query(`
+    SELECT tg.round, tg.pod_index, tg.game_id, g.ended_at, g.started_at
+    FROM tournament_games tg
+    JOIN games g ON g.id = tg.game_id
+    WHERE tg.tournament_id = $1
+    ORDER BY tg.round, tg.pod_index
+  `, [tournamentId]);
+
+  const gameIds = podRes.rows.map(r => r.game_id);
+  let playersByGame = {};
+  if (gameIds.length) {
+    const ppRes = await query(`
+      SELECT gp.game_id, gp.player_id, p.name, p.color,
+        gp.final_score, gp.placement, gp.league_points
+      FROM game_players gp
+      JOIN players p ON p.id = gp.player_id
+      WHERE gp.game_id = ANY($1)
+      ORDER BY gp.placement NULLS LAST, gp.final_score DESC
+    `, [gameIds]);
+    for (const row of ppRes.rows) {
+      (playersByGame[row.game_id] ||= []).push(row);
+    }
+  }
+
+  const rounds = [];
+  let currentRoundComplete = tournament.current_round > 0;
+  for (const pod of podRes.rows) {
+    const r = pod.round - 1;
+    if (!rounds[r]) rounds[r] = { round: pod.round, pods: [] };
+    const ended = pod.ended_at !== null;
+    if (pod.round === tournament.current_round && !ended) currentRoundComplete = false;
+    rounds[r].pods.push({
+      pod_index: pod.pod_index,
+      game_id: pod.game_id,
+      ended,
+      players: playersByGame[pod.game_id] || [],
+    });
+  }
+
+  const active = tournament.status === 'active';
+  return {
+    tournament,
+    standings,
+    rounds,
+    current_round_complete: currentRoundComplete,
+    can_advance: active && currentRoundComplete && tournament.current_round < tournament.total_rounds,
+    can_finish: active && currentRoundComplete && tournament.current_round >= tournament.total_rounds,
+  };
+}
+
 // --- Routes ------------------------------------------------------------------
 
 // GET /api/tournaments - list tournaments
@@ -177,9 +308,16 @@ router.get('/', async (req, res, next) => {
   }
 });
 
-// GET /api/tournaments/:id - full bracket
+// GET /api/tournaments/:id - full bracket (single-elim) or standings (swiss)
 router.get('/:id', async (req, res, next) => {
   try {
+    const fRes = await query('SELECT format FROM tournaments WHERE id = $1', [req.params.id]);
+    if (fRes.rows.length === 0) return res.status(404).json({ error: 'Tournament not found' });
+
+    if (fRes.rows[0].format === 'swiss') {
+      const data = await getSwiss(req.params.id);
+      return res.json(data);
+    }
     const bracket = await getBracket(req.params.id);
     if (!bracket) return res.status(404).json({ error: 'Tournament not found' });
     res.json(bracket);
@@ -192,11 +330,46 @@ router.get('/:id', async (req, res, next) => {
 router.post('/', async (req, res, next) => {
   const client = await getClient();
   try {
-    const { name, player_ids, best_of } = req.body;
+    const { name, player_ids, best_of, format, total_rounds, build_id } = req.body;
 
     if (!name || typeof name !== 'string' || !name.trim()) {
       return res.status(400).json({ error: 'Tournament name is required' });
     }
+
+    // ----- Swiss (pods) -----
+    if (format === 'swiss') {
+      if (!Array.isArray(player_ids) || player_ids.length < 5) {
+        return res.status(400).json({ error: 'A Swiss tournament needs at least 5 players' });
+      }
+      if (new Set(player_ids).size !== player_ids.length) {
+        return res.status(400).json({ error: 'Duplicate players are not allowed' });
+      }
+      const rounds = parseInt(total_rounds, 10);
+      if (!rounds || rounds < 1 || rounds > 20) {
+        return res.status(400).json({ error: 'Rounds must be between 1 and 20' });
+      }
+
+      await client.query('BEGIN');
+      const tRes = await client.query(
+        `INSERT INTO tournaments (name, status, best_of, format, total_rounds, current_round)
+         VALUES ($1, 'active', 1, 'swiss', $2, 1) RETURNING *`,
+        [name.trim(), rounds]
+      );
+      const tournament = tRes.rows[0];
+      for (let i = 0; i < player_ids.length; i++) {
+        await client.query(
+          'INSERT INTO tournament_players (tournament_id, player_id, seed) VALUES ($1, $2, $3)',
+          [tournament.id, player_ids[i], i + 1]
+        );
+      }
+      // Round 1 pods are random.
+      await createSwissPodsTx(client, tournament.id, 1, shuffle([...player_ids]), build_id || null);
+      await client.query('COMMIT');
+
+      const data = await getSwiss(tournament.id);
+      return res.status(201).json(data);
+    }
+
     if (!Array.isArray(player_ids) || player_ids.length < 2) {
       return res.status(400).json({ error: 'At least 2 players are required' });
     }
@@ -361,6 +534,104 @@ router.post('/:id/matches/:matchId/winner', async (req, res, next) => {
 
     const bracket = await getBracket(id);
     res.json(bracket);
+  } catch (error) {
+    await client.query('ROLLBACK');
+    next(error);
+  } finally {
+    client.release();
+  }
+});
+
+// POST /api/tournaments/:id/next-round - generate the next swiss round's pods
+router.post('/:id/next-round', async (req, res, next) => {
+  const client = await getClient();
+  try {
+    const { id } = req.params;
+    const { build_id } = req.body || {};
+
+    await client.query('BEGIN');
+    const tRes = await client.query(
+      "SELECT * FROM tournaments WHERE id = $1 FOR UPDATE", [id]
+    );
+    if (tRes.rows.length === 0) {
+      await client.query('ROLLBACK');
+      return res.status(404).json({ error: 'Tournament not found' });
+    }
+    const t = tRes.rows[0];
+    if (t.format !== 'swiss' || t.status !== 'active') {
+      await client.query('ROLLBACK');
+      return res.status(409).json({ error: 'Tournament is not an active Swiss tournament' });
+    }
+    if (t.current_round >= t.total_rounds) {
+      await client.query('ROLLBACK');
+      return res.status(409).json({ error: 'All rounds have been played — finish the tournament' });
+    }
+
+    const { rows: unfinished } = await client.query(`
+      SELECT 1 FROM tournament_games tg JOIN games g ON g.id = tg.game_id
+      WHERE tg.tournament_id = $1 AND tg.round = $2 AND g.ended_at IS NULL LIMIT 1
+    `, [id, t.current_round]);
+    if (unfinished.length) {
+      await client.query('ROLLBACK');
+      return res.status(409).json({ error: 'Finish every pod in the current round first' });
+    }
+
+    const standings = await getStandings(id, client);
+    const orderedIds = standings.map(s => s.player_id);
+    const round = t.current_round + 1;
+    await createSwissPodsTx(client, id, round, orderedIds, build_id || null);
+    await client.query('UPDATE tournaments SET current_round = $1 WHERE id = $2', [round, id]);
+    await client.query('COMMIT');
+
+    res.json(await getSwiss(id));
+  } catch (error) {
+    await client.query('ROLLBACK');
+    next(error);
+  } finally {
+    client.release();
+  }
+});
+
+// POST /api/tournaments/:id/finish - crown the swiss winner after the last round
+router.post('/:id/finish', async (req, res, next) => {
+  const client = await getClient();
+  try {
+    const { id } = req.params;
+
+    await client.query('BEGIN');
+    const tRes = await client.query("SELECT * FROM tournaments WHERE id = $1 FOR UPDATE", [id]);
+    if (tRes.rows.length === 0) {
+      await client.query('ROLLBACK');
+      return res.status(404).json({ error: 'Tournament not found' });
+    }
+    const t = tRes.rows[0];
+    if (t.format !== 'swiss' || t.status !== 'active') {
+      await client.query('ROLLBACK');
+      return res.status(409).json({ error: 'Tournament is not an active Swiss tournament' });
+    }
+    if (t.current_round < t.total_rounds) {
+      await client.query('ROLLBACK');
+      return res.status(409).json({ error: 'Play all rounds before finishing' });
+    }
+
+    const { rows: unfinished } = await client.query(`
+      SELECT 1 FROM tournament_games tg JOIN games g ON g.id = tg.game_id
+      WHERE tg.tournament_id = $1 AND g.ended_at IS NULL LIMIT 1
+    `, [id]);
+    if (unfinished.length) {
+      await client.query('ROLLBACK');
+      return res.status(409).json({ error: 'Finish every pod before crowning a winner' });
+    }
+
+    const standings = await getStandings(id, client);
+    const winnerId = standings.length ? standings[0].player_id : null;
+    await client.query(
+      "UPDATE tournaments SET status = 'complete', winner_player_id = $1, completed_at = CURRENT_TIMESTAMP WHERE id = $2",
+      [winnerId, id]
+    );
+    await client.query('COMMIT');
+
+    res.json(await getSwiss(id));
   } catch (error) {
     await client.query('ROLLBACK');
     next(error);
