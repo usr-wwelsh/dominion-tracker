@@ -8,6 +8,7 @@ A full-stack web application to track Dominion card game sessions, player statis
 - **Player Leaderboard**: View player rankings based on league points
 - **Game History**: Browse past games with score progression charts
 - **Build Management**: Create and manage card builds with statistics
+- **Tournament Management**: Organize and track single-elimination or Swiss tournaments
 
 ## Technical Stack
 
@@ -119,6 +120,9 @@ docker compose up -d
 4. **Track Scores**: Update scores during the game using +/- buttons
 5. **End Game**: Finish the game to record final scores and calculate league points
 6. **View Stats**: Check the Leaderboard and Games pages for statistics
+7. **Manage Tournaments**: Use the Tournaments page to create new single-elimination or Swiss tournaments.
+   - For single-elimination, advance players by recording match winners.
+   - For Swiss, pods (games) are automatically created each round; finish all pods to advance to the next round or crown a champion.
 
 ## League Points System
 
@@ -163,6 +167,16 @@ Ties: tied players receive the average of the points slots they occupy.
 - `DELETE /api/games/:id` - Delete a game
 - `POST /api/games/:id/scores` - Update a player score
 - `GET /api/games/:id/scores` - Get score history
+
+### Tournaments
+- `GET /api/tournaments` - List all tournaments
+- `GET /api/tournaments/:id` - Get tournament details (bracket for single-elim, standings/pods for Swiss)
+- `POST /api/tournaments` - Create a tournament (supports 'single_elim' or 'swiss' format)
+- `POST /api/tournaments/:id/matches/:matchId/play` - Start a game for a single-elimination match
+- `POST /api/tournaments/:id/matches/:matchId/winner` - Record the winner of a single-elimination match
+- `POST /api/tournaments/:id/next-round` - Advance a Swiss tournament to the next round, creating new pods
+- `POST /api/tournaments/:id/finish` - Finish a Swiss tournament and crown a champion
+- `POST /api/tournaments/:id/snapshot-season` - Manually capture the Season 1 champion (deprecated functionality)
 
 ### Statistics
 - `GET /api/leaderboard` - Get player leaderboard
