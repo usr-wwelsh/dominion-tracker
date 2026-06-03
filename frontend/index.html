@@ -81,6 +81,16 @@
     .season-spotlight .champion-block { flex: 1; min-width: 180px; }
     .season-spotlight h2 { color: var(--color-accent); border: none; padding: 0; font-size: 1.4rem; }
     .champion-block p { color: var(--color-text-secondary); font-size: 0.9rem; }
+    .site-attribution {
+      text-align: center;
+      margin-top: var(--spacing-2xl);
+      padding-top: var(--spacing-lg);
+      border-top: 1px solid var(--color-border);
+      color: var(--color-text-dim);
+      font-size: 0.9rem;
+    }
+    .site-attribution p { margin: 0 0 var(--spacing-xs); }
+    .site-attribution strong { color: var(--color-accent); }
   </style>
 </head>
 <body>
@@ -96,15 +106,19 @@
     </button>
     <nav id="main-nav">
       <ul>
-        <li><a href="index.html" class="active">Home</a></li>
-        <li><a href="leaderboard.html">Leaderboard</a></li>
-        <li><a href="games.html">Recent Games</a></li>
-        <li><a href="builds.html">Builds</a></li>
-        <li><a href="players.html">Players</a></li>
         <li><a href="scoreboard.html">Play Game</a></li>
         <li><a href="tournament.html">Tournament</a></li>
         <li><a href="live.html">Live</a></li>
-        <li><a href="history.html">History</a></li>
+        <li><a href="players.html">Players</a></li>
+        <li><a href="builds.html">Builds</a></li>
+        <li class="nav-dropdown">
+          <button type="button" class="nav-dropdown-toggle">Standings &#9662;</button>
+          <ul class="nav-dropdown-menu">
+            <li><a href="leaderboard.html">Leaderboard</a></li>
+            <li><a href="games.html">Recent Games</a></li>
+            <li><a href="history.html">History</a></li>
+          </ul>
+        </li>
       </ul>
     </nav>
   </header>
@@ -180,6 +194,11 @@
     <div style="text-align:right;margin-top:var(--spacing-sm);">
       <button id="show-admin-btn-small" class="btn btn-sm" style="opacity:0.4;font-size:0.75rem;">Admin</button>
     </div>
+
+    <footer class="site-attribution">
+      <p>Made with care by <strong>Will</strong> &amp; <strong>Nate</strong>.</p>
+      <p>Free and open source — <a href="https://github.com/usr-wwelsh/dominion-tracker" target="_blank" rel="noopener">host your own copy for free</a>.</p>
+    </footer>
   </div>
 
   <script src="js/api.js"></script>

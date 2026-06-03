@@ -34,3 +34,34 @@
   font-size: 0.9rem;
   color: var(--color-text-secondary);
 }
+
+.player-row-info { align-items: flex-start; }
+.player-avatar-link { flex-shrink: 0; display: block; line-height: 0; }
+.player-avatar-thumb {
+  width: 44px;
+  height: 44px;
+  border-radius: var(--border-radius-sm);
+  object-fit: cover;
+  object-position: center 22%; /* zoom into the card art */
+  border: 2px solid var(--color-accent);
+}
+.player-avatar-fallback {
+  width: 44px;
+  height: 44px;
+  border-radius: var(--border-radius-sm);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 1.2rem;
+  color: #0b1220;
+  border: 2px solid rgba(255,255,255,0.2);
+}
+.player-row-text { display: flex; flex-direction: column; gap: 2px; }
+.player-row-name-line { display: flex; align-items: center; gap: var(--spacing-md); flex-wrap: wrap; }
+.player-bio {
+  font-size: 0.85rem;
+  color: var(--color-text-dim);
+  max-width: 52ch;
+  line-height: 1.4;
+}

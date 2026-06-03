@@ -55,7 +55,7 @@ async function resumeExistingGame(gameId) {
       score: p.final_score,
     }));
 
-    gameStartTime = game.started_at ? new Date(game.started_at) : new Date();
+    gameStartTime = game.started_at ? parseServerTime(game.started_at) : new Date();
     startTimer();
 
     document.getElementById('game-section').style.display = 'block';
@@ -248,8 +248,9 @@ async function startGame() {
     currentGame = await gamesAPI.start(currentGame.id);
 
     // Initialize game state
-    gameStartTime = new Date(currentGame.started_at);
+    gameStartTime = parseServerTime(currentGame.started_at);
     startTimer();
+    showShareToken();
 
     // Initialize player scores from game (everyone starts with 3 victory points in Dominion)
     selectedPlayers = selectedPlayers.map(player => ({
@@ -335,12 +336,41 @@ async function updateScore(playerId, delta) {
 
   scoreUpdateDebounce[playerId] = setTimeout(async () => {
     try {
-      await gamesAPI.updateScore(currentGame.id, playerId, player.score);
+      await gamesAPI.updateScore(currentGame.id, playerId, player.score, currentGame.edit_token);
     } catch (error) {
       console.error('Failed to update score:', error);
       showError('Failed to save score update');
     }
   }, 500); // Wait 500ms after last change before saving
+}
+
+// Parse a SQLite timestamp ("YYYY-MM-DD HH:MM:SS", UTC, no zone) as UTC.
+function parseServerTime(ts) {
+  if (!ts) return new Date();
+  if (typeof ts !== 'string') return new Date(ts);
+  if (ts.includes('Z') || /[+-]\d\d:?\d\d$/.test(ts)) return new Date(ts);
+  return new Date(ts.replace(' ', 'T') + 'Z');
+}
+
+// Display the edit token so the starter can share live-score editing.
+function showShareToken() {
+  const box = document.getElementById('share-token-box');
+  if (!box || !currentGame || !currentGame.edit_token) return;
+  const token = currentGame.edit_token;
+  box.innerHTML = `
+    <span class="share-token-label">Live edit code:</span>
+    <code class="share-token-code">${escapeHtml(token)}</code>
+    <button type="button" id="copy-token-btn" class="btn btn-sm">Copy</button>
+    <span class="share-token-hint">Share so others can edit the score from the Live page.</span>
+  `;
+  box.style.display = 'flex';
+  const copyBtn = document.getElementById('copy-token-btn');
+  copyBtn.addEventListener('click', () => {
+    navigator.clipboard?.writeText(token).then(() => {
+      copyBtn.textContent = 'Copied!';
+      setTimeout(() => { copyBtn.textContent = 'Copy'; }, 1500);
+    }).catch(() => {});
+  });
 }
 
 // End game
@@ -484,6 +514,8 @@ function resetGame() {
   document.getElementById('setup-section').style.display = 'block';
   document.getElementById('game-section').style.display = 'none';
   document.getElementById('timer').textContent = '00:00';
+  const tokenBox = document.getElementById('share-token-box');
+  if (tokenBox) { tokenBox.style.display = 'none'; tokenBox.innerHTML = ''; }
 
   renderPlayerRoster();
   updateStartButton();

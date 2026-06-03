@@ -123,6 +123,41 @@ router.delete('/:id', requireAuth, async (req, res, next) => {
   }
 });
 
+// GET /api/builds/:id/games — completed games that used this build, with players
+router.get('/:id/games', async (req, res, next) => {
+  try {
+    const result = await query(`
+      SELECT g.id, g.started_at, g.ended_at, g.duration,
+        (SELECT json_group_array(json_object(
+          'player_id', gp.player_id,
+          'player_name', p.name,
+          'player_color', p.color,
+          'final_score', gp.final_score,
+          'placement', gp.placement,
+          'league_points', gp.league_points
+        ))
+        FROM (
+          SELECT gp2.player_id, p2.name, p2.color, gp2.final_score, gp2.placement, gp2.league_points
+          FROM game_players gp2
+          JOIN players p2 ON gp2.player_id = p2.id
+          WHERE gp2.game_id = g.id
+          ORDER BY gp2.placement
+        ) AS gp JOIN players p ON gp.player_id = p.id) AS players
+      FROM games g
+      WHERE g.build_id = ? AND g.ended_at IS NOT NULL
+      ORDER BY g.started_at DESC, g.id DESC
+    `, [req.params.id]);
+
+    const games = result.rows.map(row => {
+      if (typeof row.players === 'string') row.players = JSON.parse(row.players);
+      return row;
+    });
+    res.json(games);
+  } catch (error) {
+    next(error);
+  }
+});
+
 router.get('/:id/comments', async (req, res, next) => {
   try {
     const result = await query(`

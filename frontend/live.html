@@ -79,15 +79,19 @@
     </button>
     <nav id="main-nav">
       <ul>
-        <li><a href="index.html">Home</a></li>
-        <li><a href="leaderboard.html">Leaderboard</a></li>
-        <li><a href="games.html">Recent Games</a></li>
-        <li><a href="builds.html">Builds</a></li>
-        <li><a href="players.html">Players</a></li>
         <li><a href="scoreboard.html">Play Game</a></li>
         <li><a href="tournament.html">Tournament</a></li>
         <li><a href="live.html" class="active">Live</a></li>
-        <li><a href="history.html">History</a></li>
+        <li><a href="players.html">Players</a></li>
+        <li><a href="builds.html">Builds</a></li>
+        <li class="nav-dropdown">
+          <button type="button" class="nav-dropdown-toggle">Standings &#9662;</button>
+          <ul class="nav-dropdown-menu">
+            <li><a href="leaderboard.html">Leaderboard</a></li>
+            <li><a href="games.html">Recent Games</a></li>
+            <li><a href="history.html">History</a></li>
+          </ul>
+        </li>
       </ul>
     </nav>
   </header>
@@ -112,6 +116,7 @@
         <button class="btn btn-sm back-btn" id="back-btn">← All Games</button>
         <h2 id="watch-title" style="margin:0;font-size:1.2rem;"></h2>
         <span class="live-badge"><span class="live-dot"></span>LIVE</span>
+        <button class="btn btn-danger btn-sm" id="end-game-btn" style="margin-left:auto;">End Game</button>
       </div>
       <div class="score-rows" id="score-rows"></div>
       <div class="token-section">
@@ -147,6 +152,7 @@
 
     document.getElementById('back-btn').addEventListener('click', showList);
     document.getElementById('unlock-btn').addEventListener('click', tryUnlock);
+    document.getElementById('end-game-btn').addEventListener('click', endCurrentGame);
 
     await loadList();
     setInterval(loadList, 10000); // refresh list every 10s
@@ -300,6 +306,16 @@
       errEl.textContent = 'Invalid token.';
       errEl.style.display = 'block';
     }
+  }
+
+  function endCurrentGame() {
+    if (!currentGameId) return;
+    const gid = currentGameId;
+    showDeleteModal('End this game? Admin credentials required.', async (creds) => {
+      await authAPI.check(creds);   // verify admin password (passes if no auth configured)
+      await gamesAPI.end(gid);
+      showList();
+    }, { confirmLabel: 'End Game', pendingLabel: 'Ending...' });
   }
 
   function showList() {

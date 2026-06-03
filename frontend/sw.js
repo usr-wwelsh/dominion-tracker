@@ -1,4 +1,4 @@
-const CACHE_NAME = 'dominion-s2-v1';
+const CACHE_NAME = 'dominion-s2-v2';
 
 self.addEventListener('install', () => { self.skipWaiting(); });
 
@@ -12,16 +12,36 @@ self.addEventListener('activate', (event) => {
 });
 
 self.addEventListener('fetch', (event) => {
-  const url = new URL(event.request.url);
+  const { request } = event;
+  if (request.method !== 'GET') return;
+  const url = new URL(request.url);
   if (url.pathname.startsWith('/api/')) return;
 
-  event.respondWith(
-    caches.match(event.request).then(cached => {
-      if (cached) return cached;
-      return fetch(event.request).then(response => {
+  // App shell (pages, scripts, styles): network-first so code updates show up
+  // without a manual cache bump; fall back to cache when offline.
+  const isShell = request.mode === 'navigate' || /\.(?:html|js|css)$/.test(url.pathname);
+
+  if (isShell) {
+    event.respondWith(
+      fetch(request).then(response => {
         if (response.ok) {
           const clone = response.clone();
-          caches.open(CACHE_NAME).then(cache => cache.put(event.request, clone));
+          caches.open(CACHE_NAME).then(cache => cache.put(request, clone));
+        }
+        return response;
+      }).catch(() => caches.match(request))
+    );
+    return;
+  }
+
+  // Static assets (images, fonts): cache-first for speed.
+  event.respondWith(
+    caches.match(request).then(cached => {
+      if (cached) return cached;
+      return fetch(request).then(response => {
+        if (response.ok) {
+          const clone = response.clone();
+          caches.open(CACHE_NAME).then(cache => cache.put(request, clone));
         }
         return response;
       });

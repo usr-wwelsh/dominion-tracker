@@ -1,7 +1,9 @@
 const express = require('express');
 const cors = require('cors');
-require('dotenv').config();
+require('dotenv').config({ quiet: true });
 const { migrate } = require('./migrate');
+const { db } = require('./db');
+const { maybeAutoImport } = require('./scripts/pg-to-sqlite');
 
 const { requireAuth } = require('./middleware/auth');
 const playersRoutes     = require('./routes/players');
@@ -14,6 +16,7 @@ const bannerRoutes      = require('./routes/banner');
 const profilesRoutes    = require('./routes/profiles');
 const achievementsRoutes = require('./routes/achievements');
 const pushRoutes        = require('./routes/push');
+const cardsRoutes       = require('./routes/cards');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -40,6 +43,7 @@ app.use('/api/banner',       bannerRoutes);
 app.use('/api/profiles',     profilesRoutes);
 app.use('/api/achievements', achievementsRoutes);
 app.use('/api/push',         pushRoutes);
+app.use('/api/cards',        cardsRoutes);
 app.use('/api',              statsRoutes);
 
 app.get('/api/auth/check', requireAuth, (req, res) => {
@@ -61,8 +65,19 @@ app.use((req, res) => {
   res.status(404).json({ error: { message: 'Not found', status: 404 } });
 });
 
-function start() {
+async function start() {
   migrate();
+  try {
+    await maybeAutoImport(db);
+  } catch (err) {
+    console.error('[pg-import] Auto-import failed; continuing with current SQLite data:', err.message);
+  }
+  try {
+    const { backfillAchievements } = require('./routes/achievements');
+    await backfillAchievements();
+  } catch (err) {
+    console.error('Achievement backfill failed:', err.message);
+  }
   app.listen(PORT, () => {
     console.log(`Server running on port ${PORT}`);
   });

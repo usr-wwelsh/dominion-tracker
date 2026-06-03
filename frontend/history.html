@@ -14,6 +14,33 @@
     .collapsed { display: none; }
     .toggle-standings { cursor: pointer; font-size: 0.85rem; color: var(--color-blue-hover); background: none; border: none; padding: 0; box-shadow: none; transform: none; }
     .toggle-standings:hover { text-decoration: underline; transform: none; box-shadow: none; }
+    .history-section-title {
+      color: var(--color-accent);
+      font-size: 1.3rem;
+      margin: var(--spacing-xl) 0 var(--spacing-md);
+    }
+    .history-section-title:first-child { margin-top: 0; }
+    .tournament-champ-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+      gap: var(--spacing-md);
+      margin-bottom: var(--spacing-xl);
+    }
+    .tournament-champ-card {
+      display: flex;
+      align-items: center;
+      gap: var(--spacing-md);
+      background: var(--color-bg-secondary);
+      border: 2px solid var(--color-accent-dim);
+      border-radius: var(--border-radius-md);
+      padding: var(--spacing-lg);
+      text-decoration: none;
+      color: inherit;
+      transition: border-color 0.2s, box-shadow 0.2s;
+    }
+    .tournament-champ-card:hover { border-color: var(--color-accent); box-shadow: var(--shadow-glow-gold); text-decoration: none; }
+    .tournament-champ-card .champion-crown { font-size: 2rem; }
+    .tournament-champ-name { color: var(--color-accent); font-weight: 600; }
   </style>
 </head>
 <body>
@@ -29,15 +56,19 @@
     </button>
     <nav id="main-nav">
       <ul>
-        <li><a href="index.html">Home</a></li>
-        <li><a href="leaderboard.html">Leaderboard</a></li>
-        <li><a href="games.html">Recent Games</a></li>
-        <li><a href="builds.html">Builds</a></li>
-        <li><a href="players.html">Players</a></li>
         <li><a href="scoreboard.html">Play Game</a></li>
         <li><a href="tournament.html">Tournament</a></li>
         <li><a href="live.html">Live</a></li>
-        <li><a href="history.html" class="active">History</a></li>
+        <li><a href="players.html">Players</a></li>
+        <li><a href="builds.html">Builds</a></li>
+        <li class="nav-dropdown active">
+          <button type="button" class="nav-dropdown-toggle">Standings &#9662;</button>
+          <ul class="nav-dropdown-menu">
+            <li><a href="leaderboard.html">Leaderboard</a></li>
+            <li><a href="games.html">Recent Games</a></li>
+            <li><a href="history.html" class="active">History</a></li>
+          </ul>
+        </li>
       </ul>
     </nav>
   </header>
@@ -63,15 +94,44 @@
     const container = document.getElementById('history-container');
 
     try {
-      const seasons = await apiRequest('/seasons');
+      const [seasons, tournaments] = await Promise.all([
+        apiRequest('/seasons'),
+        apiRequest('/tournaments').catch(() => []),
+      ]);
       const past = seasons.filter(s => s.ended_at);
+      const champedTournaments = (tournaments || []).filter(t => t.status === 'complete' && t.winner_name);
 
       loading.style.display = 'none';
       container.style.display = 'block';
 
-      if (past.length === 0) {
-        container.innerHTML = '<p class="text-center" style="color:var(--color-text-dim)">No completed seasons yet.</p>';
+      if (past.length === 0 && champedTournaments.length === 0) {
+        container.innerHTML = '<p class="text-center" style="color:var(--color-text-dim)">No completed seasons or tournaments yet.</p>';
         return;
+      }
+
+      // Tournament champions
+      if (champedTournaments.length > 0) {
+        const section = document.createElement('div');
+        section.className = 'history-section fade-in';
+        const grid = champedTournaments.map(t => `
+          <a class="tournament-champ-card" href="tournament.html?id=${t.id}">
+            <div class="champion-crown">🏆</div>
+            <div>
+              <div class="tournament-champ-name">${t.name}</div>
+              <div class="champion-name">${t.winner_name}</div>
+              <div class="champion-stats">${t.completed_at ? 'Won ' + formatDate(t.completed_at) : ''}</div>
+            </div>
+          </a>`).join('');
+        section.innerHTML = `<h2 class="history-section-title">Tournament Champions</h2>
+          <div class="tournament-champ-grid">${grid}</div>`;
+        container.appendChild(section);
+      }
+
+      if (past.length > 0) {
+        const heading = document.createElement('h2');
+        heading.className = 'history-section-title';
+        heading.textContent = 'Past Seasons';
+        container.appendChild(heading);
       }
 
       for (const season of past.slice().reverse()) {

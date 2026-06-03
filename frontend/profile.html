@@ -72,15 +72,19 @@
     </button>
     <nav id="main-nav">
       <ul>
-        <li><a href="index.html">Home</a></li>
-        <li><a href="leaderboard.html">Leaderboard</a></li>
-        <li><a href="games.html">Recent Games</a></li>
-        <li><a href="builds.html">Builds</a></li>
-        <li><a href="players.html">Players</a></li>
         <li><a href="scoreboard.html">Play Game</a></li>
         <li><a href="tournament.html">Tournament</a></li>
         <li><a href="live.html">Live</a></li>
-        <li><a href="history.html">History</a></li>
+        <li><a href="players.html">Players</a></li>
+        <li><a href="builds.html">Builds</a></li>
+        <li class="nav-dropdown">
+          <button type="button" class="nav-dropdown-toggle">Standings &#9662;</button>
+          <ul class="nav-dropdown-menu">
+            <li><a href="leaderboard.html">Leaderboard</a></li>
+            <li><a href="games.html">Recent Games</a></li>
+            <li><a href="history.html">History</a></li>
+          </ul>
+        </li>
       </ul>
     </nav>
   </header>
@@ -127,7 +131,7 @@
         <div class="card">
           <div class="card-header">Edit Profile</div>
           <p style="color:var(--color-text-secondary);font-size:0.9rem;margin-bottom:var(--spacing-md);">
-            Profile edits are open — anyone can customize. Card images come from the builds you've played.
+            Profile edits are open — anyone can customize. Avatar and background use Dominion card art.
           </p>
           <div class="form-group">
             <label for="bio-input">Bio (max 500 chars)</label>
@@ -142,7 +146,7 @@
             <select id="avatar-select"><option value="">— none —</option></select>
           </div>
           <div class="form-group">
-            <label for="bg-select">Background Card</label>
+            <label for="bg-select">Background Card <span style="color:var(--color-text-dim);font-weight:normal;">(tiles your profile page)</span></label>
             <select id="bg-select"><option value="">— none —</option></select>
           </div>
           <button id="save-profile-btn" class="btn btn-primary">Save Profile</button>
@@ -153,6 +157,7 @@
   </div>
 
   <script src="js/api.js"></script>
+  <script src="js/cards.js"></script>
   <script src="js/header.js"></script>
   <script src="js/falling-cards.js"></script>
   <script>
@@ -201,13 +206,24 @@
         av.src = CARDS_PATH + profile.avatar_card;
         av.style.display = 'block';
       }
+
+      // Header background is tinted with the player's chosen color (readable dark scrim);
+      // border uses the accent color if set, else the player's color.
+      const playerColor = player.color || '#4db8ff';
+      const headerEl = document.getElementById('profile-header');
+      headerEl.style.background =
+        `linear-gradient(135deg, ${hexToRgba(playerColor, 0.55)} 0%, var(--color-bg-tertiary) 70%)`;
+      headerEl.style.borderColor = profile?.accent_color || playerColor;
+
+      // The background card (if set) tiles the whole profile page like wallpaper,
+      // replacing the default stone bricks, behind a dark scrim for readability.
       if (profile?.background_card) {
-        const bg = document.getElementById('profile-bg');
-        bg.src = CARDS_PATH + profile.background_card;
-        bg.style.display = 'block';
-      }
-      if (profile?.accent_color) {
-        document.getElementById('profile-header').style.borderColor = profile.accent_color;
+        document.body.style.backgroundColor = '#0b1220';
+        document.body.style.backgroundImage =
+          `linear-gradient(rgba(11,18,30,0.88), rgba(11,18,30,0.88)), url('${CARDS_PATH}${profile.background_card}')`;
+        document.body.style.backgroundRepeat = 'repeat';
+        document.body.style.backgroundSize = '120px auto';
+        document.body.style.backgroundAttachment = 'fixed';
       }
 
       // Level badge
@@ -230,18 +246,23 @@
         { val: stats.highest_score, lbl: 'Best Score' },
       ];
       sg.innerHTML = statItems.map(s =>
-        `<div class="stat-box"><div class="val">${s.val ?? '—'}</div><div class="lbl">${s.lbl}</div></div>`
+        `<div class="stat-box"><div class="val">${fmtNum(s.val)}</div><div class="lbl">${s.lbl}</div></div>`
       ).join('');
 
-      // Achievements
+      // Achievements — only show earned ones
       const ag = document.getElementById('achievement-grid');
-      ag.innerHTML = achievements.map(a => `
-        <div class="achievement-card ${a.earned ? 'earned' : 'locked'}" title="${a.description}">
-          <div class="ach-icon">🏅</div>
-          <div class="ach-name">${a.name}</div>
-          <div class="ach-desc">${a.description}</div>
-          ${a.earned ? `<div style="font-size:0.7rem;color:var(--color-accent);margin-top:4px;">Earned ${formatDate(a.earned_at)}</div>` : ''}
-        </div>`).join('');
+      const earnedAchievements = achievements.filter(a => a.earned);
+      if (earnedAchievements.length === 0) {
+        ag.innerHTML = '<p style="color:var(--color-text-dim)">No achievements earned yet — play some games!</p>';
+      } else {
+        ag.innerHTML = earnedAchievements.map(a => `
+          <div class="achievement-card earned" title="${a.description}">
+            <div class="ach-icon">🏅</div>
+            <div class="ach-name">${a.name}</div>
+            <div class="ach-desc">${a.description}</div>
+            <div style="font-size:0.7rem;color:var(--color-accent);margin-top:4px;">Earned ${formatDate(a.earned_at)}</div>
+          </div>`).join('');
+      }
 
       // Edit profile form
       // Accent swatches
@@ -263,31 +284,20 @@
       // Pre-fill bio
       if (profile?.bio) document.getElementById('bio-input').value = profile.bio;
 
-      // Populate card selects — fetch list from builds used by this player
-      try {
-        const gamesRes = await apiRequest('/games?limit=100');
-        const cardSet = new Set();
-        (gamesRes.games || []).forEach(g => {
-          if (g.players?.some(p => p.player_id === Number(playerId))) {
-            // We can't easily get build cards here — use a generic list
-          }
-        });
-        // Fall back: offer all cards from a known builds fetch
-        const buildsRes = await apiRequest('/builds');
-        buildsRes.forEach(b => {
-          (b.cards || []).forEach(c => cardSet.add(c));
-        });
-        const cards = [...cardSet].sort();
-        const avSel = document.getElementById('avatar-select');
-        const bgSel = document.getElementById('bg-select');
-        cards.forEach(c => {
-          const fn = c.toLowerCase().replace(/\s+/g, '-') + '.jpg';
-          avSel.appendChild(new Option(c, fn));
-          bgSel.appendChild(new Option(c, fn));
-        });
-        if (profile?.avatar_card) avSel.value = profile.avatar_card;
-        if (profile?.background_card) bgSel.value = profile.background_card;
-      } catch {}
+      // Populate card selects from the bundled card list (no network needed).
+      // Falls back to the API only if the bundled list is somehow missing.
+      let cards = (typeof CARD_IMAGES !== 'undefined') ? CARD_IMAGES : [];
+      if (cards.length === 0) {
+        try { cards = await cardsAPI.getAll(); } catch (e) { console.error('card list load failed', e); }
+      }
+      const avSel = document.getElementById('avatar-select');
+      const bgSel = document.getElementById('bg-select');
+      cards.forEach(c => {
+        avSel.appendChild(new Option(c.label, c.filename));
+        bgSel.appendChild(new Option(c.label, c.filename));
+      });
+      if (profile?.avatar_card) avSel.value = profile.avatar_card;
+      if (profile?.background_card) bgSel.value = profile.background_card;
 
       document.getElementById('save-profile-btn').addEventListener('click', async () => {
         const btn = document.getElementById('save-profile-btn');
@@ -323,6 +333,22 @@
   function formatDate(ts) {
     if (!ts) return '';
     return new Date(ts).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+  }
+
+  // Convert #rrggbb to an rgba() string with the given alpha.
+  function hexToRgba(hex, alpha) {
+    const m = /^#?([0-9a-f]{6})$/i.exec(hex || '');
+    if (!m) return `rgba(77,184,255,${alpha})`;
+    const n = parseInt(m[1], 16);
+    return `rgba(${(n >> 16) & 255}, ${(n >> 8) & 255}, ${n & 255}, ${alpha})`;
+  }
+
+  // Show numbers with at most 2 decimal places; pass non-numbers through.
+  function fmtNum(v) {
+    if (v === null || v === undefined || v === '') return '—';
+    const n = Number(v);
+    if (Number.isNaN(n)) return v;
+    return Number.isInteger(n) ? String(n) : String(Math.round(n * 100) / 100);
   }
   </script>
 </body>

@@ -128,13 +128,16 @@ const gamesAPI = {
     method: 'PUT',
   }),
 
-  updateScore: (gameId, playerId, score) => apiRequest(`/games/${gameId}/scores`, {
+  updateScore: (gameId, playerId, score, editToken = null) => apiRequest(`/games/${gameId}/scores`, {
     method: 'POST',
     body: JSON.stringify({
       player_id: playerId,
       score: score,
+      edit_token: editToken,
     }),
   }),
+
+  getGames: (buildId) => apiRequest(`/builds/${buildId}/games`),
 
   getScoreHistory: (id) => apiRequest(`/games/${id}/scores`),
 
@@ -178,6 +181,11 @@ const profilesAPI = {
 // Achievements API
 const achievementsAPI = {
   getForPlayer: (playerId) => apiRequest(`/achievements/${playerId}`),
+};
+
+// Cards API — valid card image filenames for profile customization
+const cardsAPI = {
+  getAll: () => apiRequest('/cards'),
 };
 
 // Banner API

@@ -5,7 +5,12 @@ const { requireAuth } = require('../middleware/auth');
 
 router.get('/', async (req, res, next) => {
   try {
-    const result = await query('SELECT * FROM players ORDER BY created_at DESC');
+    const result = await query(`
+      SELECT p.*, pp.avatar_card, pp.bio
+      FROM players p
+      LEFT JOIN player_profiles pp ON pp.player_id = p.id
+      ORDER BY p.created_at DESC
+    `);
     res.json(result.rows);
   } catch (error) {
     next(error);

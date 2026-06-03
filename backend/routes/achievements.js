@@ -71,6 +71,7 @@ async function evaluateAchievements(playerIds) {
     const playedWithAll = totalPlayers >= 2 && distinctOpponents >= totalPlayers - 1;
 
     const conditions = [
+      { key: 'first_game',    earned: total_games >= 1 },
       { key: 'first_win',     earned: total_wins >= 1 },
       { key: 'wins_5',        earned: total_wins >= 5 },
       { key: 'wins_25',       earned: total_wins >= 25 },
@@ -100,5 +101,13 @@ async function evaluateAchievements(playerIds) {
   }
 }
 
+// Re-evaluate achievements for every player. Idempotent (INSERT OR IGNORE);
+// run on startup so imported games and newly-added achievements are awarded.
+async function backfillAchievements() {
+  const { rows } = await query('SELECT id FROM players');
+  await evaluateAchievements(rows.map(r => r.id));
+}
+
 module.exports = router;
 module.exports.evaluateAchievements = evaluateAchievements;
+module.exports.backfillAchievements = backfillAchievements;

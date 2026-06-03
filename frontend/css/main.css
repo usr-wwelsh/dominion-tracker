@@ -295,6 +295,57 @@ a:hover {
 .nav-toggle.open span:nth-child(2) { opacity: 0; transform: scaleX(0); }
 .nav-toggle.open span:nth-child(3) { transform: translateY(-7px) rotate(-45deg); }
 
+/* Nav dropdown (Standings) */
+.nav-dropdown { position: relative; }
+.nav-dropdown-toggle {
+  display: block;
+  color: var(--color-text-secondary);
+  font-family: inherit;
+  font-size: 1rem;
+  line-height: 1.6;
+  padding: var(--spacing-xs) var(--spacing-md);
+  border: 1px solid transparent;
+  border-radius: var(--border-radius-sm);
+  background: none;
+  cursor: pointer;
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+  box-shadow: none;
+  transform: none;
+  transition: all 0.2s ease;
+}
+.nav-dropdown:hover .nav-dropdown-toggle,
+.nav-dropdown:focus-within .nav-dropdown-toggle,
+.nav-dropdown.active .nav-dropdown-toggle {
+  background-color: var(--color-blue-dim);
+  border-color: var(--color-blue);
+  color: var(--color-text-primary);
+  transform: none;
+  box-shadow: none;
+}
+.site-header nav ul.nav-dropdown-menu {
+  list-style: none;
+  position: absolute;
+  top: 100%;
+  right: 0;
+  min-width: 175px;
+  margin-top: 0;
+  padding: var(--spacing-xs);
+  background: linear-gradient(to bottom, #0f1c2e, #0b1626);
+  border: 1px solid var(--color-blue);
+  border-radius: var(--border-radius-sm);
+  box-shadow: var(--shadow-md);
+  display: none;
+  flex-direction: column;
+  gap: 2px;
+  z-index: 20;
+}
+.site-header nav .nav-dropdown:hover ul.nav-dropdown-menu,
+.site-header nav .nav-dropdown:focus-within ul.nav-dropdown-menu {
+  display: flex;
+}
+.nav-dropdown-menu a { display: block; }
+
 /* Page title banner */
 .page-banner {
   text-align: center;
@@ -680,7 +731,7 @@ tr:hover {
   }
 
   .site-header nav.open {
-    max-height: 300px;
+    max-height: 600px;
   }
 
   .site-header nav ul {
@@ -692,6 +743,18 @@ tr:hover {
 
   .site-header nav a {
     padding: var(--spacing-sm) var(--spacing-md);
+  }
+
+  /* On mobile the dropdown renders inline as an indented sub-list */
+  .nav-dropdown-toggle { width: 100%; text-align: left; }
+  .site-header nav ul.nav-dropdown-menu {
+    position: static;
+    display: flex;
+    margin: 0;
+    padding: 0 0 0 var(--spacing-lg);
+    border: none;
+    box-shadow: none;
+    background: none;
   }
 
   .page-banner h1 {
@@ -823,6 +886,7 @@ tr:hover {
   height: 80px;
   border-radius: var(--border-radius-md);
   object-fit: cover;
+  object-position: center 22%; /* zoom into the card illustration */
   border: 3px solid var(--color-accent);
   box-shadow: var(--shadow-md);
   margin-right: var(--spacing-md);
