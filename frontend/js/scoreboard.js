@@ -10,6 +10,16 @@ let scoreUpdateDebounce = {};
 let resumeTournamentId = null;
 let resumeMatchId = null;
 let scoreStream = null;
+let scoreEntryMode = localStorage.getItem('scoreEntryMode') || 'simple';
+let cardEntryAction = 'gain';
+
+const VICTORY_CARDS = [
+  { name: 'Curse', delta: -1, img: 'curse-100x160.jpg' },
+  { name: 'Estate', delta: 1, img: 'estate-100x160.jpg' },
+  { name: 'Duchy', delta: 3, img: 'duchy-100x161.jpg' },
+  { name: 'Province', delta: 6, img: 'province-100x160.jpg' },
+  { name: 'Colony', delta: 10, img: 'colony-100x160.jpg' },
+];
 
 // Initialize page
 document.addEventListener('DOMContentLoaded', () => {
@@ -181,6 +191,40 @@ function setupEventListeners() {
   cancelGameBtn.addEventListener('click', cancelGame);
   restartGameBtn.addEventListener('click', restartGame);
   goToGamesBtn.addEventListener('click', goToGamesPage);
+
+  document.querySelectorAll('#score-mode-toggle .mode-btn').forEach(btn => {
+    btn.addEventListener('click', () => setScoreEntryMode(btn.dataset.mode));
+  });
+  document.querySelectorAll('#card-action-toggle .mode-btn').forEach(btn => {
+    btn.addEventListener('click', () => setCardEntryAction(btn.dataset.action));
+  });
+  updateModeToggle();
+}
+
+function setScoreEntryMode(mode) {
+  scoreEntryMode = mode;
+  localStorage.setItem('scoreEntryMode', mode);
+  updateModeToggle();
+  if (currentGame) renderScoreboard();
+}
+
+function setCardEntryAction(action) {
+  cardEntryAction = action;
+  updateModeToggle();
+  if (currentGame) renderScoreboard();
+}
+
+function updateModeToggle() {
+  document.querySelectorAll('#score-mode-toggle .mode-btn').forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.mode === scoreEntryMode);
+  });
+  const actionToggle = document.getElementById('card-action-toggle');
+  if (actionToggle) {
+    actionToggle.style.display = scoreEntryMode === 'cards' ? 'inline-flex' : 'none';
+    actionToggle.querySelectorAll('.mode-btn').forEach(btn => {
+      btn.classList.toggle('active', btn.dataset.action === cardEntryAction);
+    });
+  }
 }
 
 // Toggle a player in/out of the selected list
@@ -311,6 +355,25 @@ function renderScoreboard() {
       ? `<span class="score-avatar card-art-avatar" style="border-color:${color}"><img src="dominion-cards-used-small/${escapeHtml(player.avatar_card)}" alt=""></span>`
       : `<span class="score-avatar score-avatar-fallback" style="background:${color}">${escapeHtml(player.name.charAt(0).toUpperCase())}</span>`;
 
+    const sign = cardEntryAction === 'trash' ? -1 : 1;
+    const controlsHtml = scoreEntryMode === 'cards'
+      ? `<div class="score-controls card-controls${sign < 0 ? ' trash-mode' : ''}">
+          ${VICTORY_CARDS.map(c => {
+            const d = c.delta * sign;
+            return `
+            <button class="card-score-btn" onclick="updateScore(${player.id}, ${d})" title="${sign < 0 ? 'Trash' : 'Gain'} ${c.name} (${d > 0 ? '+' : ''}${d})">
+              <img src="dominion-cards-used-small/${c.img}" alt="${c.name}">
+              <span class="card-delta${d < 0 ? ' card-delta-neg' : ''}">${d > 0 ? '+' : ''}${d}</span>
+            </button>`;
+          }).join('')}
+          <button class="btn score-btn token-btn" onclick="updateScore(${player.id}, -1)" title="VP token −1">−</button>
+          <button class="btn score-btn token-btn" onclick="updateScore(${player.id}, 1)" title="VP token +1">+</button>
+        </div>`
+      : `<div class="score-controls">
+          <button class="btn score-btn" onclick="updateScore(${player.id}, -1)">−</button>
+          <button class="btn score-btn" onclick="updateScore(${player.id}, 1)">+</button>
+        </div>`;
+
     div.innerHTML = `
       <div class="player-rank">${index + 1}</div>
       <div class="player-info">
@@ -318,10 +381,7 @@ function renderScoreboard() {
         <div class="player-info-name">${escapeHtml(player.name)}</div>
       </div>
       <div class="score-display">${player.score}</div>
-      <div class="score-controls">
-        <button class="btn score-btn" onclick="updateScore(${player.id}, -1)">−</button>
-        <button class="btn score-btn" onclick="updateScore(${player.id}, 1)">+</button>
-      </div>
+      ${controlsHtml}
     `;
 
     scoreboard.appendChild(div);
@@ -572,6 +632,8 @@ function resetGame() {
   selectedPlayers = [];
   gameStartTime = null;
   scoreUpdateDebounce = {};
+  cardEntryAction = 'gain';
+  updateModeToggle();
 
   document.getElementById('setup-section').style.display = 'block';
   document.getElementById('game-section').style.display = 'none';

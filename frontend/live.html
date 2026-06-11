@@ -62,6 +62,66 @@
       padding: 0;
     }
 
+    .score-mode-row {
+      display: flex;
+      align-items: center;
+      gap: var(--spacing-md);
+      flex-wrap: wrap;
+      margin-bottom: var(--spacing-md);
+    }
+    .score-mode-toggle {
+      display: inline-flex;
+      border: 1px solid var(--color-border);
+      border-radius: var(--border-radius-sm);
+      overflow: hidden;
+    }
+    .mode-btn {
+      padding: 5px 12px;
+      background: var(--color-bg-tertiary);
+      border: none;
+      color: var(--color-text-secondary);
+      cursor: pointer;
+      font-family: var(--font-primary);
+      font-size: 0.85rem;
+    }
+    .mode-btn + .mode-btn { border-left: 1px solid var(--color-border); }
+    .mode-btn.active {
+      background: color-mix(in srgb, var(--color-accent) 30%, var(--color-bg-tertiary));
+      color: var(--color-text-primary);
+    }
+
+    .card-controls { gap: 4px; }
+    .card-score-btn {
+      position: relative;
+      width: 36px; height: 58px;
+      padding: 0;
+      border: 1px solid var(--color-border);
+      border-radius: 4px;
+      overflow: hidden;
+      background: none;
+      cursor: pointer;
+      transition: transform 0.1s, border-color 0.15s;
+    }
+    .card-score-btn img { width: 100%; height: 100%; object-fit: cover; display: block; pointer-events: none; }
+    .card-score-btn:hover { border-color: var(--color-accent); transform: scale(1.08); }
+    .card-score-btn:active { transform: scale(0.95); }
+    .card-delta {
+      position: absolute;
+      bottom: 1px; right: 1px;
+      background: rgba(0,0,0,0.75);
+      color: #b5e853;
+      font-size: 0.65rem;
+      font-weight: 700;
+      padding: 1px 3px;
+      border-radius: 3px;
+      pointer-events: none;
+    }
+    .card-delta-neg { color: #ff8a80; }
+    .card-controls.trash-mode .card-score-btn { border-color: #ff8a80; }
+    #card-action-toggle .mode-btn.active[data-action="trash"] {
+      background: color-mix(in srgb, #ff8a80 30%, var(--color-bg-tertiary));
+    }
+
     .token-section {
       margin-top: var(--spacing-lg);
       background: var(--color-bg-tertiary);
@@ -126,6 +186,16 @@
         <span class="live-badge"><span class="live-dot"></span>LIVE</span>
         <button class="btn btn-danger btn-sm" id="end-game-btn" style="margin-left:auto;">End Game</button>
       </div>
+      <div class="score-mode-row" id="score-toggles" style="display:none;">
+        <div class="score-mode-toggle" id="score-mode-toggle" role="group" aria-label="Score entry mode">
+          <button type="button" class="mode-btn" data-mode="simple">+ / −</button>
+          <button type="button" class="mode-btn" data-mode="cards">Victory Cards</button>
+        </div>
+        <div class="score-mode-toggle" id="card-action-toggle" style="display:none;" role="group" aria-label="Card action">
+          <button type="button" class="mode-btn" data-action="gain">Gain</button>
+          <button type="button" class="mode-btn" data-action="trash">Trash</button>
+        </div>
+      </div>
       <div class="score-rows" id="score-rows"></div>
       <div class="token-section">
         <p>Have the edit token? Enter it to unlock score editing.</p>
@@ -151,6 +221,16 @@
   let editToken = null;
   let eventSource = null;
   let debounceTimers = {};
+  let scoreEntryMode = localStorage.getItem('scoreEntryMode') || 'simple';
+  let cardEntryAction = 'gain';
+
+  const VICTORY_CARDS = [
+    { name: 'Curse', delta: -1, img: 'curse-100x160.jpg' },
+    { name: 'Estate', delta: 1, img: 'estate-100x160.jpg' },
+    { name: 'Duchy', delta: 3, img: 'duchy-100x161.jpg' },
+    { name: 'Province', delta: 6, img: 'province-100x160.jpg' },
+    { name: 'Colony', delta: 10, img: 'colony-100x160.jpg' },
+  ];
 
   document.addEventListener('DOMContentLoaded', async () => {
     apiRequest('/banner').then(({ banner }) => {
@@ -162,9 +242,53 @@
     document.getElementById('unlock-btn').addEventListener('click', tryUnlock);
     document.getElementById('end-game-btn').addEventListener('click', endCurrentGame);
 
+    document.querySelectorAll('#score-mode-toggle .mode-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        scoreEntryMode = btn.dataset.mode;
+        localStorage.setItem('scoreEntryMode', scoreEntryMode);
+        updateModeToggle();
+        if (currentGameId) renderScores(currentPlayers);
+      });
+    });
+    document.querySelectorAll('#card-action-toggle .mode-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        cardEntryAction = btn.dataset.action;
+        updateModeToggle();
+        if (currentGameId) renderScores(currentPlayers);
+      });
+    });
+    updateModeToggle();
+
+    document.getElementById('score-rows').addEventListener('click', e => {
+      const btn = e.target.closest('.score-btn, .card-score-btn');
+      if (!btn || !editToken) return;
+      const pid = Number(btn.dataset.pid);
+      const delta = Number(btn.dataset.delta);
+      const scoreEl = document.getElementById('score-' + pid);
+      const newScore = (Number(scoreEl.textContent) || 0) + delta;
+      scoreEl.textContent = newScore;
+      scoreEl.classList.remove('score-bump');
+      void scoreEl.offsetWidth;
+      scoreEl.classList.add('score-bump');
+      const cp = currentPlayers.find(p => p.player_id === pid);
+      if (cp) cp.final_score = newScore;
+      debounceScore(pid, newScore);
+    });
+
     await loadList();
     setInterval(loadList, 10000); // refresh list every 10s
   });
+
+  function updateModeToggle() {
+    document.querySelectorAll('#score-mode-toggle .mode-btn').forEach(btn => {
+      btn.classList.toggle('active', btn.dataset.mode === scoreEntryMode);
+    });
+    const actionToggle = document.getElementById('card-action-toggle');
+    actionToggle.style.display = scoreEntryMode === 'cards' ? 'inline-flex' : 'none';
+    actionToggle.querySelectorAll('.mode-btn').forEach(btn => {
+      btn.classList.toggle('active', btn.dataset.action === cardEntryAction);
+    });
+  }
 
   async function loadList() {
     if (currentGameId) return; // don't refresh list while watching
@@ -208,6 +332,9 @@
     document.getElementById('watch-title').textContent = `Game #${gameId}`;
     document.getElementById('token-error').style.display = 'none';
     document.getElementById('token-input').value = '';
+    cardEntryAction = 'gain';
+    updateModeToggle();
+    document.getElementById('score-toggles').style.display = 'none';
 
     renderScores(players);
     connectSSE(gameId);
@@ -216,6 +343,7 @@
   function renderScores(players) {
     const container = document.getElementById('score-rows');
     container.innerHTML = '';
+    const unlocked = editToken ? ' unlocked' : '';
     players.forEach(p => {
       const row = document.createElement('div');
       row.className = 'score-row';
@@ -224,33 +352,35 @@
       const avatar = p.avatar_card
         ? `<span class="score-avatar card-art-avatar" style="border-color:${color}"><img src="dominion-cards-used-small/${p.avatar_card}" alt=""></span>`
         : `<span class="score-avatar score-avatar-fallback" style="background:${color}">${(p.player_name || '?').charAt(0).toUpperCase()}</span>`;
+      const sign = cardEntryAction === 'trash' ? -1 : 1;
+      const controls = scoreEntryMode === 'cards'
+        ? `<div class="score-controls card-controls${sign < 0 ? ' trash-mode' : ''}${unlocked}">
+            ${VICTORY_CARDS.map(c => {
+              const d = c.delta * sign;
+              return `
+              <button class="card-score-btn" data-pid="${p.player_id}" data-delta="${d}" title="${sign < 0 ? 'Trash' : 'Gain'} ${c.name} (${d > 0 ? '+' : ''}${d})">
+                <img src="dominion-cards-used-small/${c.img}" alt="${c.name}">
+                <span class="card-delta${d < 0 ? ' card-delta-neg' : ''}">${d > 0 ? '+' : ''}${d}</span>
+              </button>`;
+            }).join('')}
+            <button class="btn btn-sm score-btn" data-pid="${p.player_id}" data-delta="-1" title="VP token −1">−</button>
+            <button class="btn btn-sm score-btn" data-pid="${p.player_id}" data-delta="1" title="VP token +1">+</button>
+          </div>
+          <div class="score-val" id="score-${p.player_id}">${p.final_score ?? 0}</div>`
+        : `<div class="score-controls${unlocked}">
+            <button class="btn btn-sm score-btn" data-pid="${p.player_id}" data-delta="-1">−</button>
+          </div>
+          <div class="score-val" id="score-${p.player_id}">${p.final_score ?? 0}</div>
+          <div class="score-controls${unlocked}">
+            <button class="btn btn-sm score-btn" data-pid="${p.player_id}" data-delta="1">+</button>
+          </div>`;
       row.innerHTML = `
         ${avatar}
         <div class="player-name">${p.player_name}</div>
         <div style="display:flex;align-items:center;gap:var(--spacing-sm);">
-          <div class="score-controls" id="ctrl-${p.player_id}">
-            <button class="btn btn-sm score-btn" data-pid="${p.player_id}" data-delta="-1">−</button>
-          </div>
-          <div class="score-val" id="score-${p.player_id}">${p.final_score ?? 0}</div>
-          <div class="score-controls" id="ctrl2-${p.player_id}">
-            <button class="btn btn-sm score-btn" data-pid="${p.player_id}" data-delta="1">+</button>
-          </div>
+          ${controls}
         </div>`;
       container.appendChild(row);
-    });
-
-    container.addEventListener('click', e => {
-      const btn = e.target.closest('.score-btn');
-      if (!btn || !editToken) return;
-      const pid = Number(btn.dataset.pid);
-      const delta = Number(btn.dataset.delta);
-      const scoreEl = document.getElementById('score-' + pid);
-      const newScore = (Number(scoreEl.textContent) || 0) + delta;
-      scoreEl.textContent = newScore;
-      scoreEl.classList.remove('score-bump');
-      void scoreEl.offsetWidth;
-      scoreEl.classList.add('score-bump');
-      debounceScore(pid, newScore);
     });
   }
 
@@ -274,6 +404,8 @@
       players.forEach(p => {
         const el = document.getElementById('score-' + p.player_id);
         if (el) el.textContent = p.final_score ?? 0;
+        const cp = currentPlayers.find(x => x.player_id === p.player_id);
+        if (cp) cp.final_score = p.final_score ?? 0;
       });
     });
 
@@ -286,6 +418,8 @@
         void el.offsetWidth;
         el.classList.add('score-bump');
       }
+      const cp = currentPlayers.find(x => x.player_id === player_id);
+      if (cp) cp.final_score = score;
     });
 
     eventSource.addEventListener('ended', () => {
@@ -313,6 +447,7 @@
       });
       editToken = token;
       document.querySelectorAll('.score-controls').forEach(c => c.classList.add('unlocked'));
+      document.getElementById('score-toggles').style.display = 'flex';
       document.querySelector('.token-section').innerHTML =
         '<p style="color:var(--color-success)">✓ Edit mode unlocked.</p>';
     } catch {
