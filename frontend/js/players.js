@@ -53,7 +53,7 @@ function renderPlayers() {
 
     const color = player.color || '#4db8ff';
     const avatar = player.avatar_card
-      ? `<a href="profile.html?id=${player.id}" class="player-avatar-link"><img class="player-avatar-thumb" src="dominion-cards-used-small/${escapeHtml(player.avatar_card)}" alt="" style="border-color:${escapeHtml(color)}"></a>`
+      ? `<a href="profile.html?id=${player.id}" class="player-avatar-link card-art-avatar" style="border-color:${escapeHtml(color)}"><img src="dominion-cards-used-small/${escapeHtml(player.avatar_card)}" alt=""></a>`
       : `<a href="profile.html?id=${player.id}" class="player-avatar-link"><span class="player-avatar-fallback" style="background:${escapeHtml(color)}">${escapeHtml(player.name.charAt(0).toUpperCase())}</span></a>`;
     const bio = player.bio
       ? `<div class="player-bio">${escapeHtml(player.bio)}</div>`

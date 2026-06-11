@@ -96,7 +96,7 @@
       <!-- Profile header -->
       <div class="profile-header" id="profile-header">
         <img id="profile-bg" class="profile-bg" src="" alt="" style="display:none;">
-        <img id="profile-avatar" class="profile-avatar" src="" alt="" style="display:none;">
+        <div id="profile-avatar-frame" class="profile-avatar card-art-avatar" style="display:none;"><img id="profile-avatar" src="" alt=""></div>
         <div class="profile-info">
           <div class="profile-name" id="profile-name"></div>
           <div class="profile-bio" id="profile-bio"></div>
@@ -201,15 +201,16 @@
       document.title = `${player.name} — Dominion Tracker`;
       if (profile?.bio) document.getElementById('profile-bio').textContent = profile.bio;
 
-      if (profile?.avatar_card) {
-        const av = document.getElementById('profile-avatar');
-        av.src = CARDS_PATH + profile.avatar_card;
-        av.style.display = 'block';
-      }
-
       // Header background is tinted with the player's chosen color (readable dark scrim);
       // border uses the accent color if set, else the player's color.
       const playerColor = player.color || '#4db8ff';
+
+      if (profile?.avatar_card) {
+        document.getElementById('profile-avatar').src = CARDS_PATH + profile.avatar_card;
+        const frame = document.getElementById('profile-avatar-frame');
+        frame.style.borderColor = playerColor;
+        frame.style.display = 'block';
+      }
       const headerEl = document.getElementById('profile-header');
       headerEl.style.background =
         `linear-gradient(135deg, ${hexToRgba(playerColor, 0.55)} 0%, var(--color-bg-tertiary) 70%)`;

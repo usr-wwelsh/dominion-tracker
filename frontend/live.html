@@ -31,13 +31,21 @@
     .back-btn { cursor: pointer; }
     .score-rows { display: flex; flex-direction: column; gap: var(--spacing-sm); }
     .score-row {
-      display: flex; align-items: center; justify-content: space-between;
+      display: flex; align-items: center; gap: var(--spacing-sm);
       background: var(--color-bg-secondary);
       border: 1px solid var(--color-border);
       border-radius: var(--border-radius-sm);
       padding: var(--spacing-sm) var(--spacing-md);
     }
-    .score-row .player-name { font-size: 1rem; }
+    .score-row .player-name { font-size: 1rem; flex: 1; }
+    .score-avatar { width: 36px; height: 36px; }
+    .score-avatar-fallback {
+      display: flex; align-items: center; justify-content: center;
+      flex-shrink: 0;
+      border-radius: var(--border-radius-sm);
+      border: 2px solid rgba(255,255,255,0.2);
+      font-weight: 700; font-size: 1rem; color: #0b1220;
+    }
     .score-row .score-val {
       font-size: 1.6rem; font-weight: 700;
       color: var(--color-accent-hover);
@@ -212,7 +220,12 @@
       const row = document.createElement('div');
       row.className = 'score-row';
       row.dataset.playerId = p.player_id;
+      const color = p.player_color || '#4db8ff';
+      const avatar = p.avatar_card
+        ? `<span class="score-avatar card-art-avatar" style="border-color:${color}"><img src="dominion-cards-used-small/${p.avatar_card}" alt=""></span>`
+        : `<span class="score-avatar score-avatar-fallback" style="background:${color}">${(p.player_name || '?').charAt(0).toUpperCase()}</span>`;
       row.innerHTML = `
+        ${avatar}
         <div class="player-name">${p.player_name}</div>
         <div style="display:flex;align-items:center;gap:var(--spacing-sm);">
           <div class="score-controls" id="ctrl-${p.player_id}">

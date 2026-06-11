@@ -73,6 +73,7 @@ router.get('/leaderboard', async (req, res, next) => {
         p.id,
         p.name,
         p.color,
+        pp.avatar_card,
         cs.total_games,
         cs.total_lp AS total_league_points,
         ROUND(CAST(cs.total_lp AS REAL) / MAX(cs.total_games, 1), 2) AS avg_league_points,
@@ -85,6 +86,7 @@ router.get('/leaderboard', async (req, res, next) => {
           ELSE CAST(pr.prev_rank - cr.curr_rank AS INTEGER)
         END AS rank_trend
       FROM players p
+      LEFT JOIN player_profiles pp ON pp.player_id = p.id
       JOIN current_stats cs ON p.id = cs.player_id
       JOIN current_ranked cr ON p.id = cr.player_id
       LEFT JOIN prev_ranked pr ON p.id = pr.player_id

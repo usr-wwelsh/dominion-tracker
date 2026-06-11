@@ -880,17 +880,33 @@ tr:hover {
   height: 100%;
   opacity: 0.22;
 }
+/* Square avatar cropped to a card's art window.
+   Card images are 100x160; shows the 46x46 region at (27,16), just below the name banner. */
+.card-art-avatar {
+  position: relative;
+  display: block;
+  overflow: hidden;
+  flex-shrink: 0;
+  border: 2px solid var(--color-accent);
+  border-radius: var(--border-radius-sm);
+  background: var(--color-bg-tertiary);
+}
+.card-art-avatar img {
+  position: absolute;
+  width: 217%;
+  max-width: none;
+  left: -58.7%;
+  top: -34.8%;
+}
+
 .profile-avatar {
   position: relative;
   width: 80px;
   height: 80px;
   border-radius: var(--border-radius-md);
-  object-fit: cover;
-  object-position: center 22%; /* zoom into the card illustration */
-  border: 3px solid var(--color-accent);
+  border-width: 3px;
   box-shadow: var(--shadow-md);
   margin-right: var(--spacing-md);
-  flex-shrink: 0;
 }
 .profile-info { position: relative; }
 .profile-name {

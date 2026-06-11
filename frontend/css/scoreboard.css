@@ -143,11 +143,21 @@
   gap: var(--spacing-sm);
 }
 
-.player-color-dot {
-  width: 12px;
-  height: 12px;
-  border-radius: 50%;
+.score-avatar {
+  width: 40px;
+  height: 40px;
+}
+
+.score-avatar-fallback {
+  display: flex;
+  align-items: center;
+  justify-content: center;
   flex-shrink: 0;
+  border-radius: var(--border-radius-sm);
+  border: 2px solid rgba(255, 255, 255, 0.2);
+  font-weight: 700;
+  font-size: 1.1rem;
+  color: #0b1220;
 }
 
 .player-info-name {

@@ -53,6 +53,7 @@ async function resumeExistingGame(gameId) {
       id: p.player_id,
       name: p.player_name,
       color: p.player_color || '#4db8ff',
+      avatar_card: p.avatar_card || null,
       score: p.final_score,
     }));
 
@@ -305,10 +306,15 @@ function renderScoreboard() {
 
     const color = player.color || '#4db8ff';
     div.style.borderColor = color;
+
+    const avatarHtml = player.avatar_card
+      ? `<span class="score-avatar card-art-avatar" style="border-color:${color}"><img src="dominion-cards-used-small/${escapeHtml(player.avatar_card)}" alt=""></span>`
+      : `<span class="score-avatar score-avatar-fallback" style="background:${color}">${escapeHtml(player.name.charAt(0).toUpperCase())}</span>`;
+
     div.innerHTML = `
       <div class="player-rank">${index + 1}</div>
       <div class="player-info">
-        <span class="player-color-dot" style="background:${color}"></span>
+        ${avatarHtml}
         <div class="player-info-name">${escapeHtml(player.name)}</div>
       </div>
       <div class="score-display">${player.score}</div>

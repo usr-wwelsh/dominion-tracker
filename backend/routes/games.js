@@ -71,14 +71,16 @@ router.get('/', async (req, res, next) => {
           'player_id', gp.player_id,
           'player_name', p.name,
           'player_color', p.color,
+          'avatar_card', gp.avatar_card,
           'final_score', gp.final_score,
           'placement', gp.placement,
           'league_points', gp.league_points
         ))
         FROM (
-          SELECT gp2.player_id, p2.name, p2.color, gp2.final_score, gp2.placement, gp2.league_points
+          SELECT gp2.player_id, p2.name, p2.color, pp.avatar_card, gp2.final_score, gp2.placement, gp2.league_points
           FROM game_players gp2
           JOIN players p2 ON gp2.player_id = p2.id
+          LEFT JOIN player_profiles pp ON pp.player_id = p2.id
           WHERE gp2.game_id = g.id
           ORDER BY gp2.placement
         ) AS gp JOIN players p ON gp.player_id = p.id) AS players
@@ -427,14 +429,16 @@ router.get('/:id', async (req, res, next) => {
           'player_id', gp.player_id,
           'player_name', p.name,
           'player_color', p.color,
+          'avatar_card', gp.avatar_card,
           'final_score', gp.final_score,
           'placement', gp.placement,
           'league_points', gp.league_points
         ))
         FROM (
-          SELECT gp2.player_id, p2.name, p2.color, gp2.final_score, gp2.placement, gp2.league_points
+          SELECT gp2.player_id, p2.name, p2.color, pp.avatar_card, gp2.final_score, gp2.placement, gp2.league_points
           FROM game_players gp2
           JOIN players p2 ON gp2.player_id = p2.id
+          LEFT JOIN player_profiles pp ON pp.player_id = p2.id
           WHERE gp2.game_id = g.id
           ORDER BY gp2.placement
         ) AS gp JOIN players p ON gp.player_id = p.id) AS players
