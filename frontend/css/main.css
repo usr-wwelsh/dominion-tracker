@@ -1,5 +1,14 @@
 /* Dominion Tracker - Season 2 Medieval Theme */
 
+/* Self-hosted display font — Roman inscription capitals */
+@font-face {
+  font-family: 'Cinzel';
+  font-style: normal;
+  font-weight: 400 900;
+  font-display: swap;
+  src: url('../fonts/cinzel-latin.woff2') format('woff2');
+}
+
 /* CSS Variables */
 :root {
   /* Core colors — slightly deeper for Season 2 */
@@ -38,6 +47,7 @@
   /* Typography */
   --font-primary: Georgia, 'Times New Roman', serif;
   --font-secondary: 'Palatino Linotype', 'Book Antiqua', Palatino, serif;
+  --font-display: 'Cinzel', Georgia, serif;
 
   /* Spacing */
   --spacing-xs: 0.25rem;
@@ -126,7 +136,7 @@ body::after {
 
 /* Typography */
 h1, h2, h3, h4, h5, h6 {
-  font-family: var(--font-primary);
+  font-family: var(--font-display);
   letter-spacing: 0.05em;
   font-weight: 600;
   color: var(--color-text-primary);
@@ -135,7 +145,7 @@ h1, h2, h3, h4, h5, h6 {
 
 h1 {
   font-size: 2.5rem;
-  border-bottom: 2px solid var(--color-accent);
+  border-bottom: 1px solid var(--color-accent);
   padding-bottom: var(--spacing-sm);
   margin-bottom: var(--spacing-lg);
 }
@@ -195,7 +205,7 @@ a:hover {
 /* Site Header */
 .site-header {
   background: linear-gradient(to bottom, #07101c, #0f1c2e);
-  border-bottom: 2px solid var(--color-accent);
+  border-bottom: 1px solid var(--color-accent);
   box-shadow: 0 2px 12px rgba(0, 0, 0, 0.8);
   position: relative;
   z-index: 10;
@@ -214,7 +224,8 @@ a:hover {
   gap: var(--spacing-sm);
   text-decoration: none;
   color: var(--color-accent);
-  font-size: 1.15rem;
+  font-family: var(--font-display);
+  font-size: 1.05rem;
   font-weight: 600;
   letter-spacing: 0.08em;
   white-space: nowrap;
@@ -376,7 +387,7 @@ button,
   font-family: var(--font-primary);
   background-color: var(--color-bg-tertiary);
   color: var(--color-text-primary);
-  border: 2px solid var(--color-blue);
+  border: 1px solid var(--color-blue);
   padding: var(--spacing-sm) var(--spacing-lg);
   font-size: 1rem;
   cursor: pointer;
@@ -457,7 +468,7 @@ textarea {
   font-family: var(--font-primary);
   background-color: #111927;
   color: var(--color-text-primary);
-  border: 2px solid var(--color-border);
+  border: 1px solid var(--color-border);
   padding: var(--spacing-sm) var(--spacing-md);
   font-size: 1rem;
   border-radius: var(--border-radius-sm);
@@ -490,13 +501,13 @@ table {
   width: 100%;
   border-collapse: collapse;
   background-color: var(--color-bg-secondary);
-  border: 2px solid var(--color-border);
+  border: 1px solid var(--color-border);
   box-shadow: var(--shadow-md);
 }
 
 thead {
   background-color: #111927;
-  border-bottom: 2px solid var(--color-blue);
+  border-bottom: 1px solid var(--color-blue);
 }
 
 th {
@@ -545,7 +556,7 @@ tr:hover {
 /* Cards/Panels */
 .card {
   background-color: var(--color-bg-secondary);
-  border: 2px solid var(--color-border);
+  border: 1px solid var(--color-border);
   border-radius: var(--border-radius-md);
   padding: var(--spacing-lg);
   margin-bottom: var(--spacing-lg);
@@ -553,7 +564,8 @@ tr:hover {
 }
 
 .card-header {
-  font-size: 1.3rem;
+  font-family: var(--font-display);
+  font-size: 1.25rem;
   font-weight: 600;
   margin-bottom: var(--spacing-md);
   padding-bottom: var(--spacing-sm);
@@ -607,7 +619,7 @@ tr:hover {
   padding: var(--spacing-md);
   border-radius: var(--border-radius-sm);
   margin-bottom: var(--spacing-md);
-  border: 2px solid #a04040;
+  border: 1px solid #a04040;
 }
 
 .success {
@@ -616,7 +628,7 @@ tr:hover {
   padding: var(--spacing-md);
   border-radius: var(--border-radius-sm);
   margin-bottom: var(--spacing-md);
-  border: 2px solid #5a8a58;
+  border: 1px solid #5a8a58;
 }
 
 /* Utility Classes */
@@ -654,7 +666,7 @@ tr:hover {
 
 .delete-modal-box {
   background: var(--color-bg-secondary);
-  border: 2px solid var(--color-accent);
+  border: 1px solid var(--color-accent);
   border-radius: var(--border-radius-md);
   padding: var(--spacing-xl);
   width: 100%;
@@ -824,7 +836,7 @@ tr:hover {
 }
 .achievement-card {
   background: var(--color-bg-secondary);
-  border: 2px solid var(--color-border);
+  border: 1px solid var(--color-border);
   border-radius: var(--border-radius-md);
   padding: var(--spacing-md);
   text-align: center;
@@ -870,7 +882,7 @@ tr:hover {
   align-items: flex-end;
   padding: var(--spacing-lg);
   background: var(--color-bg-secondary);
-  border: 2px solid var(--color-border);
+  border: 1px solid var(--color-border);
 }
 .profile-bg {
   position: absolute;
@@ -934,7 +946,7 @@ tr:hover {
 }
 .modal-box {
   background: var(--color-bg-secondary);
-  border: 2px solid var(--color-accent);
+  border: 1px solid var(--color-accent);
   border-radius: var(--border-radius-md);
   padding: var(--spacing-xl);
   width: 100%;
@@ -966,7 +978,7 @@ tr:hover {
 /* Season history cards */
 .season-card {
   background: var(--color-bg-secondary);
-  border: 2px solid var(--color-border);
+  border: 1px solid var(--color-border);
   border-radius: var(--border-radius-md);
   padding: var(--spacing-lg);
   margin-bottom: var(--spacing-lg);
@@ -986,6 +998,59 @@ tr:hover {
 .champion-crown { font-size: 2rem; }
 .champion-name { font-size: 1.1rem; font-weight: 600; color: var(--color-accent-hover); }
 .champion-stats { font-size: 0.85rem; color: var(--color-text-secondary); }
+
+/* Small-caps section label */
+.section-label {
+  font-family: var(--font-display);
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.28em;
+  text-transform: uppercase;
+  color: var(--color-accent-dim);
+  margin-bottom: var(--spacing-xs);
+}
+
+/* Ornate card-frame treatment — hairline gold border, offset outer rule, diamond finials */
+.ornate-frame {
+  position: relative;
+  border: 1px solid var(--color-accent-dim);
+  outline: 1px solid var(--color-border);
+  outline-offset: 3px;
+  border-radius: 2px;
+}
+.ornate-frame::before,
+.ornate-frame::after {
+  content: '\25C6';
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  color: var(--color-accent);
+  font-size: 0.6rem;
+  line-height: 1;
+  text-shadow: 0 0 6px rgba(184, 150, 58, 0.5);
+  pointer-events: none;
+}
+.ornate-frame::before { top: -0.32rem; }
+.ornate-frame::after  { bottom: -0.32rem; }
+
+/* Heraldic footer divider */
+.flourish-divider {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--spacing-md);
+  color: var(--color-accent-dim);
+  font-size: 0.6rem;
+  margin-bottom: var(--spacing-md);
+}
+.flourish-divider::before,
+.flourish-divider::after {
+  content: '';
+  height: 1px;
+  width: min(220px, 28vw);
+}
+.flourish-divider::before { background: linear-gradient(to right, transparent, var(--color-accent-dim)); }
+.flourish-divider::after  { background: linear-gradient(to left, transparent, var(--color-accent-dim)); }
 
 /* Live game indicator */
 .live-badge {
