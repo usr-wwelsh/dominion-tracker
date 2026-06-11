@@ -57,6 +57,59 @@
     .tab-btn.active { background: var(--color-blue-dim); border-color: var(--color-blue); color: var(--color-text-primary); }
     .tab-panel { display: none; }
     .tab-panel.active { display: block; }
+    .card-picker { position: relative; max-width: 360px; }
+    .card-picker-toggle {
+      display: flex; align-items: center; gap: var(--spacing-sm);
+      width: 100%;
+      background: var(--color-bg-tertiary);
+      border: 1px solid var(--color-border);
+      border-radius: var(--border-radius-md);
+      color: var(--color-text-primary);
+      padding: var(--spacing-xs) var(--spacing-sm);
+      cursor: pointer;
+      font-size: 0.9rem;
+      text-align: left;
+    }
+    .card-picker-toggle img { width: 32px; height: 51px; border-radius: 3px; object-fit: cover; }
+    .card-picker-toggle .caret { margin-left: auto; color: var(--color-text-dim); }
+    .card-picker-panel {
+      display: none;
+      position: absolute; z-index: 50; top: calc(100% + 4px); left: 0;
+      width: min(420px, calc(100vw - 2 * var(--spacing-md)));
+      background: var(--color-bg-secondary);
+      border: 1px solid var(--color-border);
+      border-radius: var(--border-radius-md);
+      padding: var(--spacing-sm);
+      box-shadow: 0 8px 24px rgba(0,0,0,0.5);
+    }
+    .card-picker.open .card-picker-panel { display: block; }
+    .card-picker-search { width: 100%; margin-bottom: var(--spacing-sm); }
+    .card-picker-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(72px, 1fr));
+      gap: var(--spacing-sm);
+      max-height: 320px; overflow-y: auto;
+    }
+    .card-picker-option {
+      cursor: pointer; text-align: center;
+      border: 2px solid transparent; border-radius: 4px; padding: 3px;
+    }
+    .card-picker-option:hover { background: var(--color-bg-tertiary); }
+    .card-picker-option.selected { border-color: var(--color-blue); }
+    .card-picker-option img {
+      width: 100%; aspect-ratio: 100 / 160; object-fit: cover;
+      border-radius: 3px; display: block;
+    }
+    .card-picker-option .opt-none {
+      display: flex; align-items: center; justify-content: center;
+      width: 100%; aspect-ratio: 100 / 160;
+      border: 1px dashed var(--color-border); border-radius: 3px;
+      color: var(--color-text-dim); font-size: 0.75rem;
+    }
+    .card-picker-option .opt-label {
+      font-size: 0.65rem; color: var(--color-text-secondary); margin-top: 2px;
+      overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    }
   </style>
 </head>
 <body>
@@ -142,12 +195,12 @@
             <div class="color-swatches" id="accent-swatches"></div>
           </div>
           <div class="form-group">
-            <label for="avatar-select">Avatar Card</label>
-            <select id="avatar-select"><option value="">— none —</option></select>
+            <label>Avatar Card</label>
+            <div class="card-picker" id="avatar-picker"></div>
           </div>
           <div class="form-group">
-            <label for="bg-select">Background Card <span style="color:var(--color-text-dim);font-weight:normal;">(tiles your profile page)</span></label>
-            <select id="bg-select"><option value="">— none —</option></select>
+            <label>Background Card <span style="color:var(--color-text-dim);font-weight:normal;">(tiles your profile page)</span></label>
+            <div class="card-picker" id="bg-picker"></div>
           </div>
           <button id="save-profile-btn" class="btn btn-primary">Save Profile</button>
           <span id="profile-save-msg" style="margin-left:var(--spacing-md);color:var(--color-success);"></span>
@@ -291,14 +344,8 @@
       if (cards.length === 0) {
         try { cards = await cardsAPI.getAll(); } catch (e) { console.error('card list load failed', e); }
       }
-      const avSel = document.getElementById('avatar-select');
-      const bgSel = document.getElementById('bg-select');
-      cards.forEach(c => {
-        avSel.appendChild(new Option(c.label, c.filename));
-        bgSel.appendChild(new Option(c.label, c.filename));
-      });
-      if (profile?.avatar_card) avSel.value = profile.avatar_card;
-      if (profile?.background_card) bgSel.value = profile.background_card;
+      const avatarPicker = createCardPicker(document.getElementById('avatar-picker'), cards, profile?.avatar_card || '');
+      const bgPicker = createCardPicker(document.getElementById('bg-picker'), cards, profile?.background_card || '');
 
       document.getElementById('save-profile-btn').addEventListener('click', async () => {
         const btn = document.getElementById('save-profile-btn');
@@ -310,8 +357,8 @@
             body: JSON.stringify({
               bio: document.getElementById('bio-input').value,
               accent_color: selectedAccent || null,
-              avatar_card: document.getElementById('avatar-select').value || null,
-              background_card: document.getElementById('bg-select').value || null,
+              avatar_card: avatarPicker.value || null,
+              background_card: bgPicker.value || null,
             }),
           });
           const msg = document.getElementById('profile-save-msg');
@@ -330,6 +377,80 @@
       console.error(err);
     }
   });
+
+  // Dropdown replacement for card selection: toggle button shows the current
+  // card's thumbnail; the panel is a searchable grid of card art previews.
+  function createCardPicker(container, cards, initialValue) {
+    const state = { value: initialValue || '' };
+    const labels = Object.fromEntries(cards.map(c => [c.filename, c.label]));
+
+    const toggle = document.createElement('button');
+    toggle.type = 'button';
+    toggle.className = 'card-picker-toggle';
+
+    const panel = document.createElement('div');
+    panel.className = 'card-picker-panel';
+
+    const search = document.createElement('input');
+    search.type = 'text';
+    search.className = 'card-picker-search';
+    search.placeholder = 'Search cards…';
+
+    const grid = document.createElement('div');
+    grid.className = 'card-picker-grid';
+
+    function renderToggle() {
+      toggle.innerHTML = state.value
+        ? `<img src="${CARDS_PATH}${state.value}" alt=""><span>${labels[state.value] || state.value}</span><span class="caret">&#9662;</span>`
+        : `<span>&mdash; none &mdash;</span><span class="caret">&#9662;</span>`;
+    }
+
+    function renderGrid(filter) {
+      const q = (filter || '').trim().toLowerCase();
+      grid.innerHTML = '';
+      if (!q) {
+        const none = document.createElement('div');
+        none.className = 'card-picker-option' + (state.value === '' ? ' selected' : '');
+        none.innerHTML = `<div class="opt-none">None</div><div class="opt-label">&mdash;</div>`;
+        none.addEventListener('click', () => pick(''));
+        grid.appendChild(none);
+      }
+      cards.filter(c => !q || c.label.toLowerCase().includes(q)).forEach(c => {
+        const opt = document.createElement('div');
+        opt.className = 'card-picker-option' + (state.value === c.filename ? ' selected' : '');
+        opt.title = c.label;
+        opt.innerHTML = `<img src="${CARDS_PATH}${c.filename}" alt="" loading="lazy"><div class="opt-label">${c.label}</div>`;
+        opt.addEventListener('click', () => pick(c.filename));
+        grid.appendChild(opt);
+      });
+    }
+
+    function pick(filename) {
+      state.value = filename;
+      renderToggle();
+      container.classList.remove('open');
+    }
+
+    toggle.addEventListener('click', () => {
+      const opening = !container.classList.contains('open');
+      document.querySelectorAll('.card-picker.open').forEach(p => p.classList.remove('open'));
+      if (opening) {
+        search.value = '';
+        renderGrid('');
+        container.classList.add('open');
+        search.focus();
+      }
+    });
+    search.addEventListener('input', () => renderGrid(search.value));
+    document.addEventListener('click', e => {
+      if (!container.contains(e.target)) container.classList.remove('open');
+    });
+
+    panel.append(search, grid);
+    container.append(toggle, panel);
+    renderToggle();
+    return state;
+  }
 
   function formatDate(ts) {
     if (!ts) return '';
