@@ -90,7 +90,7 @@ router.get('/:id/level', async (req, res, next) => {
       WHERE gp.player_id = ? AND g.ended_at IS NOT NULL
     `, [id]);
 
-    const K = 1200; // seconds per XP unit; tunes level curve
+    const K = 300; // seconds per XP unit; tunes level curve
     const totalXp = Math.max(0, Math.floor((xpResult.rows[0].total_seconds || 0) / K));
     const level = Math.floor(Math.sqrt(totalXp));
     const xpForCurrentLevel = level * level;

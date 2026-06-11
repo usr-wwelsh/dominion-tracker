@@ -171,6 +171,8 @@ router.put('/:id/end', async (req, res, next) => {
       const ts = game.started_at.includes('T') ? game.started_at
         : game.started_at.replace(' ', 'T') + 'Z';
       duration = Math.max(0, Math.floor((Date.now() - new Date(ts).getTime()) / 1000));
+      // Cap at 4 hours so a stale game ended long after it started can't award absurd XP
+      duration = Math.min(duration, 14400);
     }
 
     await client.query(
