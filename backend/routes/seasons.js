@@ -42,16 +42,17 @@ router.get('/:id/standings', async (req, res, next) => {
         p.id, p.name, p.color,
         COUNT(gp.id) AS total_games,
         SUM(gp.league_points) AS total_league_points,
+        ROUND(CAST(AVG(gp.league_points) AS REAL), 2) AS avg_league_points,
         SUM(CASE WHEN gp.placement = 1 THEN 1 ELSE 0 END) AS total_wins,
         ROUND(CAST(AVG(gp.final_score) AS REAL), 2) AS avg_score,
-        RANK() OVER (ORDER BY SUM(gp.league_points) DESC,
+        RANK() OVER (ORDER BY AVG(gp.league_points) DESC,
                               SUM(CASE WHEN gp.placement = 1 THEN 1 ELSE 0 END) DESC) AS rank
       FROM players p
       JOIN game_players gp ON gp.player_id = p.id
       JOIN games g ON gp.game_id = g.id
       WHERE g.ended_at IS NOT NULL AND g.season_id = ?
       GROUP BY p.id, p.name, p.color
-      ORDER BY total_league_points DESC, total_wins DESC
+      ORDER BY avg_league_points DESC, total_wins DESC
     `, [id]);
     res.json(result.rows);
   } catch (error) {
@@ -78,6 +79,7 @@ router.get('/:id/champion', async (req, res, next) => {
     const result = await query(`
       SELECT p.id AS player_id, p.name AS player_name,
         SUM(gp.league_points) AS total_league_points,
+        ROUND(CAST(AVG(gp.league_points) AS REAL), 2) AS avg_league_points,
         SUM(CASE WHEN gp.placement = 1 THEN 1 ELSE 0 END) AS total_wins,
         COUNT(*) AS total_games
       FROM players p
@@ -85,7 +87,7 @@ router.get('/:id/champion', async (req, res, next) => {
       JOIN games g ON gp.game_id = g.id
       WHERE g.ended_at IS NOT NULL AND g.season_id = ?
       GROUP BY p.id, p.name
-      ORDER BY total_league_points DESC, total_wins DESC
+      ORDER BY avg_league_points DESC, total_wins DESC
       LIMIT 1
     `, [id]);
     res.json(result.rows[0] || null);

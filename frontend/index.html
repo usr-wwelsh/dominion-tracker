@@ -461,12 +461,12 @@
             ${avatar}
             <div>
               <div class="champion-name"><a href="profile.html?id=${leader.id}">${leader.name}</a></div>
-              <div class="champion-stats">${leader.total_league_points} LP &middot; ${leader.total_wins} wins &middot; ${leader.total_games} games</div>
+              <div class="champion-stats">${leader.avg_league_points} avg LP &middot; ${leader.total_wins} wins &middot; ${leader.total_games} games</div>
             </div>`;
 
           const stats = [
             { value: lb.length, name: 'Players' },
-            { value: leader.total_league_points, name: 'Leading LP' },
+            { value: leader.avg_league_points, name: 'Leading Avg LP' },
           ];
           try {
             const extras = await apiRequest('/extras');

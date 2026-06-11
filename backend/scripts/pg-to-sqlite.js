@@ -180,6 +180,29 @@ async function copyFromPostgres(sqlite, pgUrl) {
           r.tournament_id || null, r.captured_at?.toISOString() || null);
       }
       summary.season_snapshots = sss.length;
+
+      // The Postgres snapshot was captured when total LP decided the title;
+      // re-pick the Season 1 champion under the avg-LP-per-game rule.
+      const champ = sqlite.prepare(`
+        SELECT p.id, p.name,
+          COUNT(*) AS total_games,
+          SUM(gp.league_points) AS total_lp,
+          SUM(CASE WHEN gp.placement = 1 THEN 1 ELSE 0 END) AS total_wins
+        FROM players p
+        JOIN game_players gp ON gp.player_id = p.id
+        JOIN games g ON gp.game_id = g.id
+        WHERE g.ended_at IS NOT NULL AND g.season_id = 1
+        GROUP BY p.id, p.name
+        ORDER BY CAST(SUM(gp.league_points) AS REAL) / COUNT(*) DESC, total_wins DESC
+        LIMIT 1
+      `).get();
+      if (champ) {
+        sqlite.prepare(`
+          UPDATE season_snapshots
+          SET player_id = ?, player_name = ?, total_league_points = ?, total_wins = ?, total_games = ?
+          WHERE label = 'Season 1'
+        `).run(champ.id, champ.name, champ.total_lp, champ.total_wins, champ.total_games);
+      }
     } catch (e) { summary.tournaments = `skipped (${e.message})`; }
 
     sqlite.exec('COMMIT');

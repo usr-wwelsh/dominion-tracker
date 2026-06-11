@@ -39,6 +39,7 @@ router.get('/leaderboard', async (req, res, next) => {
       prev_stats AS (
         SELECT
           player_id,
+          COUNT(*) AS prev_games,
           SUM(league_points) AS prev_lp,
           SUM(CASE WHEN placement = 1 THEN 1 ELSE 0 END) AS prev_wins,
           ROUND(CAST(AVG(final_score) AS REAL), 2) AS prev_avg_score
@@ -49,13 +50,13 @@ router.get('/leaderboard', async (req, res, next) => {
       current_ranked AS (
         SELECT
           player_id,
-          RANK() OVER (ORDER BY total_lp DESC, total_wins DESC, avg_score DESC) AS curr_rank
+          RANK() OVER (ORDER BY CAST(total_lp AS REAL) / MAX(total_games, 1) DESC, total_wins DESC, avg_score DESC) AS curr_rank
         FROM current_stats
       ),
       prev_ranked AS (
         SELECT
           player_id,
-          RANK() OVER (ORDER BY prev_lp DESC, prev_wins DESC, prev_avg_score DESC) AS prev_rank
+          RANK() OVER (ORDER BY CAST(prev_lp AS REAL) / MAX(prev_games, 1) DESC, prev_wins DESC, prev_avg_score DESC) AS prev_rank
         FROM prev_stats
       ),
       recent_form_ordered AS (
@@ -91,7 +92,7 @@ router.get('/leaderboard', async (req, res, next) => {
       JOIN current_ranked cr ON p.id = cr.player_id
       LEFT JOIN prev_ranked pr ON p.id = pr.player_id
       LEFT JOIN recent_form_agg rf ON p.id = rf.player_id
-      ORDER BY cs.total_lp DESC, cs.total_wins DESC, cs.avg_score DESC
+      ORDER BY CAST(cs.total_lp AS REAL) / MAX(cs.total_games, 1) DESC, cs.total_wins DESC, cs.avg_score DESC
     `);
 
     // SQLite returns json_group_array as a string; parse it

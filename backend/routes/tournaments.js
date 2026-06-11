@@ -62,7 +62,7 @@ async function snapshotSeason(client, tournamentId) {
     JOIN games g ON gp.game_id = g.id
     WHERE g.ended_at IS NOT NULL
     GROUP BY p.id, p.name
-    ORDER BY total_lp DESC, total_wins DESC
+    ORDER BY CAST(SUM(gp.league_points) AS REAL) / COUNT(*) DESC, total_wins DESC
     LIMIT 1
   `);
   if (rows.length === 0) return;

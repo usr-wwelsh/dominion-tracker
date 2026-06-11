@@ -149,7 +149,7 @@
                 <div>
                   <div class="champion-name">${champ.player_name || champ.name}</div>
                   <div class="champion-stats">
-                    ${Number(champ.total_league_points || 0).toFixed(0)} LP ·
+                    ${Number(champ.avg_league_points ?? Number(champ.total_league_points || 0) / Math.max(Number(champ.total_games) || 1, 1)).toFixed(2)} avg LP ·
                     ${champ.total_wins} wins ·
                     ${champ.total_games} games
                   </div>
@@ -196,12 +196,13 @@
             }
             let html = `<table class="standings-table mt-md">
               <thead><tr>
-                <th>#</th><th>Player</th><th>LP</th><th>Wins</th><th>Games</th><th>Avg Score</th>
+                <th>#</th><th>Player</th><th>Avg LP</th><th>LP</th><th>Wins</th><th>Games</th><th>Avg Score</th>
               </tr></thead><tbody>`;
             standings.forEach((p, i) => {
               html += `<tr>
                 <td>${i + 1}</td>
                 <td><a href="profile.html?id=${p.id}">${p.name}</a></td>
+                <td>${Number(p.avg_league_points || 0).toFixed(2)}</td>
                 <td>${Number(p.total_league_points || 0).toFixed(0)}</td>
                 <td>${p.total_wins}</td>
                 <td>${p.total_games}</td>
