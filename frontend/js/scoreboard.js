@@ -9,6 +9,7 @@ let gameStartTime = null;
 let scoreUpdateDebounce = {};
 let resumeTournamentId = null;
 let resumeMatchId = null;
+let scoreStream = null;
 
 // Initialize page
 document.addEventListener('DOMContentLoaded', () => {
@@ -57,6 +58,7 @@ async function resumeExistingGame(gameId) {
 
     gameStartTime = game.started_at ? parseServerTime(game.started_at) : new Date();
     startTimer();
+    connectScoreStream();
 
     document.getElementById('game-section').style.display = 'block';
 
@@ -251,6 +253,7 @@ async function startGame() {
     gameStartTime = parseServerTime(currentGame.started_at);
     startTimer();
     showShareToken();
+    connectScoreStream();
 
     // Initialize player scores from game (everyone starts with 3 victory points in Dominion)
     selectedPlayers = selectedPlayers.map(player => ({
@@ -335,6 +338,7 @@ async function updateScore(playerId, delta) {
   }
 
   scoreUpdateDebounce[playerId] = setTimeout(async () => {
+    delete scoreUpdateDebounce[playerId];
     try {
       await gamesAPI.updateScore(currentGame.id, playerId, player.score, currentGame.edit_token);
     } catch (error) {
@@ -342,6 +346,55 @@ async function updateScore(playerId, delta) {
       showError('Failed to save score update');
     }
   }, 500); // Wait 500ms after last change before saving
+}
+
+// Subscribe to the game's SSE stream so remote edits (Live page) show up here too.
+function connectScoreStream() {
+  disconnectScoreStream();
+  if (!currentGame) return;
+
+  scoreStream = new EventSource(`${API_BASE_URL}/games/${currentGame.id}/stream`);
+
+  scoreStream.addEventListener('score', (e) => {
+    const { player_id, score } = JSON.parse(e.data);
+    // A local edit is still debouncing — our value is newer, ignore the echo.
+    if (scoreUpdateDebounce[player_id]) return;
+    const player = selectedPlayers.find(p => p.id === player_id);
+    if (!player || player.score === score) return;
+    player.score = score;
+    renderScoreboard();
+    updateLiveChart();
+  });
+
+  scoreStream.addEventListener('ended', () => {
+    // Game was ended from another page (Live view admin).
+    if (!currentGame) return;
+    disconnectScoreStream();
+    stopTimer();
+    Object.values(scoreUpdateDebounce).forEach(t => clearTimeout(t));
+    if (resumeTournamentId) {
+      window.location.href = 'tournament.html?id=' + resumeTournamentId;
+      return;
+    }
+    showSuccess('Game was ended from the Live page.');
+    gamesAPI.getById(currentGame.id).then(finalGame => {
+      showEndGameModal({
+        game: finalGame,
+        selectedPlayerIds: selectedPlayers.map(p => p.id),
+        selectedPlayerNames: selectedPlayers.map(p => p.name),
+        previousBuildId: currentGame.build_id,
+      });
+    }).catch(console.error);
+  });
+
+  scoreStream.onerror = () => {}; // EventSource auto-reconnects
+}
+
+function disconnectScoreStream() {
+  if (scoreStream) {
+    scoreStream.close();
+    scoreStream = null;
+  }
 }
 
 // Parse a SQLite timestamp ("YYYY-MM-DD HH:MM:SS", UTC, no zone) as UTC.
@@ -382,6 +435,7 @@ async function doEndGame() {
   document.getElementById('confirm-end-modal').style.display = 'none';
 
   try {
+    disconnectScoreStream();
     Object.values(scoreUpdateDebounce).forEach(timeout => clearTimeout(timeout));
 
     const finalGame = await gamesAPI.end(currentGame.id);
@@ -492,6 +546,7 @@ function cancelGame() {
 
 async function doCancelGame() {
   document.getElementById('confirm-cancel-modal').style.display = 'none';
+  disconnectScoreStream();
   stopTimer();
   if (currentGame) {
     try {
@@ -506,6 +561,7 @@ async function doCancelGame() {
 
 // Reset game state
 function resetGame() {
+  disconnectScoreStream();
   currentGame = null;
   selectedPlayers = [];
   gameStartTime = null;
