@@ -330,6 +330,10 @@
   font-size: 1.5rem;
   flex-shrink: 0;
   line-height: 1;
+  color: var(--color-accent);
+}
+.extras-card-icon svg {
+  display: block;
 }
 
 .extras-card-label {

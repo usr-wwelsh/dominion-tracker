@@ -64,7 +64,9 @@
       box-shadow: var(--shadow-glow-gold);
       text-decoration: none;
     }
-    .about-card-icon { font-size: 2rem; margin-bottom: var(--spacing-sm); }
+    .about-card-icon { font-size: 2rem; margin-bottom: var(--spacing-sm); color: var(--color-accent); }
+    .about-card-icon svg, .champion-crown svg { display: block; }
+    .champion-crown { color: var(--color-accent); }
     .about-card h3 { color: var(--color-accent); margin-bottom: var(--spacing-xs); font-size: 1.1rem; }
     .about-card p  { color: var(--color-text-secondary); font-size: 0.9rem; margin: 0; }
     .season-spotlight {
@@ -149,32 +151,32 @@
     <!-- Quick-nav cards -->
     <div class="about-grid fade-in">
       <a href="leaderboard.html" class="about-card">
-        <div class="about-card-icon">🏆</div>
+        <div class="about-card-icon"><svg width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 14.66v1.626a2 2 0 0 1-.976 1.696A5 5 0 0 0 7 21.978"/><path d="M14 14.66v1.626a2 2 0 0 0 .976 1.696A5 5 0 0 1 17 21.978"/><path d="M18 9h1.5a1 1 0 0 0 0-5H18"/><path d="M4 22h16"/><path d="M6 9a6 6 0 0 0 12 0V3a1 1 0 0 0-1-1H7a1 1 0 0 0-1 1z"/><path d="M6 9H4.5a1 1 0 0 1 0-5H6"/></svg></div>
         <h3>Leaderboard</h3>
         <p>Season 2 standings, league points, win rates and trends.</p>
       </a>
       <a href="scoreboard.html" class="about-card">
-        <div class="about-card-icon">⚔️</div>
+        <div class="about-card-icon"><svg width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="14.5 17.5 3 6 3 3 6 3 17.5 14.5"/><line x1="13" x2="19" y1="19" y2="13"/><line x1="16" x2="20" y1="16" y2="20"/><line x1="19" x2="21" y1="21" y2="19"/><polyline points="14.5 6.5 18 3 21 3 21 6 17.5 9.5"/><line x1="5" x2="9" y1="14" y2="18"/><line x1="7" x2="4" y1="17" y2="20"/><line x1="3" x2="5" y1="19" y2="21"/></svg></div>
         <h3>Play a Game</h3>
         <p>Start a live scoreboard, track VP in real time, end and record the result.</p>
       </a>
       <a href="tournament.html" class="about-card">
-        <div class="about-card-icon">🎖️</div>
+        <div class="about-card-icon"><svg width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15.477 12.89 1.515 8.526a.5.5 0 0 1-.81.47l-3.58-2.687a1 1 0 0 0-1.197 0l-3.586 2.686a.5.5 0 0 1-.81-.469l1.514-8.526"/><circle cx="12" cy="8" r="6"/></svg></div>
         <h3>Tournament</h3>
         <p>Single-elimination bracket. Create, seed, and run a tournament with the group.</p>
       </a>
       <a href="live.html" class="about-card">
-        <div class="about-card-icon">📡</div>
+        <div class="about-card-icon"><svg width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4.9 16.1C1 12.2 1 5.8 4.9 1.9"/><path d="M7.8 4.7a6.14 6.14 0 0 0-.8 7.5"/><circle cx="12" cy="9" r="2"/><path d="M16.2 4.8c2 2 2.26 5.11.8 7.47"/><path d="M19.1 1.9a9.96 9.96 0 0 1 0 14.1"/><path d="M9.5 18h5"/><path d="m8 22 4-11 4 11"/></svg></div>
         <h3>Live Games</h3>
         <p>Watch in-progress games update in real time without refreshing.</p>
       </a>
       <a href="builds.html" class="about-card">
-        <div class="about-card-icon">🃏</div>
+        <div class="about-card-icon"><svg width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12.83 2.18a2 2 0 0 0-1.66 0L2.6 6.08a1 1 0 0 0 0 1.83l8.58 3.91a2 2 0 0 0 1.66 0l8.58-3.9a1 1 0 0 0 0-1.83z"/><path d="M2 12a1 1 0 0 0 .58.91l8.6 3.91a2 2 0 0 0 1.65 0l8.58-3.9A1 1 0 0 0 22 12"/><path d="M2 17a1 1 0 0 0 .58.91l8.6 3.91a2 2 0 0 0 1.65 0l8.58-3.9A1 1 0 0 0 22 17"/></svg></div>
         <h3>Builds</h3>
         <p>Browse and save kingdom configurations you've played.</p>
       </a>
       <a href="history.html" class="about-card">
-        <div class="about-card-icon">📜</div>
+        <div class="about-card-icon"><svg width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 12h-5"/><path d="M15 8h-5"/><path d="M19 17V5a2 2 0 0 0-2-2H4"/><path d="M8 21h12a2 2 0 0 0 2-2v-1a1 1 0 0 0-1-1H11a1 1 0 0 0-1 1v1a2 2 0 1 1-4 0V5a2 2 0 1 0-4 0v2a1 1 0 0 0 1 1h3"/></svg></div>
         <h3>Season History</h3>
         <p>Season 1 champion, past standings, and Tournament 1 bracket.</p>
       </a>
@@ -224,7 +226,7 @@
         if (lb && lb.length > 0) {
           const leader = lb[0];
           document.getElementById('spotlight-champion').innerHTML =
-            `<div class="champion-crown">👑</div>
+            `<div class="champion-crown"><svg width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11.562 3.266a.5.5 0 0 1 .876 0L15.39 8.87a1 1 0 0 0 1.516.294L21.183 5.5a.5.5 0 0 1 .798.519l-2.834 10.246a1 1 0 0 1-.956.734H5.81a1 1 0 0 1-.957-.734L2.02 6.02a.5.5 0 0 1 .798-.519l4.276 3.664a1 1 0 0 0 1.516-.294z"/><path d="M5 21h14"/></svg></div>
              <div class="champion-name"><a href="profile.html?id=${leader.id}">${leader.name}</a></div>
              <div class="champion-stats">${leader.total_league_points} LP · ${leader.total_wins} wins</div>`;
         }
