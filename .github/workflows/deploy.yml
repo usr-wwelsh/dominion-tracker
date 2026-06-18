@@ -47,6 +47,9 @@ jobs:
           format: table
           exit-code: 1
           severity: CRITICAL
+          # Only fail on vulns that have a fix we can actually apply; base-image
+          # OS CVEs the distro has deferred/won't-fix would block deploys forever.
+          ignore-unfixed: true
 
       - name: Push image
         uses: docker/build-push-action@v6
