@@ -8,6 +8,8 @@ let tournamentId = null;
 let pollTimer = null;
 let confettiFired = false;
 let pendingPlayMatchId = null;
+let roundsEdited = false;
+let swissAdvancing = false;
 
 document.addEventListener('DOMContentLoaded', () => {
   const params = new URLSearchParams(window.location.search);
@@ -21,24 +23,88 @@ document.addEventListener('DOMContentLoaded', () => {
 
 // ---------- List + create ----------
 
+function selectedFormat() {
+  const el = document.querySelector('input[name="format"]:checked');
+  return el ? el.value : 'single_elim';
+}
+
 async function initListView() {
   document.getElementById('list-view').style.display = 'block';
   try {
-    const [players, leaderboard, tournaments] = await Promise.all([
+    const [players, leaderboard, tournaments, builds] = await Promise.all([
       playersAPI.getAll(),
       statsAPI.getLeaderboard().catch(() => []),
       tournamentsAPI.getAll(),
+      buildsAPI.getAll().catch(() => []),
     ]);
     allPlayers = players;
+    allBuilds = builds;
     leaderboard.forEach((row, i) => { rankMap[row.id] = i; });
     renderRoster();
     renderTournamentList(tournaments);
+    populateBuildSelect(document.getElementById('swiss-build'));
   } catch (e) {
     showError('Failed to load: ' + e.message);
   }
 
   document.getElementById('create-tournament-btn').addEventListener('click', createTournament);
   document.getElementById('tournament-name').addEventListener('input', updateCreateButton);
+  document.querySelectorAll('input[name="format"]').forEach(r => {
+    r.addEventListener('change', onFormatChange);
+  });
+  document.getElementById('swiss-rounds').addEventListener('input', () => { roundsEdited = true; });
+  onFormatChange();
+}
+
+function populateBuildSelect(select) {
+  if (!select) return;
+  select.innerHTML = '<option value="">No build</option>';
+  allBuilds.forEach(b => {
+    const o = document.createElement('option');
+    o.value = b.id;
+    o.textContent = b.nickname;
+    select.appendChild(o);
+  });
+}
+
+function onFormatChange() {
+  const swiss = selectedFormat() === 'swiss';
+  document.getElementById('swiss-options').style.display = swiss ? 'block' : 'none';
+  document.getElementById('single-elim-hint').style.display = swiss ? 'none' : 'block';
+  document.getElementById('create-tournament-btn').textContent = swiss ? 'Start Tournament' : 'Create Bracket';
+  updateRoundsHint();
+  updateCreateButton();
+}
+
+// Suggest a round count that scales with turnout; the user can override it.
+function suggestedRounds(n) {
+  return Math.min(7, Math.max(3, Math.ceil(n / 3) + 1));
+}
+
+function updateRoundsHint() {
+  const n = selectedPlayers.length;
+  const hint = document.getElementById('swiss-rounds-hint');
+  if (!hint) return;
+  if (n < 5) {
+    hint.textContent = 'Swiss needs at least 5 players.';
+    return;
+  }
+  const sizes = podSizes(n);
+  hint.textContent = `${n} players → pods of ${sizes.join(' + ')} each round. Suggested: ${suggestedRounds(n)} rounds.`;
+}
+
+// Mirrors the server's pod-splitting so the create form can preview it.
+function podSizes(n) {
+  if (n < 3) return [n];
+  const pods = Math.floor(n / 3);
+  const rem = n % 3;
+  const sizes = new Array(pods).fill(3);
+  if (rem === 1) sizes[pods - 1] += 1;
+  else if (rem === 2) {
+    if (pods >= 2) { sizes[pods - 1] += 1; sizes[pods - 2] += 1; }
+    else sizes.push(2);
+  }
+  return sizes;
 }
 
 function renderRoster() {
@@ -67,15 +133,26 @@ function renderRoster() {
       const idx = selectedPlayers.findIndex(p => p.id === player.id);
       if (idx === -1) selectedPlayers.push(player); else selectedPlayers.splice(idx, 1);
       renderRoster();
+      syncSuggestedRounds();
+      updateRoundsHint();
       updateCreateButton();
     });
     roster.appendChild(btn);
   });
 }
 
+// Keep the rounds field on the suggestion until the user types their own value.
+function syncSuggestedRounds() {
+  const input = document.getElementById('swiss-rounds');
+  if (input && !roundsEdited && selectedPlayers.length >= 5) {
+    input.value = suggestedRounds(selectedPlayers.length);
+  }
+}
+
 function updateCreateButton() {
   const name = document.getElementById('tournament-name').value.trim();
-  document.getElementById('create-tournament-btn').disabled = !name || selectedPlayers.length < 2;
+  const min = selectedFormat() === 'swiss' ? 5 : 2;
+  document.getElementById('create-tournament-btn').disabled = !name || selectedPlayers.length < min;
 }
 
 function renderTournamentList(tournaments) {
@@ -102,6 +179,27 @@ function renderTournamentList(tournaments) {
 
 async function createTournament() {
   const name = document.getElementById('tournament-name').value.trim();
+  const btn = document.getElementById('create-tournament-btn');
+
+  if (selectedFormat() === 'swiss') {
+    if (!name || selectedPlayers.length < 5) return;
+    const rounds = parseInt(document.getElementById('swiss-rounds').value, 10);
+    if (!rounds || rounds < 1) { showError('Enter a valid number of rounds'); return; }
+    const buildId = document.getElementById('swiss-build').value || null;
+    const ids = selectedPlayers.map(p => p.id);
+    btn.disabled = true;
+    btn.textContent = 'Starting…';
+    try {
+      const data = await tournamentsAPI.createSwiss(name, ids, rounds, buildId);
+      window.location.href = 'tournament.html?id=' + data.tournament.id;
+    } catch (e) {
+      showError('Failed to start tournament: ' + e.message);
+      btn.disabled = false;
+      btn.textContent = 'Start Tournament';
+    }
+    return;
+  }
+
   if (!name || selectedPlayers.length < 2) return;
 
   // Handicap seeding: the newest / lowest-ranked players are seeded at the top
@@ -112,7 +210,6 @@ async function createTournament() {
   const ordered = [...selectedPlayers].sort((a, b) => rankOf(b) - rankOf(a));
   const ids = ordered.map(p => p.id);
 
-  const btn = document.getElementById('create-tournament-btn');
   btn.disabled = true;
   btn.textContent = 'Creating…';
   try {
@@ -128,7 +225,6 @@ async function createTournament() {
 // ---------- Bracket ----------
 
 async function initBracketView() {
-  document.getElementById('bracket-view').style.display = 'block';
   allBuilds = await buildsAPI.getAll().catch(() => []);
   setupPlayModal();
   await loadBracket();
@@ -138,7 +234,12 @@ async function initBracketView() {
 async function loadBracket() {
   try {
     const data = await tournamentsAPI.getById(tournamentId);
-    renderBracket(data);
+    if (data.tournament.format === 'swiss') {
+      renderSwiss(data);
+    } else {
+      document.getElementById('bracket-view').style.display = 'block';
+      renderBracket(data);
+    }
     if (data.tournament.status === 'complete' && pollTimer) {
       clearInterval(pollTimer);
       pollTimer = null;
@@ -146,6 +247,192 @@ async function loadBracket() {
   } catch (e) {
     showError('Failed to load bracket: ' + e.message);
   }
+}
+
+// ---------- Swiss rendering ----------
+
+function renderSwiss(data) {
+  document.getElementById('swiss-view').style.display = 'block';
+  const { tournament, standings, rounds } = data;
+
+  const banner = document.getElementById('swiss-champion-banner');
+  if (tournament.status === 'complete' && tournament.winner_name) {
+    banner.style.display = 'block';
+    banner.innerHTML = `
+      <div class="champion-crown">♛</div>
+      <div class="champion-label">Champion</div>
+      <div class="champion-name">${escapeHtml(tournament.winner_name)}</div>
+      <div class="champion-sub">${escapeHtml(tournament.name)}</div>
+    `;
+    if (!confettiFired && window.confetti) {
+      confettiFired = true;
+      window.confetti.fire(5000);
+    }
+  } else {
+    banner.style.display = 'none';
+  }
+
+  document.getElementById('swiss-title').textContent = tournament.status === 'complete'
+    ? `${tournament.name} — Final Standings`
+    : `${tournament.name} — Standings · Round ${tournament.current_round} of ${tournament.total_rounds}`;
+
+  renderStandings(standings);
+  renderSwissActionBar(data);
+  renderSwissRounds(rounds);
+}
+
+function renderStandings(standings) {
+  const el = document.getElementById('swiss-standings');
+  if (!standings.length) { el.innerHTML = '<p class="text-dim">No players.</p>'; return; }
+  const rows = standings.map((s, i) => `
+    <tr class="${i === 0 ? 'is-leader' : ''}">
+      <td class="standings-rank">${i + 1}</td>
+      <td><span class="standings-name"><span class="roster-dot" style="background:${s.color || '#4db8ff'}"></span>${escapeHtml(s.name)}</span></td>
+      <td class="num standings-lp">${fmt(s.total_lp)}</td>
+      <td class="num">${s.wins}</td>
+      <td class="num">${s.games_played}</td>
+      <td class="num">${fmt(s.avg_score)}</td>
+    </tr>
+  `).join('');
+  el.innerHTML = `
+    <table class="standings-table">
+      <thead>
+        <tr><th class="standings-rank">#</th><th>Player</th><th class="num">Points</th><th class="num">Wins</th><th class="num">Pods</th><th class="num">Avg VP</th></tr>
+      </thead>
+      <tbody>${rows}</tbody>
+    </table>
+  `;
+}
+
+function renderSwissActionBar(data) {
+  const bar = document.getElementById('swiss-action-bar');
+  const { tournament, can_advance, can_finish, current_round_complete } = data;
+  bar.innerHTML = '';
+
+  if (tournament.status === 'complete') return;
+
+  if (can_finish) {
+    const btn = document.createElement('button');
+    btn.className = 'btn btn-primary';
+    btn.textContent = 'Crown Champion';
+    btn.disabled = swissAdvancing;
+    btn.addEventListener('click', finishSwiss);
+    bar.appendChild(btn);
+    return;
+  }
+
+  if (can_advance) {
+    const select = document.createElement('select');
+    populateBuildSelect(select);
+    bar.appendChild(select);
+
+    const btn = document.createElement('button');
+    btn.className = 'btn btn-primary';
+    btn.textContent = `Start Round ${tournament.current_round + 1}`;
+    btn.disabled = swissAdvancing;
+    btn.addEventListener('click', () => advanceSwiss(select.value || null));
+    bar.appendChild(btn);
+    return;
+  }
+
+  if (!current_round_complete) {
+    const note = document.createElement('span');
+    note.className = 'swiss-status-note';
+    note.textContent = `Round ${tournament.current_round} in progress — finish all pods to continue.`;
+    bar.appendChild(note);
+  }
+}
+
+function renderSwissRounds(rounds) {
+  const el = document.getElementById('swiss-rounds-list');
+  el.innerHTML = '';
+  // Newest round first.
+  [...rounds].reverse().forEach(round => {
+    if (!round) return;
+    const section = document.createElement('div');
+    section.className = 'swiss-round';
+    const title = document.createElement('div');
+    title.className = 'swiss-round-title';
+    title.textContent = 'Round ' + round.round;
+    section.appendChild(title);
+
+    const grid = document.createElement('div');
+    grid.className = 'pod-grid';
+    round.pods.forEach(pod => grid.appendChild(renderPod(pod)));
+    section.appendChild(grid);
+    el.appendChild(section);
+  });
+}
+
+function renderPod(pod) {
+  const card = document.createElement('div');
+  card.className = 'pod-card ' + (pod.ended ? 'pod-done' : 'pod-live');
+
+  const head = document.createElement('div');
+  head.className = 'pod-head';
+  head.innerHTML = `<span class="pod-label">Pod ${pod.pod_index + 1}</span>` +
+    (pod.ended ? '' : '<span class="pod-live-tag">● live</span>');
+  card.appendChild(head);
+
+  pod.players.forEach(p => {
+    const row = document.createElement('div');
+    row.className = 'pod-player' + (pod.ended && p.placement === 1 ? ' pod-winner' : '');
+    row.innerHTML = `
+      <span class="pod-place">${pod.ended ? (p.placement != null ? p.placement : '') : ''}</span>
+      <span class="roster-dot" style="background:${p.color || '#4db8ff'}"></span>
+      <span class="pod-pname">${escapeHtml(p.name)}</span>
+      <span class="pod-score">${p.final_score} VP</span>
+      <span class="pod-lp">${pod.ended && p.league_points != null ? fmt(p.league_points) : '—'}</span>
+    `;
+    card.appendChild(row);
+  });
+
+  if (!pod.ended) {
+    const action = document.createElement('div');
+    action.className = 'match-action';
+    const btn = document.createElement('button');
+    btn.className = 'btn btn-sm btn-primary';
+    btn.textContent = 'Open Pod';
+    btn.addEventListener('click', () => {
+      window.location.href = `scoreboard.html?game=${pod.game_id}&tournament=${tournamentId}`;
+    });
+    action.appendChild(btn);
+    card.appendChild(action);
+  }
+
+  return card;
+}
+
+async function advanceSwiss(buildId) {
+  if (swissAdvancing) return;
+  swissAdvancing = true;
+  try {
+    await tournamentsAPI.nextRound(tournamentId, buildId);
+    await loadBracket();
+  } catch (e) {
+    showError('Failed to start next round: ' + e.message);
+  } finally {
+    swissAdvancing = false;
+  }
+}
+
+async function finishSwiss() {
+  if (swissAdvancing) return;
+  if (!window.confirm('Crown the current leader as champion? This ends the tournament.')) return;
+  swissAdvancing = true;
+  try {
+    await tournamentsAPI.finish(tournamentId);
+    await loadBracket();
+  } catch (e) {
+    showError('Failed to finish tournament: ' + e.message);
+  } finally {
+    swissAdvancing = false;
+  }
+}
+
+function fmt(v) {
+  const n = Number(v);
+  return Number.isInteger(n) ? String(n) : n.toFixed(1);
 }
 
 function renderBracket(data) {

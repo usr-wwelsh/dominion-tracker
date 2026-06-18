@@ -5,7 +5,7 @@ Self-hosted league tracker for Dominion game nights. Vanilla JS frontend, Expres
 ## Features
 
 - Live scoreboard with score-progression charts, plus spectator mode over SSE
-- Leaderboard, seasons with archived history, and single-elimination tournaments
+- Leaderboard, seasons with archived history, and single-elimination or Swiss-pod tournaments
 - Kingdom builds with per-build stats and comments
 - Player profiles with card-art avatars, achievements, levels, and head-to-head stats
 - Installable PWA with web-push notifications

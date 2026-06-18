@@ -125,8 +125,101 @@
 .match-tie-note { width: 100%; font-size: 0.8rem; color: var(--color-warning); }
 @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.35; } }
 
+/* --- Format toggle (create view) --- */
+.format-toggle { display: flex; flex-direction: column; gap: var(--spacing-sm); }
+.format-opt {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.5rem;
+  padding: var(--spacing-sm) var(--spacing-md);
+  border: var(--border-width) solid var(--color-border);
+  border-radius: var(--border-radius-md);
+  cursor: pointer;
+  font-weight: bold;
+}
+.format-opt input { position: absolute; opacity: 0; pointer-events: none; }
+.format-opt:has(input:checked) { border-color: var(--color-accent); background: var(--color-blue-dim); }
+.format-opt:has(input:checked)::before { content: '✓ '; color: var(--color-accent); font-weight: bold; }
+.format-opt span { font-weight: normal; font-size: 0.8rem; color: var(--color-text-dim); }
+
+/* --- Swiss standings --- */
+.standings-table { width: 100%; border-collapse: collapse; }
+.standings-table th, .standings-table td {
+  padding: 0.5rem 0.6rem;
+  text-align: left;
+  border-bottom: 1px solid var(--color-border);
+}
+.standings-table th {
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--color-text-dim);
+}
+.standings-table td.num, .standings-table th.num { text-align: right; font-variant-numeric: tabular-nums; }
+.standings-rank { color: var(--color-text-dim); width: 2rem; }
+.standings-table tr.is-leader td { color: var(--color-accent-hover); font-weight: bold; }
+.standings-name { display: flex; align-items: center; gap: 0.5rem; }
+.standings-lp { font-weight: bold; color: var(--color-accent); }
+
+/* --- Swiss action bar --- */
+.swiss-action-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--spacing-sm);
+  margin-bottom: var(--spacing-lg);
+}
+.swiss-action-bar select { width: auto; min-width: 140px; }
+.swiss-status-note { color: var(--color-text-dim); font-style: italic; }
+
+/* --- Swiss rounds + pods --- */
+.swiss-round { margin-bottom: var(--spacing-lg); }
+.swiss-round-title {
+  font-family: var(--font-secondary);
+  color: var(--color-accent);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  font-size: 0.9rem;
+  margin-bottom: var(--spacing-sm);
+}
+.pod-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: var(--spacing-md);
+}
+.pod-card {
+  background: var(--color-bg-secondary);
+  border: var(--border-width) solid var(--color-border);
+  border-radius: var(--border-radius-md);
+  padding: var(--spacing-sm);
+}
+.pod-card.pod-live { border-color: var(--color-accent); }
+.pod-card.pod-done { border-color: var(--color-blue); }
+.pod-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: var(--spacing-sm);
+  font-size: 0.8rem;
+}
+.pod-label { color: var(--color-text-dim); text-transform: uppercase; letter-spacing: 0.05em; }
+.pod-live-tag { color: var(--color-error); animation: pulse 1.4s ease-in-out infinite; }
+.pod-player {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.3rem 0.2rem;
+}
+.pod-player + .pod-player { border-top: 1px solid var(--color-border); }
+.pod-place { width: 1.4rem; color: var(--color-text-dim); font-variant-numeric: tabular-nums; }
+.pod-player.pod-winner .pod-place { color: var(--color-accent); }
+.pod-pname { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pod-score { font-variant-numeric: tabular-nums; color: var(--color-text-secondary); }
+.pod-lp { font-variant-numeric: tabular-nums; color: var(--color-accent); font-weight: bold; min-width: 2.5rem; text-align: right; }
+
 /* --- Champion banner --- */
-#champion-banner {
+#champion-banner, #swiss-champion-banner {
   text-align: center;
   background: var(--color-bg-secondary);
   border: var(--border-width) solid var(--color-accent);

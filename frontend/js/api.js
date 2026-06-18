@@ -221,6 +221,21 @@ const tournamentsAPI = {
     body: JSON.stringify({ name, player_ids: playerIds, best_of: bestOf }),
   }, credentials),
 
+  createSwiss: (name, playerIds, totalRounds, buildId) => apiRequest('/tournaments', {
+    method: 'POST',
+    body: JSON.stringify({ name, player_ids: playerIds, format: 'swiss', total_rounds: totalRounds, build_id: buildId || null }),
+  }),
+
+  nextRound: (id, buildId) => apiRequest(`/tournaments/${id}/next-round`, {
+    method: 'POST',
+    body: JSON.stringify({ build_id: buildId || null }),
+  }),
+
+  finish: (id) => apiRequest(`/tournaments/${id}/finish`, {
+    method: 'POST',
+    body: JSON.stringify({}),
+  }),
+
   playMatch: (id, matchId, buildId) => apiRequest(`/tournaments/${id}/matches/${matchId}/play`, {
     method: 'POST',
     body: JSON.stringify({ build_id: buildId || null }),
