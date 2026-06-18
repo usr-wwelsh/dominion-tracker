@@ -1,0 +1,30 @@
+name: Recover data from Postgres
+
+# Manual one-shot: re-import Season 1 data from the preserved postgres_data
+# volume into the live SQLite db. Trigger from the Actions tab or:
+#   gh workflow run recover.yml [-f force=true]
+on:
+  workflow_dispatch:
+    inputs:
+      force:
+        description: "Import even if SQLite already has games"
+        type: boolean
+        default: false
+
+jobs:
+  recover:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Run recovery on the server
+        uses: appleboy/ssh-action@v1.2.0
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USER }}
+          key: ${{ secrets.SSH_KEY }}
+          port: ${{ secrets.SSH_PORT }}
+          command_timeout: 10m
+          script: |
+            set -e
+            cd ~/dominion-app/dominion-tracker
+            git pull origin main
+            FORCE=${{ inputs.force && '1' || '0' }} bash backend/scripts/recover-from-postgres.sh
