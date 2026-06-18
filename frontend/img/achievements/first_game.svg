@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" width="120" height="120" role="img" aria-label="Getting Started">
+  <defs>
+    <linearGradient id="g" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#e8cf86"/><stop offset=".5" stop-color="#b8963a"/><stop offset="1" stop-color="#7a621a"/>
+    </linearGradient>
+    <radialGradient id="b" cx=".5" cy=".4" r=".75">
+      <stop offset="0" stop-color="#26314a"/><stop offset="1" stop-color="#121826"/>
+    </radialGradient>
+  </defs>
+  <circle cx="60" cy="60" r="57" fill="url(#b)" stroke="url(#g)" stroke-width="5"/>
+  <circle cx="60" cy="60" r="49" fill="none" stroke="#b8963a" stroke-width="1.5" opacity=".55"/>
+  <g fill="#d4b05a">
+    <circle cx="60" cy="11" r="1.7"/><circle cx="60" cy="109" r="1.7"/><circle cx="11" cy="60" r="1.7"/><circle cx="109" cy="60" r="1.7"/>
+    <circle cx="25" cy="25" r="1.5"/><circle cx="95" cy="25" r="1.5"/><circle cx="25" cy="95" r="1.5"/><circle cx="95" cy="95" r="1.5"/>
+  </g>
+  <rect x="46" y="38" width="28" height="40" rx="4" fill="#26344e" stroke="url(#g)" stroke-width="2"/>
+  <path d="M60 74 V58" stroke="#6ddb6d" stroke-width="3" fill="none" stroke-linecap="round"/>
+  <path d="M60 62 C52 62 48 56 48 51 C56 51 60 56 60 62 Z" fill="#6ddb6d"/>
+  <path d="M60 57 C68 57 72 51 72 46 C64 46 60 51 60 57 Z" fill="#8fe88f"/>
+  <circle cx="60" cy="50" r="2.6" fill="#ffd700"/>
+</svg>

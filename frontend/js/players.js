@@ -51,11 +51,24 @@ function renderPlayers() {
     row.className = 'player-row';
     row.dataset.playerId = player.id;
 
+    const color = player.color || '#4db8ff';
+    const avatar = player.avatar_card
+      ? `<a href="profile.html?id=${player.id}" class="player-avatar-link card-art-avatar" style="border-color:${escapeHtml(color)}"><img src="dominion-cards-used-small/${escapeHtml(player.avatar_card)}" alt=""></a>`
+      : `<a href="profile.html?id=${player.id}" class="player-avatar-link"><span class="player-avatar-fallback" style="background:${escapeHtml(color)}">${escapeHtml(player.name.charAt(0).toUpperCase())}</span></a>`;
+    const bio = player.bio
+      ? `<div class="player-bio">${escapeHtml(player.bio)}</div>`
+      : '';
+
     row.innerHTML = `
       <div class="player-row-info">
-        <span class="player-color-swatch" style="background:${escapeHtml(player.color || '#4db8ff')}"></span>
-        <span class="player-name">${escapeHtml(player.name)}</span>
-        <span class="player-games">${gamesPlayed} game${gamesPlayed !== 1 ? 's' : ''}</span>
+        ${avatar}
+        <div class="player-row-text">
+          <div class="player-row-name-line">
+            <a class="player-name" href="profile.html?id=${player.id}">${escapeHtml(player.name)}</a>
+            <span class="player-games">${gamesPlayed} game${gamesPlayed !== 1 ? 's' : ''}</span>
+          </div>
+          ${bio}
+        </div>
       </div>
       <div class="player-row-actions">
         <button class="btn btn-danger btn-sm js-delete-player">Delete</button>

@@ -1,0 +1,474 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Dominion Tracker - Player Profile</title>
+  <link rel="manifest" href="manifest.json">
+  <link rel="apple-touch-icon" href="/icon-192.png">
+  <meta name="theme-color" content="#181f30">
+  <link rel="stylesheet" href="css/main.css">
+  <style>
+    .stat-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+      gap: var(--spacing-md);
+      margin-bottom: var(--spacing-xl);
+    }
+    .stat-box {
+      background: var(--color-bg-secondary);
+      border: 1px solid var(--color-border);
+      border-radius: var(--border-radius-md);
+      padding: var(--spacing-md);
+      text-align: center;
+    }
+    .stat-box .val {
+      font-size: 1.6rem;
+      font-weight: 700;
+      color: var(--color-accent-hover);
+    }
+    .stat-box .lbl {
+      font-size: 0.8rem;
+      color: var(--color-text-dim);
+      margin-top: 2px;
+    }
+    .edit-profile-form { display: none; }
+    .edit-profile-form.open { display: block; }
+    .color-swatches { display: flex; flex-wrap: wrap; gap: 8px; margin-top: var(--spacing-sm); }
+    .color-swatch {
+      width: 28px; height: 28px;
+      border-radius: 50%;
+      border: 3px solid transparent;
+      cursor: pointer;
+      transition: border-color 0.15s, transform 0.15s;
+    }
+    .color-swatch.selected, .color-swatch:hover { border-color: var(--color-text-primary); transform: scale(1.15); }
+    .tab-bar { display: flex; gap: var(--spacing-sm); margin-bottom: var(--spacing-lg); flex-wrap: wrap; }
+    .tab-btn {
+      background: var(--color-bg-tertiary);
+      border: 1px solid var(--color-border);
+      color: var(--color-text-secondary);
+      padding: var(--spacing-xs) var(--spacing-md);
+      border-radius: 20px;
+      cursor: pointer;
+      font-size: 0.9rem;
+      transition: all 0.2s;
+    }
+    .tab-btn.active { background: var(--color-blue-dim); border-color: var(--color-blue); color: var(--color-text-primary); }
+    .tab-panel { display: none; }
+    .tab-panel.active { display: block; }
+    .card-picker { position: relative; max-width: 360px; }
+    .card-picker-toggle {
+      display: flex; align-items: center; gap: var(--spacing-sm);
+      width: 100%;
+      background: var(--color-bg-tertiary);
+      border: 1px solid var(--color-border);
+      border-radius: var(--border-radius-md);
+      color: var(--color-text-primary);
+      padding: var(--spacing-xs) var(--spacing-sm);
+      cursor: pointer;
+      font-size: 0.9rem;
+      text-align: left;
+    }
+    .card-picker-toggle img { width: 32px; height: 51px; border-radius: 3px; object-fit: cover; }
+    .card-picker-toggle .caret { margin-left: auto; color: var(--color-text-dim); }
+    .card-picker-panel {
+      display: none;
+      position: absolute; z-index: 50; top: calc(100% + 4px); left: 0;
+      width: min(420px, calc(100vw - 2 * var(--spacing-md)));
+      background: var(--color-bg-secondary);
+      border: 1px solid var(--color-border);
+      border-radius: var(--border-radius-md);
+      padding: var(--spacing-sm);
+      box-shadow: 0 8px 24px rgba(0,0,0,0.5);
+    }
+    .card-picker.open .card-picker-panel { display: block; }
+    .card-picker-search { width: 100%; margin-bottom: var(--spacing-sm); }
+    .card-picker-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(72px, 1fr));
+      gap: var(--spacing-sm);
+      max-height: 320px; overflow-y: auto;
+    }
+    .card-picker-option {
+      cursor: pointer; text-align: center;
+      border: 2px solid transparent; border-radius: 4px; padding: 3px;
+    }
+    .card-picker-option:hover { background: var(--color-bg-tertiary); }
+    .card-picker-option.selected { border-color: var(--color-blue); }
+    .card-picker-option img {
+      width: 100%; aspect-ratio: 100 / 160; object-fit: cover;
+      border-radius: 3px; display: block;
+    }
+    .card-picker-option .opt-none {
+      display: flex; align-items: center; justify-content: center;
+      width: 100%; aspect-ratio: 100 / 160;
+      border: 1px dashed var(--color-border); border-radius: 3px;
+      color: var(--color-text-dim); font-size: 0.75rem;
+    }
+    .card-picker-option .opt-label {
+      font-size: 0.65rem; color: var(--color-text-secondary); margin-top: 2px;
+      overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    }
+  </style>
+</head>
+<body>
+  <div id="admin-banner-bar"></div>
+
+  <header class="site-header">
+    <a href="index.html" class="site-brand">
+      <img class="brand-icon" src="/icon-192.png" alt="">
+      <span class="brand-name">Dominion Tracker</span>
+    </a>
+    <button class="nav-toggle" id="nav-toggle" aria-label="Menu" aria-expanded="false">
+      <span></span><span></span><span></span>
+    </button>
+    <nav id="main-nav">
+      <ul>
+        <li><a href="scoreboard.html">Play Game</a></li>
+        <li><a href="tournament.html">Tournament</a></li>
+        <li><a href="live.html">Live</a></li>
+        <li><a href="players.html">Players</a></li>
+        <li><a href="builds.html">Builds</a></li>
+        <li class="nav-dropdown">
+          <button type="button" class="nav-dropdown-toggle">Standings &#9662;</button>
+          <ul class="nav-dropdown-menu">
+            <li><a href="leaderboard.html">Leaderboard</a></li>
+            <li><a href="games.html">Recent Games</a></li>
+            <li><a href="history.html">History</a></li>
+          </ul>
+        </li>
+      </ul>
+    </nav>
+  </header>
+
+  <div class="container">
+    <div id="loading" class="loading">Loading profile</div>
+    <div id="profile-container" style="display:none;">
+
+      <!-- Profile header -->
+      <div class="profile-header" id="profile-header">
+        <img id="profile-bg" class="profile-bg" src="" alt="" style="display:none;">
+        <div id="profile-avatar-frame" class="profile-avatar card-art-avatar" style="display:none;"><img id="profile-avatar" src="" alt=""></div>
+        <div class="profile-info">
+          <div class="profile-name" id="profile-name"></div>
+          <div class="profile-bio" id="profile-bio"></div>
+          <div style="display:flex;gap:var(--spacing-sm);align-items:center;margin-top:var(--spacing-sm);">
+            <span class="level-badge" id="level-badge"></span>
+          </div>
+          <div class="xp-bar-wrap" style="max-width:180px;" id="xp-wrap">
+            <div class="xp-bar-fill" id="xp-bar"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Tabs -->
+      <div class="tab-bar">
+        <button class="tab-btn active" data-tab="stats">Stats</button>
+        <button class="tab-btn" data-tab="edit">Edit Profile</button>
+      </div>
+
+      <!-- Stats tab -->
+      <div class="tab-panel active" id="tab-stats">
+        <div class="stat-grid" id="stat-grid"></div>
+        <h3 class="section-heading">Achievements</h3>
+        <div class="achievement-grid" id="achievement-grid"></div>
+      </div>
+
+      <!-- Edit Profile tab -->
+      <div class="tab-panel" id="tab-edit">
+        <div class="card">
+          <div class="card-header">Edit Profile</div>
+          <p style="color:var(--color-text-secondary);font-size:0.9rem;margin-bottom:var(--spacing-md);">
+            Profile edits are open — anyone can customize. Avatar and background use Dominion card art.
+          </p>
+          <div class="form-group">
+            <label for="bio-input">Bio (max 500 chars)</label>
+            <textarea id="bio-input" rows="3" maxlength="500" style="resize:vertical;"></textarea>
+          </div>
+          <div class="form-group">
+            <label>Accent Color</label>
+            <div class="color-swatches" id="accent-swatches"></div>
+          </div>
+          <div class="form-group">
+            <label>Avatar Card</label>
+            <div class="card-picker" id="avatar-picker"></div>
+          </div>
+          <div class="form-group">
+            <label>Background Card <span style="color:var(--color-text-dim);font-weight:normal;">(tiles your profile page)</span></label>
+            <div class="card-picker" id="bg-picker"></div>
+          </div>
+          <button id="save-profile-btn" class="btn btn-primary">Save Profile</button>
+          <span id="profile-save-msg" style="margin-left:var(--spacing-md);color:var(--color-success);"></span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="js/api.js"></script>
+  <script src="js/cards.js"></script>
+  <script src="js/header.js"></script>
+  <script src="js/falling-cards.js"></script>
+  <script>
+  const CARDS_PATH = 'dominion-cards-used-small/';
+
+  document.addEventListener('DOMContentLoaded', async () => {
+    apiRequest('/banner').then(({ banner }) => {
+      const bar = document.getElementById('admin-banner-bar');
+      if (banner) { bar.className = 'site-banner-bar'; bar.textContent = banner; }
+    }).catch(() => {});
+
+    const params = new URLSearchParams(location.search);
+    const playerId = params.get('id');
+    if (!playerId) { document.getElementById('loading').textContent = 'No player ID specified.'; return; }
+
+    // Tab switching
+    document.querySelectorAll('.tab-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+        document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+        btn.classList.add('active');
+        document.getElementById('tab-' + btn.dataset.tab).classList.add('active');
+      });
+    });
+
+    try {
+      const [profileData, stats, levelData, achievements] = await Promise.all([
+        apiRequest(`/profiles/${playerId}`),
+        apiRequest(`/players/${playerId}/stats`),
+        apiRequest(`/players/${playerId}/level`),
+        apiRequest(`/achievements/${playerId}`),
+      ]);
+
+      document.getElementById('loading').style.display = 'none';
+      document.getElementById('profile-container').style.display = 'block';
+
+      const { player, profile, accent_presets } = profileData;
+
+      // Header
+      document.getElementById('profile-name').textContent = player.name;
+      document.title = `${player.name} — Dominion Tracker`;
+      if (profile?.bio) document.getElementById('profile-bio').textContent = profile.bio;
+
+      // Header background is tinted with the player's chosen color (readable dark scrim);
+      // border uses the accent color if set, else the player's color.
+      const playerColor = player.color || '#4db8ff';
+
+      if (profile?.avatar_card) {
+        document.getElementById('profile-avatar').src = CARDS_PATH + profile.avatar_card;
+        const frame = document.getElementById('profile-avatar-frame');
+        frame.style.borderColor = playerColor;
+        frame.style.display = 'block';
+      }
+      const headerEl = document.getElementById('profile-header');
+      headerEl.style.background =
+        `linear-gradient(135deg, ${hexToRgba(playerColor, 0.55)} 0%, var(--color-bg-tertiary) 70%)`;
+      headerEl.style.borderColor = profile?.accent_color || playerColor;
+
+      // The background card (if set) tiles the whole profile page like wallpaper,
+      // replacing the default stone bricks, behind a dark scrim for readability.
+      if (profile?.background_card) {
+        document.body.style.backgroundColor = '#0b1220';
+        document.body.style.backgroundImage =
+          `linear-gradient(rgba(11,18,30,0.88), rgba(11,18,30,0.88)), url('${CARDS_PATH}${profile.background_card}')`;
+        document.body.style.backgroundRepeat = 'repeat';
+        document.body.style.backgroundSize = '120px auto';
+        document.body.style.backgroundAttachment = 'fixed';
+      }
+
+      // Level badge
+      document.getElementById('level-badge').textContent = `Lv ${levelData.level}`;
+      const pct = levelData.xp_for_next > 0
+        ? Math.round(levelData.xp_into_level / levelData.xp_for_next * 100)
+        : 100;
+      document.getElementById('xp-bar').style.width = pct + '%';
+      document.getElementById('xp-wrap').title =
+        `${levelData.xp_into_level} / ${levelData.xp_for_next} XP to next level`;
+
+      // Stats grid
+      const sg = document.getElementById('stat-grid');
+      const statItems = [
+        { val: stats.total_games, lbl: 'Games' },
+        { val: stats.total_wins, lbl: 'Wins' },
+        { val: stats.total_league_points, lbl: 'Total LP' },
+        { val: stats.avg_league_points, lbl: 'Avg LP' },
+        { val: stats.avg_score, lbl: 'Avg Score' },
+        { val: stats.highest_score, lbl: 'Best Score' },
+      ];
+      sg.innerHTML = statItems.map(s =>
+        `<div class="stat-box"><div class="val">${fmtNum(s.val)}</div><div class="lbl">${s.lbl}</div></div>`
+      ).join('');
+
+      // Achievements — only show earned ones
+      const ag = document.getElementById('achievement-grid');
+      const earnedAchievements = achievements.filter(a => a.earned);
+      if (earnedAchievements.length === 0) {
+        ag.innerHTML = '<p style="color:var(--color-text-dim)">No achievements earned yet — play some games!</p>';
+      } else {
+        ag.innerHTML = earnedAchievements.map(a => `
+          <div class="achievement-card earned" title="${a.description}">
+            <img class="ach-icon" src="/img/achievements/${a.key}.svg" alt="" loading="lazy">
+
+            <div class="ach-name">${a.name}</div>
+            <div class="ach-desc">${a.description}</div>
+            <div style="font-size:0.7rem;color:var(--color-accent);margin-top:4px;">Earned ${formatDate(a.earned_at)}</div>
+          </div>`).join('');
+      }
+
+      // Edit profile form
+      // Accent swatches
+      const swatchContainer = document.getElementById('accent-swatches');
+      let selectedAccent = profile?.accent_color || '';
+      accent_presets.forEach(color => {
+        const sw = document.createElement('div');
+        sw.className = 'color-swatch' + (color === selectedAccent ? ' selected' : '');
+        sw.style.background = color;
+        sw.title = color;
+        sw.addEventListener('click', () => {
+          swatchContainer.querySelectorAll('.color-swatch').forEach(s => s.classList.remove('selected'));
+          sw.classList.add('selected');
+          selectedAccent = color;
+        });
+        swatchContainer.appendChild(sw);
+      });
+
+      // Pre-fill bio
+      if (profile?.bio) document.getElementById('bio-input').value = profile.bio;
+
+      // Populate card selects from the bundled card list (no network needed).
+      // Falls back to the API only if the bundled list is somehow missing.
+      let cards = (typeof CARD_IMAGES !== 'undefined') ? CARD_IMAGES : [];
+      if (cards.length === 0) {
+        try { cards = await cardsAPI.getAll(); } catch (e) { console.error('card list load failed', e); }
+      }
+      const avatarPicker = createCardPicker(document.getElementById('avatar-picker'), cards, profile?.avatar_card || '');
+      const bgPicker = createCardPicker(document.getElementById('bg-picker'), cards, profile?.background_card || '');
+
+      document.getElementById('save-profile-btn').addEventListener('click', async () => {
+        const btn = document.getElementById('save-profile-btn');
+        btn.disabled = true;
+        btn.textContent = 'Saving…';
+        try {
+          await apiRequest(`/profiles/${playerId}`, {
+            method: 'PUT',
+            body: JSON.stringify({
+              bio: document.getElementById('bio-input').value,
+              accent_color: selectedAccent || null,
+              avatar_card: avatarPicker.value || null,
+              background_card: bgPicker.value || null,
+            }),
+          });
+          const msg = document.getElementById('profile-save-msg');
+          msg.textContent = 'Saved!';
+          setTimeout(() => { msg.textContent = ''; location.reload(); }, 1200);
+        } catch (err) {
+          alert(err.message || 'Save failed');
+        } finally {
+          btn.disabled = false;
+          btn.textContent = 'Save Profile';
+        }
+      });
+
+    } catch (err) {
+      document.getElementById('loading').textContent = 'Failed to load profile.';
+      console.error(err);
+    }
+  });
+
+  // Dropdown replacement for card selection: toggle button shows the current
+  // card's thumbnail; the panel is a searchable grid of card art previews.
+  function createCardPicker(container, cards, initialValue) {
+    const state = { value: initialValue || '' };
+    const labels = Object.fromEntries(cards.map(c => [c.filename, c.label]));
+
+    const toggle = document.createElement('button');
+    toggle.type = 'button';
+    toggle.className = 'card-picker-toggle';
+
+    const panel = document.createElement('div');
+    panel.className = 'card-picker-panel';
+
+    const search = document.createElement('input');
+    search.type = 'text';
+    search.className = 'card-picker-search';
+    search.placeholder = 'Search cards…';
+
+    const grid = document.createElement('div');
+    grid.className = 'card-picker-grid';
+
+    function renderToggle() {
+      toggle.innerHTML = state.value
+        ? `<img src="${CARDS_PATH}${state.value}" alt=""><span>${labels[state.value] || state.value}</span><span class="caret">&#9662;</span>`
+        : `<span>&mdash; none &mdash;</span><span class="caret">&#9662;</span>`;
+    }
+
+    function renderGrid(filter) {
+      const q = (filter || '').trim().toLowerCase();
+      grid.innerHTML = '';
+      if (!q) {
+        const none = document.createElement('div');
+        none.className = 'card-picker-option' + (state.value === '' ? ' selected' : '');
+        none.innerHTML = `<div class="opt-none">None</div><div class="opt-label">&mdash;</div>`;
+        none.addEventListener('click', () => pick(''));
+        grid.appendChild(none);
+      }
+      cards.filter(c => !q || c.label.toLowerCase().includes(q)).forEach(c => {
+        const opt = document.createElement('div');
+        opt.className = 'card-picker-option' + (state.value === c.filename ? ' selected' : '');
+        opt.title = c.label;
+        opt.innerHTML = `<img src="${CARDS_PATH}${c.filename}" alt="" loading="lazy"><div class="opt-label">${c.label}</div>`;
+        opt.addEventListener('click', () => pick(c.filename));
+        grid.appendChild(opt);
+      });
+    }
+
+    function pick(filename) {
+      state.value = filename;
+      renderToggle();
+      container.classList.remove('open');
+    }
+
+    toggle.addEventListener('click', () => {
+      const opening = !container.classList.contains('open');
+      document.querySelectorAll('.card-picker.open').forEach(p => p.classList.remove('open'));
+      if (opening) {
+        search.value = '';
+        renderGrid('');
+        container.classList.add('open');
+        search.focus();
+      }
+    });
+    search.addEventListener('input', () => renderGrid(search.value));
+    document.addEventListener('click', e => {
+      if (!container.contains(e.target)) container.classList.remove('open');
+    });
+
+    panel.append(search, grid);
+    container.append(toggle, panel);
+    renderToggle();
+    return state;
+  }
+
+  function formatDate(ts) {
+    if (!ts) return '';
+    return new Date(ts).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+  }
+
+  // Convert #rrggbb to an rgba() string with the given alpha.
+  function hexToRgba(hex, alpha) {
+    const m = /^#?([0-9a-f]{6})$/i.exec(hex || '');
+    if (!m) return `rgba(77,184,255,${alpha})`;
+    const n = parseInt(m[1], 16);
+    return `rgba(${(n >> 16) & 255}, ${(n >> 8) & 255}, ${n & 255}, ${alpha})`;
+  }
+
+  // Show numbers with at most 2 decimal places; pass non-numbers through.
+  function fmtNum(v) {
+    if (v === null || v === undefined || v === '') return '—';
+    const n = Number(v);
+    if (Number.isNaN(n)) return v;
+    return Number.isInteger(n) ? String(n) : String(Math.round(n * 100) / 100);
+  }
+  </script>
+</body>
+</html>

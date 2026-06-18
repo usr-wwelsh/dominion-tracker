@@ -9,6 +9,17 @@ let gameStartTime = null;
 let scoreUpdateDebounce = {};
 let resumeTournamentId = null;
 let resumeMatchId = null;
+let scoreStream = null;
+let scoreEntryMode = localStorage.getItem('scoreEntryMode') || 'simple';
+let cardEntryAction = 'gain';
+
+const VICTORY_CARDS = [
+  { name: 'Curse', delta: -1, img: 'curse-100x160.jpg' },
+  { name: 'Estate', delta: 1, img: 'estate-100x160.jpg' },
+  { name: 'Duchy', delta: 3, img: 'duchy-100x161.jpg' },
+  { name: 'Province', delta: 6, img: 'province-100x160.jpg' },
+  { name: 'Colony', delta: 10, img: 'colony-100x160.jpg' },
+];
 
 // Initialize page
 document.addEventListener('DOMContentLoaded', () => {
@@ -52,11 +63,13 @@ async function resumeExistingGame(gameId) {
       id: p.player_id,
       name: p.player_name,
       color: p.player_color || '#4db8ff',
+      avatar_card: p.avatar_card || null,
       score: p.final_score,
     }));
 
-    gameStartTime = game.started_at ? new Date(game.started_at) : new Date();
+    gameStartTime = game.started_at ? parseServerTime(game.started_at) : new Date();
     startTimer();
+    connectScoreStream();
 
     document.getElementById('game-section').style.display = 'block';
 
@@ -178,6 +191,40 @@ function setupEventListeners() {
   cancelGameBtn.addEventListener('click', cancelGame);
   restartGameBtn.addEventListener('click', restartGame);
   goToGamesBtn.addEventListener('click', goToGamesPage);
+
+  document.querySelectorAll('#score-mode-toggle .mode-btn').forEach(btn => {
+    btn.addEventListener('click', () => setScoreEntryMode(btn.dataset.mode));
+  });
+  document.querySelectorAll('#card-action-toggle .mode-btn').forEach(btn => {
+    btn.addEventListener('click', () => setCardEntryAction(btn.dataset.action));
+  });
+  updateModeToggle();
+}
+
+function setScoreEntryMode(mode) {
+  scoreEntryMode = mode;
+  localStorage.setItem('scoreEntryMode', mode);
+  updateModeToggle();
+  if (currentGame) renderScoreboard();
+}
+
+function setCardEntryAction(action) {
+  cardEntryAction = action;
+  updateModeToggle();
+  if (currentGame) renderScoreboard();
+}
+
+function updateModeToggle() {
+  document.querySelectorAll('#score-mode-toggle .mode-btn').forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.mode === scoreEntryMode);
+  });
+  const actionToggle = document.getElementById('card-action-toggle');
+  if (actionToggle) {
+    actionToggle.style.display = scoreEntryMode === 'cards' ? 'inline-flex' : 'none';
+    actionToggle.querySelectorAll('.mode-btn').forEach(btn => {
+      btn.classList.toggle('active', btn.dataset.action === cardEntryAction);
+    });
+  }
 }
 
 // Toggle a player in/out of the selected list
@@ -248,8 +295,10 @@ async function startGame() {
     currentGame = await gamesAPI.start(currentGame.id);
 
     // Initialize game state
-    gameStartTime = new Date(currentGame.started_at);
+    gameStartTime = parseServerTime(currentGame.started_at);
     startTimer();
+    showShareToken();
+    connectScoreStream();
 
     // Initialize player scores from game (everyone starts with 3 victory points in Dominion)
     selectedPlayers = selectedPlayers.map(player => ({
@@ -301,17 +350,38 @@ function renderScoreboard() {
 
     const color = player.color || '#4db8ff';
     div.style.borderColor = color;
+
+    const avatarHtml = player.avatar_card
+      ? `<span class="score-avatar card-art-avatar" style="border-color:${color}"><img src="dominion-cards-used-small/${escapeHtml(player.avatar_card)}" alt=""></span>`
+      : `<span class="score-avatar score-avatar-fallback" style="background:${color}">${escapeHtml(player.name.charAt(0).toUpperCase())}</span>`;
+
+    const sign = cardEntryAction === 'trash' ? -1 : 1;
+    const controlsHtml = scoreEntryMode === 'cards'
+      ? `<div class="score-controls card-controls${sign < 0 ? ' trash-mode' : ''}">
+          ${VICTORY_CARDS.map(c => {
+            const d = c.delta * sign;
+            return `
+            <button class="card-score-btn" onclick="updateScore(${player.id}, ${d})" title="${sign < 0 ? 'Trash' : 'Gain'} ${c.name} (${d > 0 ? '+' : ''}${d})">
+              <img src="dominion-cards-used-small/${c.img}" alt="${c.name}">
+              <span class="card-delta${d < 0 ? ' card-delta-neg' : ''}">${d > 0 ? '+' : ''}${d}</span>
+            </button>`;
+          }).join('')}
+          <button class="btn score-btn token-btn" onclick="updateScore(${player.id}, -1)" title="VP token −1">−</button>
+          <button class="btn score-btn token-btn" onclick="updateScore(${player.id}, 1)" title="VP token +1">+</button>
+        </div>`
+      : `<div class="score-controls">
+          <button class="btn score-btn" onclick="updateScore(${player.id}, -1)">−</button>
+          <button class="btn score-btn" onclick="updateScore(${player.id}, 1)">+</button>
+        </div>`;
+
     div.innerHTML = `
       <div class="player-rank">${index + 1}</div>
       <div class="player-info">
-        <span class="player-color-dot" style="background:${color}"></span>
+        ${avatarHtml}
         <div class="player-info-name">${escapeHtml(player.name)}</div>
       </div>
       <div class="score-display">${player.score}</div>
-      <div class="score-controls">
-        <button class="btn score-btn" onclick="updateScore(${player.id}, -1)">−</button>
-        <button class="btn score-btn" onclick="updateScore(${player.id}, 1)">+</button>
-      </div>
+      ${controlsHtml}
     `;
 
     scoreboard.appendChild(div);
@@ -334,13 +404,92 @@ async function updateScore(playerId, delta) {
   }
 
   scoreUpdateDebounce[playerId] = setTimeout(async () => {
+    delete scoreUpdateDebounce[playerId];
     try {
-      await gamesAPI.updateScore(currentGame.id, playerId, player.score);
+      await gamesAPI.updateScore(currentGame.id, playerId, player.score, currentGame.edit_token);
     } catch (error) {
       console.error('Failed to update score:', error);
       showError('Failed to save score update');
     }
   }, 500); // Wait 500ms after last change before saving
+}
+
+// Subscribe to the game's SSE stream so remote edits (Live page) show up here too.
+function connectScoreStream() {
+  disconnectScoreStream();
+  if (!currentGame) return;
+
+  scoreStream = new EventSource(`${API_BASE_URL}/games/${currentGame.id}/stream`);
+
+  scoreStream.addEventListener('score', (e) => {
+    const { player_id, score } = JSON.parse(e.data);
+    // A local edit is still debouncing — our value is newer, ignore the echo.
+    if (scoreUpdateDebounce[player_id]) return;
+    const player = selectedPlayers.find(p => p.id === player_id);
+    if (!player || player.score === score) return;
+    player.score = score;
+    renderScoreboard();
+    updateLiveChart();
+  });
+
+  scoreStream.addEventListener('ended', () => {
+    // Game was ended from another page (Live view admin).
+    if (!currentGame) return;
+    disconnectScoreStream();
+    stopTimer();
+    Object.values(scoreUpdateDebounce).forEach(t => clearTimeout(t));
+    if (resumeTournamentId) {
+      window.location.href = 'tournament.html?id=' + resumeTournamentId;
+      return;
+    }
+    showSuccess('Game was ended from the Live page.');
+    gamesAPI.getById(currentGame.id).then(finalGame => {
+      showEndGameModal({
+        game: finalGame,
+        selectedPlayerIds: selectedPlayers.map(p => p.id),
+        selectedPlayerNames: selectedPlayers.map(p => p.name),
+        previousBuildId: currentGame.build_id,
+      });
+    }).catch(console.error);
+  });
+
+  scoreStream.onerror = () => {}; // EventSource auto-reconnects
+}
+
+function disconnectScoreStream() {
+  if (scoreStream) {
+    scoreStream.close();
+    scoreStream = null;
+  }
+}
+
+// Parse a SQLite timestamp ("YYYY-MM-DD HH:MM:SS", UTC, no zone) as UTC.
+function parseServerTime(ts) {
+  if (!ts) return new Date();
+  if (typeof ts !== 'string') return new Date(ts);
+  if (ts.includes('Z') || /[+-]\d\d:?\d\d$/.test(ts)) return new Date(ts);
+  return new Date(ts.replace(' ', 'T') + 'Z');
+}
+
+// Display the edit token so the starter can share live-score editing.
+function showShareToken() {
+  const box = document.getElementById('share-token-box');
+  if (!box || !currentGame || !currentGame.edit_token) return;
+  const token = currentGame.edit_token;
+  box.innerHTML = `
+    <span class="share-token-label">Live edit code:</span>
+    <code class="share-token-code">${escapeHtml(token)}</code>
+    <button type="button" id="copy-token-btn" class="btn btn-sm">Copy</button>
+    <span class="share-token-hint">Share so others can edit the score from the Live page.</span>
+  `;
+  box.style.display = 'flex';
+  const copyBtn = document.getElementById('copy-token-btn');
+  copyBtn.addEventListener('click', () => {
+    navigator.clipboard?.writeText(token).then(() => {
+      copyBtn.textContent = 'Copied!';
+      setTimeout(() => { copyBtn.textContent = 'Copy'; }, 1500);
+    }).catch(() => {});
+  });
 }
 
 // End game
@@ -352,6 +501,7 @@ async function doEndGame() {
   document.getElementById('confirm-end-modal').style.display = 'none';
 
   try {
+    disconnectScoreStream();
     Object.values(scoreUpdateDebounce).forEach(timeout => clearTimeout(timeout));
 
     const finalGame = await gamesAPI.end(currentGame.id);
@@ -462,6 +612,7 @@ function cancelGame() {
 
 async function doCancelGame() {
   document.getElementById('confirm-cancel-modal').style.display = 'none';
+  disconnectScoreStream();
   stopTimer();
   if (currentGame) {
     try {
@@ -476,14 +627,19 @@ async function doCancelGame() {
 
 // Reset game state
 function resetGame() {
+  disconnectScoreStream();
   currentGame = null;
   selectedPlayers = [];
   gameStartTime = null;
   scoreUpdateDebounce = {};
+  cardEntryAction = 'gain';
+  updateModeToggle();
 
   document.getElementById('setup-section').style.display = 'block';
   document.getElementById('game-section').style.display = 'none';
   document.getElementById('timer').textContent = '00:00';
+  const tokenBox = document.getElementById('share-token-box');
+  if (tokenBox) { tokenBox.style.display = 'none'; tokenBox.innerHTML = ''; }
 
   renderPlayerRoster();
   updateStartButton();

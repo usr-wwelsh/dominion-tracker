@@ -1,64 +1,83 @@
-const { Pool } = require('pg');
-require('dotenv').config();
+const Database = require('better-sqlite3');
+const path = require('path');
+require('dotenv').config({ quiet: true });
 
-// Create PostgreSQL connection pool
-const pool = new Pool({
-  host: process.env.DB_HOST,
-  port: process.env.DB_PORT,
-  database: process.env.DB_NAME,
-  user: process.env.DB_USER,
-  password: process.env.DB_PASSWORD,
-  max: 20, // Maximum number of clients in the pool
-  idleTimeoutMillis: 30000,
-  connectionTimeoutMillis: 2000,
-});
+const dbPath = process.env.SQLITE_PATH || path.join(__dirname, 'data', 'dominion.db');
 
-// Test database connection
-pool.on('connect', () => {
-  console.log('Connected to PostgreSQL database');
-});
+// Ensure the data directory exists
+const fs = require('fs');
+const dir = path.dirname(dbPath);
+if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
 
-pool.on('error', (err) => {
-  console.error('Unexpected error on idle client', err);
-  process.exit(-1);
-});
+const db = new Database(dbPath);
+db.pragma('journal_mode = WAL');
+db.pragma('foreign_keys = ON');
 
-// Helper function to execute queries
-const query = async (text, params) => {
-  const start = Date.now();
+console.log(`SQLite database opened at ${dbPath}`);
+
+// Translate Postgres $1,$2,... placeholders to SQLite ?
+function translateSql(text) {
+  return text.replace(/\$\d+/g, '?');
+}
+
+// Determine if the SQL statement returns rows
+function returnsRows(text) {
+  const t = text.trimStart().toUpperCase();
+  return t.startsWith('SELECT') || t.startsWith('WITH') || /\bRETURNING\b/i.test(text);
+}
+
+function executeQuery(text, params = []) {
+  const sql = translateSql(text);
   try {
-    const res = await pool.query(text, params);
-    const duration = Date.now() - start;
-    console.log('Executed query', { text, duration, rows: res.rowCount });
-    return res;
-  } catch (error) {
-    console.error('Query error', { text, error: error.message });
-    throw error;
+    const stmt = db.prepare(sql);
+    if (returnsRows(text)) {
+      const rows = stmt.all(...params);
+      return { rows, rowCount: rows.length };
+    } else {
+      const result = stmt.run(...params);
+      return { rows: [], rowCount: result.changes, lastInsertRowid: result.lastInsertRowid };
+    }
+  } catch (err) {
+    // Map SQLite unique constraint errors to the Postgres code routes expect
+    if (err.code === 'SQLITE_CONSTRAINT_UNIQUE' || err.code === 'SQLITE_CONSTRAINT_PRIMARYKEY') {
+      err.code = '23505';
+    }
+    console.error('Query error', { text: text.slice(0, 120), err: err.message });
+    throw err;
   }
-};
+}
 
-// Helper function for transactions
-const getClient = async () => {
-  const client = await pool.connect();
-  const query = client.query.bind(client);
-  const release = client.release.bind(client);
+// Async query wrapper — same signature as the pg pool helper
+const query = (text, params) => Promise.resolve(executeQuery(text, params));
 
-  // Set a timeout of 5 seconds for acquiring a client
-  const timeout = setTimeout(() => {
-    console.error('A client has been checked out for more than 5 seconds!');
-  }, 5000);
+// Transaction client — maps BEGIN/COMMIT/ROLLBACK strings; everything else
+// goes through the shared executeQuery. Returns a plain object (not async ctor)
+// so existing `await getClient()` calls resolve immediately.
+const getClient = () => {
+  let active = false;
 
-  // Monkey patch the release method to clear timeout
-  client.release = () => {
-    clearTimeout(timeout);
-    return release();
+  const clientQuery = (text, params = []) => {
+    const trimmed = text.trim().toUpperCase();
+    if (trimmed === 'BEGIN') {
+      if (!active) { db.prepare('BEGIN').run(); active = true; }
+      return Promise.resolve({ rows: [], rowCount: 0 });
+    }
+    if (trimmed === 'COMMIT') {
+      if (active) { db.prepare('COMMIT').run(); active = false; }
+      return Promise.resolve({ rows: [], rowCount: 0 });
+    }
+    if (trimmed === 'ROLLBACK') {
+      if (active) { try { db.prepare('ROLLBACK').run(); } catch {} active = false; }
+      return Promise.resolve({ rows: [], rowCount: 0 });
+    }
+    return query(text, params);
   };
 
-  return client;
+  return Promise.resolve({
+    query: clientQuery,
+    release: () => {},
+  });
 };
 
-module.exports = {
-  query,
-  pool,
-  getClient
-};
+// Expose the raw db instance for migrate.js (needs db.exec for multi-statement SQL)
+module.exports = { query, getClient, db };

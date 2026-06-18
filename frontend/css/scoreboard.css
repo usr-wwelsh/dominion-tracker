@@ -143,11 +143,21 @@
   gap: var(--spacing-sm);
 }
 
-.player-color-dot {
-  width: 12px;
-  height: 12px;
-  border-radius: 50%;
+.score-avatar {
+  width: 40px;
+  height: 40px;
+}
+
+.score-avatar-fallback {
+  display: flex;
+  align-items: center;
+  justify-content: center;
   flex-shrink: 0;
+  border-radius: var(--border-radius-sm);
+  border: 2px solid rgba(255, 255, 255, 0.2);
+  font-weight: 700;
+  font-size: 1.1rem;
+  color: #0b1220;
 }
 
 .player-info-name {
@@ -189,6 +199,107 @@
 
 .score-btn:active {
   transform: scale(0.95);
+}
+
+/* Score entry mode toggle */
+.score-mode-row {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-md);
+  flex-wrap: wrap;
+  margin-top: var(--spacing-md);
+}
+
+.score-mode-toggle {
+  display: inline-flex;
+  border: 1px solid var(--color-border);
+  border-radius: var(--border-radius-sm);
+  overflow: hidden;
+}
+
+.mode-btn {
+  padding: 6px 14px;
+  background: var(--color-bg-tertiary);
+  border: none;
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  font-family: var(--font-primary);
+  font-size: 0.85rem;
+}
+
+.mode-btn + .mode-btn {
+  border-left: 1px solid var(--color-border);
+}
+
+.mode-btn.active {
+  background: color-mix(in srgb, var(--color-accent) 30%, var(--color-bg-tertiary));
+  color: var(--color-text-primary);
+}
+
+/* Victory card score buttons */
+.card-controls {
+  gap: var(--spacing-xs);
+}
+
+.card-score-btn {
+  position: relative;
+  width: 44px;
+  height: 70px;
+  padding: 0;
+  border: 1px solid var(--color-border);
+  border-radius: 4px;
+  overflow: hidden;
+  background: none;
+  cursor: pointer;
+  transition: transform 0.1s, border-color 0.15s;
+}
+
+.card-score-btn img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.card-score-btn:hover {
+  border-color: var(--color-accent);
+  transform: scale(1.08);
+}
+
+.card-score-btn:active {
+  transform: scale(0.95);
+}
+
+.card-delta {
+  position: absolute;
+  bottom: 2px;
+  right: 2px;
+  background: rgba(0, 0, 0, 0.75);
+  color: #b5e853;
+  font-size: 0.7rem;
+  font-weight: 700;
+  padding: 1px 4px;
+  border-radius: 3px;
+}
+
+.card-delta-neg {
+  color: #ff8a80;
+}
+
+.card-controls.trash-mode .card-score-btn {
+  border-color: #ff8a80;
+}
+
+#card-action-toggle .mode-btn.active[data-action="trash"] {
+  background: color-mix(in srgb, #ff8a80 30%, var(--color-bg-tertiary));
+}
+
+/* Compact ±1 buttons for VP tokens in card mode */
+.token-btn {
+  width: 40px;
+  height: 70px;
+  font-size: 1.4rem;
+  margin-left: var(--spacing-xs);
 }
 
 .game-actions {
@@ -233,6 +344,15 @@
 
   .score-controls {
     order: 3;
+  }
+
+  .card-controls {
+    flex-wrap: wrap;
+  }
+
+  .card-score-btn {
+    width: 40px;
+    height: 64px;
   }
 
   .game-actions {
@@ -320,3 +440,28 @@
 .restart-buttons .btn {
   width: 100%;
 }
+
+/* Live edit / share token */
+.share-token-box {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--spacing-sm);
+  background: var(--color-bg-tertiary);
+  border: 1px solid var(--color-blue-dim);
+  border-radius: var(--border-radius-sm);
+  padding: var(--spacing-sm) var(--spacing-md);
+  margin-bottom: var(--spacing-md);
+}
+.share-token-label { color: var(--color-text-secondary); font-size: 0.9rem; }
+.share-token-code {
+  font-family: monospace;
+  font-size: 1.05rem;
+  letter-spacing: 0.12em;
+  color: var(--color-accent-hover);
+  background: var(--color-bg-secondary);
+  border: 1px solid var(--color-border);
+  border-radius: var(--border-radius-sm);
+  padding: 2px 8px;
+}
+.share-token-hint { color: var(--color-text-dim); font-size: 0.8rem; flex-basis: 100%; }

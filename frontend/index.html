@@ -3,15 +3,302 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Dominion Tracker - Leaderboard</title>
+  <title>Dominion Tracker</title>
   <link rel="manifest" href="manifest.json">
   <link rel="apple-touch-icon" href="/icon-192.png">
-  <meta name="theme-color" content="#1c2333">
+  <meta name="theme-color" content="#181f30">
   <link rel="stylesheet" href="css/main.css">
-  <link rel="stylesheet" href="css/leaderboard.css">
   <script>if ('serviceWorker' in navigator) navigator.serviceWorker.register('/sw.js');</script>
+  <style>
+    /* Falling cards stay behind the hero band only, fading out below it */
+    #falling-cards-layer {
+      position: absolute !important;
+      height: 620px;
+      -webkit-mask-image: linear-gradient(to bottom, #000 55%, transparent 92%);
+      mask-image: linear-gradient(to bottom, #000 55%, transparent 92%);
+    }
+
+    @keyframes rise {
+      from { opacity: 0; transform: translateY(14px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    /* ── Full-bleed hero ── */
+    .home-hero {
+      position: relative;
+      z-index: 1;
+      margin-top: calc(-1 * var(--spacing-xl));
+      padding: clamp(3rem, 7vw, 5rem) var(--spacing-xl) clamp(2.5rem, 5vw, 3.5rem);
+      text-align: center;
+      overflow: hidden;
+      background:
+        radial-gradient(ellipse 55% 65% at 50% 28%, rgba(184, 150, 58, 0.13), transparent 70%),
+        linear-gradient(to bottom, rgba(7, 16, 28, 0.9), rgba(19, 26, 39, 0.35) 65%, transparent);
+      border-bottom: 1px solid rgba(184, 150, 58, 0.25);
+    }
+    .home-hero::before {
+      content: '';
+      position: absolute;
+      left: 50%;
+      top: 4%;
+      width: 330px;
+      height: 330px;
+      transform: translateX(-50%);
+      background: url('/icon-192.png') center / contain no-repeat;
+      opacity: 0.07;
+      filter: saturate(0.5);
+      pointer-events: none;
+    }
+    .hero-inner { position: relative; max-width: 760px; margin: 0 auto; }
+    .hero-inner > * { animation: rise 0.55s ease both; }
+    .hero-inner > *:nth-child(1) { animation-delay: 0.05s; }
+    .hero-inner > *:nth-child(2) { animation-delay: 0.15s; }
+    .hero-inner > *:nth-child(3) { animation-delay: 0.25s; }
+    .hero-inner > *:nth-child(4) { animation-delay: 0.33s; }
+    .hero-inner > *:nth-child(5) { animation-delay: 0.42s; }
+    .hero-inner > *:nth-child(6) { animation-delay: 0.5s; }
+
+    .hero-overline {
+      font-family: var(--font-display);
+      font-size: 0.78rem;
+      font-weight: 500;
+      letter-spacing: 0.35em;
+      text-transform: uppercase;
+      color: var(--color-text-secondary);
+      margin-bottom: var(--spacing-sm);
+    }
+    .hero-title {
+      font-size: clamp(2.5rem, 7vw, 4.1rem);
+      font-weight: 700;
+      border: none;
+      padding: 0;
+      margin: 0 0 var(--spacing-sm);
+      background: linear-gradient(to bottom, #ecd9a0 18%, var(--color-accent) 55%, #8a6f2a 92%);
+      -webkit-background-clip: text;
+      background-clip: text;
+      color: transparent;
+      filter: drop-shadow(0 4px 18px rgba(184, 150, 58, 0.25));
+    }
+    .hero-rule {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.8rem;
+      color: var(--color-accent);
+      font-size: 0.55rem;
+      margin-bottom: var(--spacing-md);
+    }
+    .hero-rule::before,
+    .hero-rule::after {
+      content: '';
+      height: 1px;
+      width: min(170px, 26vw);
+    }
+    .hero-rule::before { background: linear-gradient(to right, transparent, var(--color-accent-dim)); }
+    .hero-rule::after  { background: linear-gradient(to left, transparent, var(--color-accent-dim)); }
+    .hero-tag {
+      font-style: italic;
+      color: var(--color-text-secondary);
+      font-size: 1.1rem;
+      max-width: 520px;
+      margin: 0 auto var(--spacing-lg);
+    }
+    .hero-links {
+      display: flex;
+      gap: var(--spacing-md);
+      justify-content: center;
+      flex-wrap: wrap;
+    }
+    .hero-links .btn {
+      font-family: var(--font-display);
+      letter-spacing: 0.09em;
+      padding: 0.65rem 1.7rem;
+      font-size: 1rem;
+    }
+    .hero-live {
+      margin-top: var(--spacing-lg);
+      font-family: var(--font-display);
+      text-decoration: none;
+    }
+    a.hero-live:hover { color: #ffb0b0; text-decoration: none; border-color: var(--color-crimson-hover); }
+
+    /* ── Champion spotlight ── */
+    .champion-spotlight {
+      padding: var(--spacing-xl);
+      margin-bottom: var(--spacing-xl);
+      background:
+        radial-gradient(ellipse 50% 80% at 12% 0%, rgba(184, 150, 58, 0.07), transparent 70%),
+        linear-gradient(160deg, #223349, var(--color-bg-secondary));
+      animation: rise 0.5s ease 0.15s both;
+    }
+    .spotlight-grid {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: var(--spacing-xl);
+      flex-wrap: wrap;
+    }
+    .champion-row {
+      display: flex;
+      align-items: center;
+      gap: var(--spacing-md);
+    }
+    .champion-avatar { width: 64px; height: 64px; border-radius: var(--border-radius-sm); }
+    .champion-row .champion-name { font-size: 1.5rem; font-family: var(--font-display); }
+    .champion-row .champion-name a { color: var(--color-accent-hover); }
+    .champion-row .champion-stats { font-size: 0.9rem; color: var(--color-text-secondary); }
+    .champion-row .champion-crown { color: var(--color-accent); font-size: 2.4rem; }
+    .spotlight-actions {
+      display: flex;
+      flex-direction: column;
+      gap: var(--spacing-sm);
+      min-width: 180px;
+    }
+    .spotlight-actions .btn { text-align: center; }
+    .stat-strip {
+      display: flex;
+      margin-top: var(--spacing-lg);
+      padding-top: var(--spacing-lg);
+      border-top: 1px solid var(--color-border);
+    }
+    .stat-strip .stat {
+      flex: 1;
+      text-align: center;
+      padding: 0 var(--spacing-sm);
+      min-width: 0;
+    }
+    .stat-strip .stat + .stat { border-left: 1px solid var(--color-border); }
+    .stat-strip .stat-value {
+      display: block;
+      font-family: var(--font-display);
+      font-size: 1.45rem;
+      font-weight: 600;
+      color: var(--color-accent);
+      line-height: 1.2;
+    }
+    .stat-strip .stat-name {
+      display: block;
+      font-size: 0.72rem;
+      letter-spacing: 0.16em;
+      text-transform: uppercase;
+      color: var(--color-text-dim);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    /* ── Two-tier navigation ── */
+    .feature-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: var(--spacing-lg);
+      margin-bottom: var(--spacing-lg);
+      animation: rise 0.5s ease 0.28s both;
+    }
+    .feature-card {
+      position: relative;
+      display: block;
+      overflow: hidden;
+      padding: var(--spacing-xl);
+      min-height: 150px;
+      color: inherit;
+      text-decoration: none;
+      background: linear-gradient(150deg, var(--color-bg-secondary), #18233a);
+      border: 1px solid var(--color-border);
+      border-radius: var(--border-radius-md);
+      transition: border-color var(--transition-base), box-shadow var(--transition-base), transform var(--transition-base);
+    }
+    .feature-card:hover {
+      border-color: var(--color-accent-dim);
+      box-shadow: var(--shadow-glow-gold);
+      transform: translateY(-2px);
+      text-decoration: none;
+    }
+    .feature-art {
+      position: absolute;
+      right: -10px;
+      top: 50%;
+      width: 160px;
+      transform: translateY(-50%) rotate(6deg);
+      opacity: 0.15;
+      border-radius: 4px;
+      pointer-events: none;
+      -webkit-mask-image: linear-gradient(to left, #000 35%, transparent);
+      mask-image: linear-gradient(to left, #000 35%, transparent);
+      transition: opacity var(--transition-base), transform var(--transition-base);
+    }
+    .feature-card:hover .feature-art {
+      opacity: 0.3;
+      transform: translateY(-50%) rotate(3deg) scale(1.05);
+    }
+    .feature-body { position: relative; max-width: 75%; }
+    .feature-card .feature-icon { color: var(--color-accent); margin-bottom: var(--spacing-sm); font-size: 1.7rem; }
+    .feature-card h3 { font-size: 1.35rem; color: var(--color-accent); margin-bottom: var(--spacing-xs); }
+    .feature-card p { color: var(--color-text-secondary); font-size: 0.92rem; margin: 0; }
+    .feature-cue {
+      position: absolute;
+      right: var(--spacing-md);
+      bottom: var(--spacing-sm);
+      color: var(--color-accent-dim);
+      font-size: 1.1rem;
+      transition: transform var(--transition-base), color var(--transition-base);
+    }
+    .feature-card:hover .feature-cue { transform: translateX(4px); color: var(--color-accent); }
+
+    .tile-row {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: var(--spacing-md);
+      margin-bottom: var(--spacing-xl);
+      animation: rise 0.5s ease 0.4s both;
+    }
+    .nav-tile {
+      display: flex;
+      align-items: center;
+      gap: var(--spacing-sm);
+      padding: var(--spacing-md);
+      background: var(--color-bg-secondary);
+      border: 1px solid var(--color-border);
+      border-radius: var(--border-radius-sm);
+      color: var(--color-text-secondary);
+      text-decoration: none;
+      transition: border-color var(--transition-base), color var(--transition-base), background var(--transition-base);
+    }
+    .nav-tile:hover {
+      border-color: var(--color-accent-dim);
+      color: var(--color-text-primary);
+      background: var(--color-bg-tertiary);
+      text-decoration: none;
+    }
+    .nav-tile svg { flex-shrink: 0; font-size: 1.25rem; color: var(--color-accent-dim); transition: color var(--transition-base); }
+    .nav-tile:hover svg { color: var(--color-accent); }
+    .tile-name { font-family: var(--font-display); font-size: 0.88rem; letter-spacing: 0.05em; }
+
+    .site-attribution {
+      text-align: center;
+      margin-top: var(--spacing-2xl);
+      color: var(--color-text-dim);
+      font-size: 0.9rem;
+    }
+    .site-attribution p { margin: 0 0 var(--spacing-xs); }
+    .site-attribution strong { color: var(--color-accent); }
+
+    @media (max-width: 768px) {
+      .home-hero { margin-top: calc(-1 * var(--spacing-xl)); padding-left: var(--spacing-md); padding-right: var(--spacing-md); }
+      .feature-row { grid-template-columns: 1fr; }
+      .feature-body { max-width: 100%; }
+      .tile-row { grid-template-columns: 1fr 1fr; }
+      .stat-strip { flex-wrap: wrap; row-gap: var(--spacing-md); }
+      .stat-strip .stat { flex: 1 1 40%; }
+      .stat-strip .stat:nth-child(3) { border-left: none; }
+      .spotlight-actions { flex-direction: row; width: 100%; }
+      .spotlight-actions .btn { flex: 1; }
+    }
+  </style>
 </head>
 <body>
+  <div id="admin-banner-bar"></div>
+
   <header class="site-header">
     <a href="index.html" class="site-brand">
       <img class="brand-icon" src="/icon-192.png" alt="">
@@ -22,69 +309,202 @@
     </button>
     <nav id="main-nav">
       <ul>
-        <li><a href="index.html" class="active">Leaderboard</a></li>
-        <li><a href="games.html">Recent Games</a></li>
-        <li><a href="builds.html">Builds</a></li>
-        <li><a href="players.html">Players</a></li>
         <li><a href="scoreboard.html">Play Game</a></li>
         <li><a href="tournament.html">Tournament</a></li>
+        <li><a href="live.html">Live</a></li>
+        <li><a href="players.html">Players</a></li>
+        <li><a href="builds.html">Builds</a></li>
+        <li class="nav-dropdown">
+          <button type="button" class="nav-dropdown-toggle">Standings &#9662;</button>
+          <ul class="nav-dropdown-menu">
+            <li><a href="leaderboard.html">Leaderboard</a></li>
+            <li><a href="games.html">Recent Games</a></li>
+            <li><a href="history.html">History</a></li>
+          </ul>
+        </li>
       </ul>
     </nav>
   </header>
 
+  <section class="home-hero">
+    <div class="hero-inner">
+      <p class="hero-overline">A Private League &middot; Competitive Dominion</p>
+      <h1 class="hero-title">Dominion Tracker</h1>
+      <div class="hero-rule">&#9670;</div>
+      <p class="hero-tag">Track every kingdom. Crown every champion.</p>
+      <div class="hero-links">
+        <a href="scoreboard.html" class="btn btn-accent">Start a Game</a>
+        <a href="leaderboard.html" class="btn">View Leaderboard</a>
+      </div>
+      <a href="live.html" class="live-badge hero-live" id="hero-live" style="display:none;"><span class="live-dot"></span><span id="hero-live-text">Live</span></a>
+    </div>
+  </section>
+
   <div class="container">
-    <div class="page-banner"><h1>Player Leaderboard</h1></div>
-
-    <div id="error-message" class="error" style="display: none;"></div>
-
-    <div id="loading" class="loading">Loading leaderboard</div>
-
-    <div id="leaderboard-container" style="display: none;">
-
-      <!-- Podium for top 3 -->
-      <div id="podium-section" style="display: none;"></div>
-
-      <!-- Extras: rivalry + high score + most played build -->
-      <div id="extras-section" style="display: none;"></div>
-
-      <table id="leaderboard-table">
-        <thead>
-          <tr>
-            <th class="sortable" data-column="rank">#</th>
-            <th class="sortable" data-column="name">Player</th>
-            <th class="sortable" data-column="total_league_points">Total LP</th>
-            <th class="sortable" data-column="avg_league_points">Avg LP / Game</th>
-            <th class="sortable" data-column="total_wins">Wins</th>
-            <th class="sortable" data-column="total_games">Games</th>
-            <th class="sortable" data-column="avg_score">Avg Score</th>
-          </tr>
-        </thead>
-        <tbody id="leaderboard-body">
-          <!-- Populated by JavaScript -->
-        </tbody>
-      </table>
-
-      <div id="no-data" class="text-center mt-xl" style="display: none;">
-        <p>No provinces claimed yet.</p>
-        <p>Forge a new kingdom in the <a href="scoreboard.html">Live Scoreboard</a>.</p>
+    <!-- Season spotlight -->
+    <section class="champion-spotlight ornate-frame" id="season-spotlight" style="display:none;">
+      <div class="spotlight-grid">
+        <div>
+          <p class="section-label" id="season-name">Season</p>
+          <div class="champion-row" id="spotlight-champion"></div>
+        </div>
+        <div class="spotlight-actions">
+          <a href="leaderboard.html" class="btn btn-accent">Current Standings</a>
+          <a href="history.html" class="btn">Past Seasons</a>
+        </div>
       </div>
-    </div>
-  </div>
+      <div class="stat-strip" id="stat-strip" style="display:none;"></div>
+    </section>
 
-  <!-- H2H Modal -->
-  <div id="h2h-modal" class="modal-overlay" style="display: none;">
-    <div class="modal-box">
-      <div class="modal-header">
-        <span id="h2h-title">Head-to-Head</span>
-        <button class="modal-close" id="h2h-close">✕</button>
-      </div>
-      <div id="h2h-body"></div>
+    <!-- Primary actions -->
+    <div class="feature-row">
+      <a href="scoreboard.html" class="feature-card">
+        <img class="feature-art" src="dominion-cards-used-small/festival-100x159.jpg" alt="">
+        <div class="feature-body">
+          <div class="feature-icon"><svg width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="14.5 17.5 3 6 3 3 6 3 17.5 14.5"/><line x1="13" x2="19" y1="19" y2="13"/><line x1="16" x2="20" y1="16" y2="20"/><line x1="19" x2="21" y1="21" y2="19"/><polyline points="14.5 6.5 18 3 21 3 21 6 17.5 9.5"/><line x1="5" x2="9" y1="14" y2="18"/><line x1="7" x2="4" y1="17" y2="20"/><line x1="3" x2="5" y1="19" y2="21"/></svg></div>
+          <h3>Play a Game</h3>
+          <p>Start a live scoreboard, track VP in real time, end and record the result.</p>
+        </div>
+        <span class="feature-cue">&#10142;</span>
+      </a>
+      <a href="leaderboard.html" class="feature-card">
+        <img class="feature-art" src="dominion-cards-used-small/kings-court-100x160.jpg" alt="">
+        <div class="feature-body">
+          <div class="feature-icon"><svg width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 14.66v1.626a2 2 0 0 1-.976 1.696A5 5 0 0 0 7 21.978"/><path d="M14 14.66v1.626a2 2 0 0 0 .976 1.696A5 5 0 0 1 17 21.978"/><path d="M18 9h1.5a1 1 0 0 0 0-5H18"/><path d="M4 22h16"/><path d="M6 9a6 6 0 0 0 12 0V3a1 1 0 0 0-1-1H7a1 1 0 0 0-1 1z"/><path d="M6 9H4.5a1 1 0 0 1 0-5H6"/></svg></div>
+          <h3>Leaderboard</h3>
+          <p>Season 2 standings, league points, win rates and trends.</p>
+        </div>
+        <span class="feature-cue">&#10142;</span>
+      </a>
     </div>
+
+    <!-- Secondary links -->
+    <div class="tile-row">
+      <a href="tournament.html" class="nav-tile" title="Single-elimination bracket — create, seed, and run a tournament">
+        <svg width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15.477 12.89 1.515 8.526a.5.5 0 0 1-.81.47l-3.58-2.687a1 1 0 0 0-1.197 0l-3.586 2.686a.5.5 0 0 1-.81-.469l1.514-8.526"/><circle cx="12" cy="8" r="6"/></svg>
+        <span class="tile-name">Tournament</span>
+      </a>
+      <a href="live.html" class="nav-tile" title="Watch in-progress games update in real time">
+        <svg width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4.9 16.1C1 12.2 1 5.8 4.9 1.9"/><path d="M7.8 4.7a6.14 6.14 0 0 0-.8 7.5"/><circle cx="12" cy="9" r="2"/><path d="M16.2 4.8c2 2 2.26 5.11.8 7.47"/><path d="M19.1 1.9a9.96 9.96 0 0 1 0 14.1"/><path d="M9.5 18h5"/><path d="m8 22 4-11 4 11"/></svg>
+        <span class="tile-name">Live Games</span>
+      </a>
+      <a href="builds.html" class="nav-tile" title="Browse and save kingdom configurations">
+        <svg width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12.83 2.18a2 2 0 0 0-1.66 0L2.6 6.08a1 1 0 0 0 0 1.83l8.58 3.91a2 2 0 0 0 1.66 0l8.58-3.9a1 1 0 0 0 0-1.83z"/><path d="M2 12a1 1 0 0 0 .58.91l8.6 3.91a2 2 0 0 0 1.65 0l8.58-3.9A1 1 0 0 0 22 12"/><path d="M2 17a1 1 0 0 0 .58.91l8.6 3.91a2 2 0 0 0 1.65 0l8.58-3.9A1 1 0 0 0 22 17"/></svg>
+        <span class="tile-name">Builds</span>
+      </a>
+      <a href="history.html" class="nav-tile" title="Past seasons, champions, and tournament brackets">
+        <svg width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 12h-5"/><path d="M15 8h-5"/><path d="M19 17V5a2 2 0 0 0-2-2H4"/><path d="M8 21h12a2 2 0 0 0 2-2v-1a1 1 0 0 0-1-1H11a1 1 0 0 0-1 1v1a2 2 0 1 1-4 0V5a2 2 0 1 0-4 0v2a1 1 0 0 0 1 1h3"/></svg>
+        <span class="tile-name">History</span>
+      </a>
+    </div>
+
+    <!-- Admin banner editor (hidden unless authed) -->
+    <div id="admin-section" style="display:none;" class="card mt-xl">
+      <div class="card-header">Admin: Site Banner</div>
+      <div class="form-group">
+        <label for="banner-text">Banner text (leave empty to clear)</label>
+        <input type="text" id="banner-text" maxlength="200" placeholder="Announce a game night, winner, etc.">
+      </div>
+      <button id="save-banner-btn" class="btn btn-primary">Save Banner</button>
+      <button id="show-admin-btn" class="btn btn-sm" style="margin-left:var(--spacing-sm);">Hide</button>
+      <p id="banner-save-msg" style="margin-top:var(--spacing-sm);"></p>
+    </div>
+    <div style="text-align:right;margin-top:var(--spacing-sm);">
+      <button id="show-admin-btn-small" class="btn btn-sm" style="opacity:0.4;font-size:0.75rem;">Admin</button>
+    </div>
+
+    <footer class="site-attribution">
+      <div class="flourish-divider">&#9670;</div>
+      <p>Made with care by <strong>Will</strong> &amp; <strong>Nate</strong>.</p>
+      <p>Free and open source — <a href="https://github.com/usr-wwelsh/dominion-tracker" target="_blank" rel="noopener">host your own copy for free</a>.</p>
+    </footer>
   </div>
 
   <script src="js/api.js"></script>
   <script src="js/header.js"></script>
-  <script src="js/leaderboard.js"></script>
   <script src="js/falling-cards.js"></script>
+  <script>
+  document.addEventListener('DOMContentLoaded', async () => {
+    // Load admin banner
+    try {
+      const { banner } = await apiRequest('/banner');
+      const bar = document.getElementById('admin-banner-bar');
+      if (banner) { bar.className = 'site-banner-bar'; bar.textContent = banner; }
+    } catch {}
+
+    // Hero live badge
+    try {
+      const { games } = await apiRequest('/games?live=1&limit=10');
+      if (games && games.length > 0) {
+        document.getElementById('hero-live-text').textContent =
+          games.length === 1 ? 'Live — game in progress' : `Live — ${games.length} games in progress`;
+        document.getElementById('hero-live').style.display = 'inline-flex';
+      }
+    } catch {}
+
+    // Season spotlight + stat strip
+    try {
+      const season = await apiRequest('/seasons/active');
+      if (season) {
+        document.getElementById('season-name').textContent = season.name;
+        document.getElementById('season-spotlight').style.display = 'block';
+
+        const lb = await apiRequest('/leaderboard');
+        if (lb && lb.length > 0) {
+          const leader = lb[0];
+          const color = leader.color || 'var(--color-accent)';
+          const crownSvg = '<svg width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11.562 3.266a.5.5 0 0 1 .876 0L15.39 8.87a1 1 0 0 0 1.516.294L21.183 5.5a.5.5 0 0 1 .798.519l-2.834 10.246a1 1 0 0 1-.956.734H5.81a1 1 0 0 1-.957-.734L2.02 6.02a.5.5 0 0 1 .798-.519l4.276 3.664a1 1 0 0 0 1.516-.294z"/><path d="M5 21h14"/></svg>';
+          const avatar = leader.avatar_card
+            ? `<a class="card-art-avatar champion-avatar" href="profile.html?id=${leader.id}" style="border-color:${color}"><img src="dominion-cards-used-small/${leader.avatar_card}" alt=""></a>`
+            : `<div class="champion-crown">${crownSvg}</div>`;
+          document.getElementById('spotlight-champion').innerHTML = `
+            ${avatar}
+            <div>
+              <div class="champion-name"><a href="profile.html?id=${leader.id}">${leader.name}</a></div>
+              <div class="champion-stats">${leader.avg_league_points} avg LP &middot; ${leader.total_wins} wins &middot; ${leader.total_games} games</div>
+            </div>`;
+
+          const stats = [
+            { value: lb.length, name: 'Players' },
+            { value: leader.avg_league_points, name: 'Leading Avg LP' },
+          ];
+          try {
+            const extras = await apiRequest('/extras');
+            if (extras.high_score) stats.push({ value: extras.high_score.score, name: `High Score · ${extras.high_score.player_name}` });
+            if (extras.most_played_build) stats.push({ value: extras.most_played_build.games_count, name: `Plays · ${extras.most_played_build.nickname}` });
+          } catch {}
+          const strip = document.getElementById('stat-strip');
+          strip.innerHTML = stats.map(s =>
+            `<div class="stat"><span class="stat-value">${s.value}</span><span class="stat-name" title="${s.name}">${s.name}</span></div>`
+          ).join('');
+          strip.style.display = 'flex';
+        }
+      }
+    } catch {}
+
+    // Admin panel toggle
+    const adminSect = document.getElementById('admin-section');
+    document.getElementById('show-admin-btn-small').addEventListener('click', () => {
+      adminSect.style.display = adminSect.style.display === 'none' ? 'block' : 'none';
+    });
+    document.getElementById('show-admin-btn').addEventListener('click', () => {
+      adminSect.style.display = 'none';
+    });
+
+    // Load current banner into field
+    try {
+      const { banner } = await apiRequest('/banner');
+      if (banner) document.getElementById('banner-text').value = banner;
+    } catch {}
+
+    document.getElementById('save-banner-btn').addEventListener('click', () => {
+      showDeleteModal('Save site banner (admin credentials required)', async (creds) => {
+        await apiRequest('/banner', { method: 'PUT', body: JSON.stringify({ text: document.getElementById('banner-text').value }) }, creds);
+        document.getElementById('banner-save-msg').textContent = 'Saved!';
+        setTimeout(() => { document.getElementById('banner-save-msg').textContent = ''; }, 3000);
+      }, { confirmLabel: 'Save', pendingLabel: 'Saving...' });
+    });
+  });
+  </script>
 </body>
 </html>

@@ -1,24 +1,25 @@
 {
   "name": "dominion-tracker-backend",
-  "version": "1.0.0",
-  "description": "Backend API for Dominion Game Tracker",
+  "version": "2.0.0",
+  "description": "Backend API for Dominion Game Tracker — Season 2",
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
     "dev": "node --watch server.js"
   },
-  "keywords": [
-    "dominion",
-    "game",
-    "tracker"
-  ],
+  "keywords": ["dominion", "game", "tracker"],
   "author": "",
   "license": "MIT",
   "dependencies": {
+    "better-sqlite3": "^12.10.0",
     "cors": "^2.8.5",
     "dotenv": "^17.4.0",
     "express": "^5.2.1",
     "express-basic-auth": "^1.2.1",
-    "pg": "^8.20.0"
+    "web-push": "^3.6.7"
+  },
+  "comment:optionalDependencies": "pg is only needed for the one-time Season 2 Postgres->SQLite cutover (scripts/pg-to-sqlite.js + auto-import on first boot). It is lazy-required, so SQLite-only operation never loads it. Safe to remove once migrated.",
+  "optionalDependencies": {
+    "pg": "^8.13.1"
   }
 }

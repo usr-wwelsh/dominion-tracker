@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" width="120" height="120" role="img" aria-label="On a Roll">
+  <defs>
+    <linearGradient id="g" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#e8cf86"/><stop offset=".5" stop-color="#b8963a"/><stop offset="1" stop-color="#7a621a"/>
+    </linearGradient>
+    <radialGradient id="b" cx=".5" cy=".4" r=".75">
+      <stop offset="0" stop-color="#26314a"/><stop offset="1" stop-color="#121826"/>
+    </radialGradient>
+    <radialGradient id="f" cx=".5" cy=".68" r=".62">
+      <stop offset="0" stop-color="#ffe08a"/><stop offset=".55" stop-color="#ff8c2a"/><stop offset="1" stop-color="#e0431f"/>
+    </radialGradient>
+  </defs>
+  <circle cx="60" cy="60" r="57" fill="url(#b)" stroke="url(#g)" stroke-width="5"/>
+  <circle cx="60" cy="60" r="49" fill="none" stroke="#b8963a" stroke-width="1.5" opacity=".55"/>
+  <g fill="#d4b05a">
+    <circle cx="60" cy="11" r="1.7"/><circle cx="60" cy="109" r="1.7"/><circle cx="11" cy="60" r="1.7"/><circle cx="109" cy="60" r="1.7"/>
+    <circle cx="25" cy="25" r="1.5"/><circle cx="95" cy="25" r="1.5"/><circle cx="25" cy="95" r="1.5"/><circle cx="95" cy="95" r="1.5"/>
+  </g>
+  <path d="M60 34 C75 50 78 60 72 72 C69 80 64 84 60 86 C56 84 50 80 47 72 C42 61 49 56 55 62 C58 52 56 44 60 34 Z" fill="url(#f)"/>
+  <path d="M60 52 C66 60 68 66 65 72 C63 77 61 79 60 80 C59 79 56 77 55 73 C53 67 56 64 58 67 C59 62 58 57 60 52 Z" fill="#ffe9a8"/>
+  <text x="60" y="79" text-anchor="middle" font-family="Georgia, 'Times New Roman', serif" font-size="20" font-weight="bold" fill="#7a3a10">3</text>
+</svg>

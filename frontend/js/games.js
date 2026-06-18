@@ -267,6 +267,7 @@ function createGameCard(game) {
       <div class="game-info">
         <div class="game-date">${formattedDate}</div>
         <div class="game-winner">
+          ${winners.map(w => playerAvatarHtml(w, 'winner-avatar')).join('')}
           <span class="game-winner-name">${formatWinnerNames(winners)}</span>
           ${winner ? `<span class="game-winner-score">${winner.final_score} pts</span>` : ''}
         </div>
@@ -353,7 +354,12 @@ function buildGameDetailsHTML(game) {
                   ${player.placement}
                 </div>
               </td>
-              <td><span ${player.player_color ? `style="color:${player.player_color}"` : ''}>${escapeHtml(player.player_name)}</span></td>
+              <td>
+                <div class="standings-player">
+                  ${playerAvatarHtml(player, 'standings-avatar')}
+                  <span ${player.player_color ? `style="color:${player.player_color}"` : ''}>${escapeHtml(player.player_name)}</span>
+                </div>
+              </td>
               <td>${player.final_score}</td>
               <td>${player.league_points}</td>
             </tr>
@@ -766,6 +772,14 @@ function formatDuration(seconds) {
 
 function getPlacementStar(placement) {
   return placement === 1 ? '♛' : '';
+}
+
+// Card-art avatar with player-color border, or initial fallback
+function playerAvatarHtml(p, cls) {
+  const color = p.player_color || '#4db8ff';
+  return p.avatar_card
+    ? `<span class="${cls} card-art-avatar" style="border-color:${color}"><img src="dominion-cards-used-small/${escapeHtml(p.avatar_card)}" alt=""></span>`
+    : `<span class="${cls} game-avatar-fallback" style="background:${color}">${escapeHtml((p.player_name || '?').charAt(0).toUpperCase())}</span>`;
 }
 
 // Format winner name(s) with player colors, handling ties

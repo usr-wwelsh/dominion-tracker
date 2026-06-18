@@ -2,11 +2,14 @@ const express = require('express');
 const router = express.Router();
 const { query } = require('../db');
 
-// GET /api/leaderboard - Get player leaderboard with trend, form, win rate
+// GET /api/leaderboard — active-season stats with trend and recent form
 router.get('/leaderboard', async (req, res, next) => {
   try {
     const result = await query(`
-      WITH all_game_data AS (
+      WITH active_season AS (
+        SELECT id FROM seasons WHERE ended_at IS NULL ORDER BY id DESC LIMIT 1
+      ),
+      all_game_data AS (
         SELECT
           gp.player_id,
           gp.placement,
@@ -16,11 +19,12 @@ router.get('/leaderboard', async (req, res, next) => {
           g.id AS game_id,
           ROW_NUMBER() OVER (
             PARTITION BY gp.player_id
-            ORDER BY g.ended_at DESC NULLS LAST, g.id DESC
+            ORDER BY g.ended_at DESC, g.id DESC
           ) AS player_game_rn
         FROM game_players gp
         JOIN games g ON gp.game_id = g.id
         WHERE g.ended_at IS NOT NULL
+          AND g.season_id = (SELECT id FROM active_season)
       ),
       current_stats AS (
         SELECT
@@ -28,16 +32,17 @@ router.get('/leaderboard', async (req, res, next) => {
           COUNT(*) AS total_games,
           SUM(league_points) AS total_lp,
           SUM(CASE WHEN placement = 1 THEN 1 ELSE 0 END) AS total_wins,
-          ROUND(AVG(final_score)::numeric, 2) AS avg_score
+          ROUND(CAST(AVG(final_score) AS REAL), 2) AS avg_score
         FROM all_game_data
         GROUP BY player_id
       ),
       prev_stats AS (
         SELECT
           player_id,
+          COUNT(*) AS prev_games,
           SUM(league_points) AS prev_lp,
           SUM(CASE WHEN placement = 1 THEN 1 ELSE 0 END) AS prev_wins,
-          ROUND(AVG(final_score)::numeric, 2) AS prev_avg_score
+          ROUND(CAST(AVG(final_score) AS REAL), 2) AS prev_avg_score
         FROM all_game_data
         WHERE player_game_rn > 1
         GROUP BY player_id
@@ -45,53 +50,63 @@ router.get('/leaderboard', async (req, res, next) => {
       current_ranked AS (
         SELECT
           player_id,
-          RANK() OVER (ORDER BY total_lp DESC, total_wins DESC, avg_score DESC) AS curr_rank
+          RANK() OVER (ORDER BY CAST(total_lp AS REAL) / MAX(total_games, 1) DESC, total_wins DESC, avg_score DESC) AS curr_rank
         FROM current_stats
       ),
       prev_ranked AS (
         SELECT
           player_id,
-          RANK() OVER (ORDER BY prev_lp DESC, prev_wins DESC, prev_avg_score DESC) AS prev_rank
+          RANK() OVER (ORDER BY CAST(prev_lp AS REAL) / MAX(prev_games, 1) DESC, prev_wins DESC, prev_avg_score DESC) AS prev_rank
         FROM prev_stats
       ),
-      recent_form_agg AS (
-        SELECT
-          player_id,
-          json_agg(placement ORDER BY player_game_rn ASC) AS recent_form
+      recent_form_ordered AS (
+        SELECT player_id, placement, player_game_rn
         FROM all_game_data
         WHERE player_game_rn <= 5
+        ORDER BY player_id, player_game_rn ASC
+      ),
+      recent_form_agg AS (
+        SELECT player_id, json_group_array(placement) AS recent_form
+        FROM recent_form_ordered
         GROUP BY player_id
       )
       SELECT
         p.id,
         p.name,
         p.color,
+        pp.avatar_card,
         cs.total_games,
         cs.total_lp AS total_league_points,
-        ROUND(cs.total_lp::numeric / NULLIF(cs.total_games, 0), 2) AS avg_league_points,
+        ROUND(CAST(cs.total_lp AS REAL) / MAX(cs.total_games, 1), 2) AS avg_league_points,
         cs.total_wins,
         cs.avg_score,
-        ROUND(cs.total_wins::numeric * 100.0 / NULLIF(cs.total_games, 0), 1) AS win_rate,
-        COALESCE(rf.recent_form, '[]'::json) AS recent_form,
+        ROUND(CAST(cs.total_wins AS REAL) * 100.0 / MAX(cs.total_games, 1), 1) AS win_rate,
+        COALESCE(rf.recent_form, '[]') AS recent_form,
         CASE
           WHEN pr.prev_rank IS NULL THEN NULL
-          ELSE (pr.prev_rank - cr.curr_rank)::int
+          ELSE CAST(pr.prev_rank - cr.curr_rank AS INTEGER)
         END AS rank_trend
       FROM players p
+      LEFT JOIN player_profiles pp ON pp.player_id = p.id
       JOIN current_stats cs ON p.id = cs.player_id
       JOIN current_ranked cr ON p.id = cr.player_id
       LEFT JOIN prev_ranked pr ON p.id = pr.player_id
       LEFT JOIN recent_form_agg rf ON p.id = rf.player_id
-      ORDER BY cs.total_lp DESC, cs.total_wins DESC, cs.avg_score DESC
+      ORDER BY CAST(cs.total_lp AS REAL) / MAX(cs.total_games, 1) DESC, cs.total_wins DESC, cs.avg_score DESC
     `);
 
-    res.json(result.rows);
+    // SQLite returns json_group_array as a string; parse it
+    const rows = result.rows.map(r => ({
+      ...r,
+      recent_form: typeof r.recent_form === 'string' ? JSON.parse(r.recent_form) : r.recent_form,
+    }));
+    res.json(rows);
   } catch (error) {
     next(error);
   }
 });
 
-// GET /api/stats/extras - Rivalry, all-time high score, most played build
+// GET /api/extras — rivalry, all-time high score, most played build
 router.get('/extras', async (req, res, next) => {
   try {
     const [rivalryResult, highScoreResult, buildResult] = await Promise.all([

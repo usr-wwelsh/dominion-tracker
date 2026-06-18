@@ -6,7 +6,7 @@
   <title>Dominion Tracker - Tournament</title>
   <link rel="manifest" href="manifest.json">
   <link rel="apple-touch-icon" href="/icon-192.png">
-  <meta name="theme-color" content="#1c2333">
+  <meta name="theme-color" content="#181f30">
   <link rel="stylesheet" href="css/main.css">
   <link rel="stylesheet" href="css/tournament.css">
   <script>if ('serviceWorker' in navigator) navigator.serviceWorker.register('/sw.js');</script>
@@ -22,12 +22,19 @@
     </button>
     <nav id="main-nav">
       <ul>
-        <li><a href="index.html">Leaderboard</a></li>
-        <li><a href="games.html">Recent Games</a></li>
-        <li><a href="builds.html">Builds</a></li>
-        <li><a href="players.html">Players</a></li>
         <li><a href="scoreboard.html">Play Game</a></li>
         <li><a href="tournament.html" class="active">Tournament</a></li>
+        <li><a href="live.html">Live</a></li>
+        <li><a href="players.html">Players</a></li>
+        <li><a href="builds.html">Builds</a></li>
+        <li class="nav-dropdown">
+          <button type="button" class="nav-dropdown-toggle">Standings &#9662;</button>
+          <ul class="nav-dropdown-menu">
+            <li><a href="leaderboard.html">Leaderboard</a></li>
+            <li><a href="games.html">Recent Games</a></li>
+            <li><a href="history.html">History</a></li>
+          </ul>
+        </li>
       </ul>
     </nav>
   </header>

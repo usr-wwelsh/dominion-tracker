@@ -160,7 +160,6 @@ function renderPodium(data) {
 
   const heights = [80, 110, 60];
   const labels = ['2nd', '1st', '3rd'];
-  const medals = ['🥈', '🥇', '🥉'];
 
   section.innerHTML = '';
   const podium = document.createElement('div');
@@ -178,12 +177,18 @@ function renderPodium(data) {
 
     const color = player.color || '#4db8ff';
 
+    const avatarHtml = player.avatar_card
+      ? `<div class="podium-avatar card-art-avatar" style="border-color:${color}; box-shadow: 0 0 12px ${color}40">
+          <img src="dominion-cards-used-small/${escapeHtml(player.avatar_card)}" alt="">
+        </div>`
+      : `<div class="podium-avatar" style="border-color:${color}; box-shadow: 0 0 12px ${color}40">
+          <span class="podium-initial" style="color:${color}">${escapeHtml(player.name[0].toUpperCase())}</span>
+        </div>`;
+
     slot.innerHTML = `
       <div class="podium-player">
-<div class="podium-avatar" style="border-color:${color}; box-shadow: 0 0 12px ${color}40">
-          <span class="podium-initial" style="color:${color}">${escapeHtml(player.name[0].toUpperCase())}</span>
-        </div>
-        <div class="podium-name" style="color:${color}">${escapeHtml(player.name)}</div>
+        ${avatarHtml}
+        <a class="podium-name" href="profile.html?id=${player.id}" style="color:${color};text-decoration:none;">${escapeHtml(player.name)}</a>
         <div class="podium-lp">${player.avg_league_points} avg LP</div>
         <div class="podium-stats">${player.total_league_points} total LP</div>
       </div>
@@ -208,7 +213,7 @@ function renderExtras(extras) {
     const date = hs.game_date ? new Date(hs.game_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '';
     cards.push(`
       <div class="extras-card">
-        <div class="extras-card-icon">⚔</div>
+        <div class="extras-card-icon"><svg width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="14.5 17.5 3 6 3 3 6 3 17.5 14.5"/><line x1="13" x2="19" y1="19" y2="13"/><line x1="16" x2="20" y1="16" y2="20"/><line x1="19" x2="21" y1="21" y2="19"/><polyline points="14.5 6.5 18 3 21 3 21 6 17.5 9.5"/><line x1="5" x2="9" y1="14" y2="18"/><line x1="7" x2="4" y1="17" y2="20"/><line x1="3" x2="5" y1="19" y2="21"/></svg></div>
         <div class="extras-card-content">
           <div class="extras-card-label">Province Record</div>
           <div class="extras-card-value">${escapeHtml(hs.player_name)} scored <strong>${hs.score}</strong></div>
@@ -222,7 +227,7 @@ function renderExtras(extras) {
     const r = extras.rivalry;
     cards.push(`
       <div class="extras-card">
-        <div class="extras-card-icon">⚡</div>
+        <div class="extras-card-icon"><svg width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 14a1 1 0 0 1-.78-1.63l9.9-10.2a.5.5 0 0 1 .86.46l-1.92 6.02A1 1 0 0 0 13 10h7a1 1 0 0 1 .78 1.63l-9.9 10.2a.5.5 0 0 1-.86-.46l1.92-6.02A1 1 0 0 0 11 14z"/></svg></div>
         <div class="extras-card-content">
           <div class="extras-card-label">Greatest Rivalry</div>
           <div class="extras-card-value">${escapeHtml(r.player1_name)} vs ${escapeHtml(r.player2_name)}</div>
@@ -236,7 +241,7 @@ function renderExtras(extras) {
     const b = extras.most_played_build;
     cards.push(`
       <div class="extras-card">
-        <div class="extras-card-icon">📜</div>
+        <div class="extras-card-icon"><svg width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 12h-5"/><path d="M15 8h-5"/><path d="M19 17V5a2 2 0 0 0-2-2H4"/><path d="M8 21h12a2 2 0 0 0 2-2v-1a1 1 0 0 0-1-1H11a1 1 0 0 0-1 1v1a2 2 0 1 1-4 0V5a2 2 0 1 0-4 0v2a1 1 0 0 0 1 1h3"/></svg></div>
         <div class="extras-card-content">
           <div class="extras-card-label">Most Played Kingdom</div>
           <div class="extras-card-value">${escapeHtml(b.nickname)}</div>
@@ -269,11 +274,16 @@ function renderLeaderboard() {
     const trendHtml = renderTrendArrow(player.rank_trend);
     const recentForm = JSON.stringify(player.recent_form || []);
 
+    const rowAvatar = player.avatar_card
+      ? `<a class="row-avatar card-art-avatar" href="profile.html?id=${player.id}" style="border-color:${color}"><img src="dominion-cards-used-small/${escapeHtml(player.avatar_card)}" alt=""></a>`
+      : `<a class="row-avatar row-avatar-fallback" href="profile.html?id=${player.id}" style="background:${color}">${escapeHtml(player.name[0].toUpperCase())}</a>`;
+
     row.innerHTML = `
       <td class="col-rank">${index + 1}${trendHtml}</td>
       <td class="player-name">
+        ${rowAvatar}
         <span class="player-color-swatch" data-player-id="${player.id}" style="background:${color}" title="Click to change color"></span>
-        <span class="player-name-link" data-player-id="${player.id}" data-player-name="${escapeHtml(player.name)}" data-recent-form="${escapeHtml(recentForm)}" title="View stats &amp; head-to-head">${escapeHtml(player.name)}</span>
+        <a class="player-name-link" href="profile.html?id=${player.id}" data-player-id="${player.id}" data-player-name="${escapeHtml(player.name)}" data-recent-form="${escapeHtml(recentForm)}" title="View profile">${escapeHtml(player.name)}</a>
       </td>
       <td class="stat-highlight">${player.total_league_points}</td>
       <td>${player.avg_league_points}</td>
@@ -293,14 +303,6 @@ function renderLeaderboard() {
       } else {
         openPopover(swatch, swatch.dataset.playerId);
       }
-    });
-  });
-
-  tbody.querySelectorAll('.player-name-link').forEach(link => {
-    link.addEventListener('click', e => {
-      e.stopPropagation();
-      const recentForm = JSON.parse(link.dataset.recentForm || '[]');
-      openH2HModal(link.dataset.playerId, link.dataset.playerName, recentForm);
     });
   });
 

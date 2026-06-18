@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Dominion Tracker - Season History</title>
+  <link rel="manifest" href="manifest.json">
+  <link rel="apple-touch-icon" href="/icon-192.png">
+  <meta name="theme-color" content="#181f30">
+  <link rel="stylesheet" href="css/main.css">
+  <style>
+    .standings-table { margin-top: var(--spacing-md); }
+    .standings-table th, .standings-table td { font-size: 0.9rem; }
+    .collapsed { display: none; }
+    .toggle-standings { cursor: pointer; font-size: 0.85rem; color: var(--color-blue-hover); background: none; border: none; padding: 0; box-shadow: none; transform: none; }
+    .toggle-standings:hover { text-decoration: underline; transform: none; box-shadow: none; }
+    .history-section-title {
+      color: var(--color-accent);
+      font-size: 1.3rem;
+      margin: var(--spacing-xl) 0 var(--spacing-md);
+    }
+    .history-section-title:first-child { margin-top: 0; }
+    .tournament-champ-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+      gap: var(--spacing-md);
+      margin-bottom: var(--spacing-xl);
+    }
+    .tournament-champ-card {
+      display: flex;
+      align-items: center;
+      gap: var(--spacing-md);
+      background: var(--color-bg-secondary);
+      border: 2px solid var(--color-accent-dim);
+      border-radius: var(--border-radius-md);
+      padding: var(--spacing-lg);
+      text-decoration: none;
+      color: inherit;
+      transition: border-color 0.2s, box-shadow 0.2s;
+    }
+    .tournament-champ-card:hover { border-color: var(--color-accent); box-shadow: var(--shadow-glow-gold); text-decoration: none; }
+    .tournament-champ-card .champion-crown { font-size: 2rem; }
+    .tournament-champ-name { color: var(--color-accent); font-weight: 600; }
+  </style>
+</head>
+<body>
+  <div id="admin-banner-bar"></div>
+
+  <header class="site-header">
+    <a href="index.html" class="site-brand">
+      <img class="brand-icon" src="/icon-192.png" alt="">
+      <span class="brand-name">Dominion Tracker</span>
+    </a>
+    <button class="nav-toggle" id="nav-toggle" aria-label="Menu" aria-expanded="false">
+      <span></span><span></span><span></span>
+    </button>
+    <nav id="main-nav">
+      <ul>
+        <li><a href="scoreboard.html">Play Game</a></li>
+        <li><a href="tournament.html">Tournament</a></li>
+        <li><a href="live.html">Live</a></li>
+        <li><a href="players.html">Players</a></li>
+        <li><a href="builds.html">Builds</a></li>
+        <li class="nav-dropdown active">
+          <button type="button" class="nav-dropdown-toggle">Standings &#9662;</button>
+          <ul class="nav-dropdown-menu">
+            <li><a href="leaderboard.html">Leaderboard</a></li>
+            <li><a href="games.html">Recent Games</a></li>
+            <li><a href="history.html" class="active">History</a></li>
+          </ul>
+        </li>
+      </ul>
+    </nav>
+  </header>
+
+  <div class="container">
+    <div class="page-banner"><h1>Season History</h1></div>
+
+    <div id="loading" class="loading">Loading history</div>
+    <div id="history-container" style="display:none;"></div>
+  </div>
+
+  <script src="js/api.js"></script>
+  <script src="js/header.js"></script>
+  <script src="js/falling-cards.js"></script>
+  <script>
+  document.addEventListener('DOMContentLoaded', async () => {
+    apiRequest('/banner').then(({ banner }) => {
+      const bar = document.getElementById('admin-banner-bar');
+      if (banner) { bar.className = 'site-banner-bar'; bar.textContent = banner; }
+    }).catch(() => {});
+
+    const loading = document.getElementById('loading');
+    const container = document.getElementById('history-container');
+
+    try {
+      const [seasons, tournaments] = await Promise.all([
+        apiRequest('/seasons'),
+        apiRequest('/tournaments').catch(() => []),
+      ]);
+      const past = seasons.filter(s => s.ended_at);
+      const champedTournaments = (tournaments || []).filter(t => t.status === 'complete' && t.winner_name);
+
+      loading.style.display = 'none';
+      container.style.display = 'block';
+
+      if (past.length === 0 && champedTournaments.length === 0) {
+        container.innerHTML = '<p class="text-center" style="color:var(--color-text-dim)">No completed seasons or tournaments yet.</p>';
+        return;
+      }
+
+      // Tournament champions
+      if (champedTournaments.length > 0) {
+        const section = document.createElement('div');
+        section.className = 'history-section fade-in';
+        const grid = champedTournaments.map(t => `
+          <a class="tournament-champ-card" href="tournament.html?id=${t.id}">
+            <div class="champion-crown">🏆</div>
+            <div>
+              <div class="tournament-champ-name">${t.name}</div>
+              <div class="champion-name">${t.winner_name}</div>
+              <div class="champion-stats">${t.completed_at ? 'Won ' + formatDate(t.completed_at) : ''}</div>
+            </div>
+          </a>`).join('');
+        section.innerHTML = `<h2 class="history-section-title">Tournament Champions</h2>
+          <div class="tournament-champ-grid">${grid}</div>`;
+        container.appendChild(section);
+      }
+
+      if (past.length > 0) {
+        const heading = document.createElement('h2');
+        heading.className = 'history-section-title';
+        heading.textContent = 'Past Seasons';
+        container.appendChild(heading);
+      }
+
+      for (const season of past.slice().reverse()) {
+        const card = document.createElement('div');
+        card.className = 'season-card fade-in';
+
+        // Champion
+        let championHtml = '<p style="color:var(--color-text-dim)">No champion recorded.</p>';
+        try {
+          const champ = await apiRequest(`/seasons/${season.id}/champion`);
+          if (champ) {
+            championHtml = `
+              <div class="season-champion">
+                <div class="champion-crown">👑</div>
+                <div>
+                  <div class="champion-name">${champ.player_name || champ.name}</div>
+                  <div class="champion-stats">
+                    ${Number(champ.avg_league_points ?? Number(champ.total_league_points || 0) / Math.max(Number(champ.total_games) || 1, 1)).toFixed(2)} avg LP ·
+                    ${champ.total_wins} wins ·
+                    ${champ.total_games} games
+                  </div>
+                </div>
+              </div>`;
+          }
+        } catch {}
+
+        // Standings toggle
+        const standingsId = `standings-${season.id}`;
+        card.innerHTML = `
+          <h2>${season.name}</h2>
+          <p style="color:var(--color-text-dim);font-size:0.85rem;">
+            ${formatDate(season.started_at)} – ${formatDate(season.ended_at)}
+          </p>
+          ${championHtml}
+          <button class="toggle-standings mt-md" data-target="${standingsId}">
+            Show full standings ▾
+          </button>
+          <div id="${standingsId}" class="collapsed">
+            <div class="loading" style="padding:var(--spacing-md)">Loading standings</div>
+          </div>`;
+
+        container.appendChild(card);
+
+        card.querySelector('.toggle-standings').addEventListener('click', async function() {
+          const target = document.getElementById(this.dataset.target);
+          if (!target.classList.contains('collapsed')) {
+            target.classList.add('collapsed');
+            this.textContent = 'Show full standings ▾';
+            return;
+          }
+          target.classList.remove('collapsed');
+          this.textContent = 'Hide standings ▴';
+
+          if (target.dataset.loaded) return;
+          target.dataset.loaded = '1';
+
+          try {
+            const standings = await apiRequest(`/seasons/${season.id}/standings`);
+            if (standings.length === 0) {
+              target.innerHTML = '<p style="color:var(--color-text-dim)">No game data for this season.</p>';
+              return;
+            }
+            let html = `<table class="standings-table mt-md">
+              <thead><tr>
+                <th>#</th><th>Player</th><th>Avg LP</th><th>LP</th><th>Wins</th><th>Games</th><th>Avg Score</th>
+              </tr></thead><tbody>`;
+            standings.forEach((p, i) => {
+              html += `<tr>
+                <td>${i + 1}</td>
+                <td><a href="profile.html?id=${p.id}">${p.name}</a></td>
+                <td>${Number(p.avg_league_points || 0).toFixed(2)}</td>
+                <td>${Number(p.total_league_points || 0).toFixed(0)}</td>
+                <td>${p.total_wins}</td>
+                <td>${p.total_games}</td>
+                <td>${p.avg_score}</td>
+              </tr>`;
+            });
+            html += '</tbody></table>';
+            target.innerHTML = html;
+          } catch {
+            target.innerHTML = '<p style="color:var(--color-error)">Failed to load standings.</p>';
+          }
+        });
+      }
+    } catch (err) {
+      loading.textContent = 'Failed to load history.';
+      console.error(err);
+    }
+  });
+
+  function formatDate(ts) {
+    if (!ts) return '?';
+    return new Date(ts).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
+  }
+  </script>
+</body>
+</html>

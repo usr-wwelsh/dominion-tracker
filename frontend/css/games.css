@@ -234,9 +234,37 @@
 /* Winner name — the "card name", most prominent */
 .game-winner {
   display: flex;
-  align-items: baseline;
+  align-items: center;
   gap: 8px;
   flex-wrap: wrap;
+}
+
+.winner-avatar {
+  width: 30px;
+  height: 30px;
+}
+
+.standings-avatar {
+  width: 26px;
+  height: 26px;
+}
+
+.standings-player {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+}
+
+.game-avatar-fallback {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  border-radius: var(--border-radius-sm);
+  border: 2px solid rgba(255, 255, 255, 0.2);
+  font-weight: 700;
+  font-size: 0.8rem;
+  color: #0b1220;
 }
 
 .game-winner-name {

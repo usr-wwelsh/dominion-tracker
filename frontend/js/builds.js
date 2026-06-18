@@ -578,6 +578,7 @@ function createBuildItem(build) {
       <div class="build-comments" id="comments-${build.id}">
         <div class="comments-loading">Loading comments...</div>
       </div>
+      <div class="build-games" id="games-${build.id}"></div>
     </div>
   `;
 
@@ -586,9 +587,10 @@ function createBuildItem(build) {
     if (e.target.closest('.js-delete-build') || e.target.closest('.js-edit-build')) return;
     const wasCollapsed = div.classList.contains('collapsed');
     div.classList.toggle('collapsed');
-    if (wasCollapsed && !div.dataset.commentsLoaded) {
-      div.dataset.commentsLoaded = '1';
+    if (wasCollapsed && !div.dataset.contentLoaded) {
+      div.dataset.contentLoaded = '1';
       loadBuildComments(build.id, div.querySelector(`#comments-${build.id}`));
+      loadBuildGames(build.id, div.querySelector(`#games-${build.id}`));
     }
   });
 
@@ -854,6 +856,106 @@ function placementLabel(n) {
   if (n === 2) return '2nd';
   if (n === 3) return '3rd';
   return `${n}th`;
+}
+
+function formatGameDate(ts) {
+  if (!ts) return 'Unknown date';
+  return new Date(ts).toLocaleString('en-US', {
+    year: 'numeric', month: 'short', day: 'numeric',
+    hour: '2-digit', minute: '2-digit',
+  });
+}
+
+// Load and render the list of games played with a build
+async function loadBuildGames(buildId, container) {
+  try {
+    const games = await buildsAPI.getGames(buildId);
+    renderBuildGames(buildId, games, container);
+  } catch (error) {
+    container.innerHTML = '';
+  }
+}
+
+function renderBuildGames(buildId, games, container) {
+  if (!games || games.length === 0) {
+    container.innerHTML = '';
+    return;
+  }
+
+  const rowsHtml = games.map(g => {
+    const winners = (g.players || []).filter(p => p.placement === 1);
+    const winnerText = winners.length
+      ? `${winners.map(w => escapeHtml(w.player_name)).join(', ')} · ${winners[0].final_score}`
+      : '—';
+    return `
+      <button class="build-game-row js-open-game" data-game-id="${g.id}">
+        <span class="bg-date">${formatGameDate(g.started_at)}</span>
+        <span class="bg-winner">🏆 ${winnerText}</span>
+        <span class="bg-count">${(g.players || []).length}p</span>
+      </button>`;
+  }).join('');
+
+  container.innerHTML = `
+    <div class="build-games-header">Games Played (${games.length})</div>
+    <div class="build-games-list">${rowsHtml}</div>`;
+
+  container.querySelectorAll('.js-open-game').forEach(btn => {
+    const gameId = Number(btn.dataset.gameId);
+    const game = games.find(g => g.id === gameId);
+    btn.addEventListener('click', () => showGameModal(buildId, game));
+  });
+}
+
+async function showGameModal(buildId, game) {
+  const existing = document.getElementById('game-detail-modal');
+  if (existing) existing.remove();
+
+  // Pull comments for this build and keep only this game's
+  let gameComments = [];
+  try {
+    const all = await buildsAPI.getComments(buildId);
+    gameComments = all.filter(c => c.game_id === game.id);
+  } catch {}
+
+  const scoreRows = (game.players || []).map(p => `
+    <div class="game-modal-score-row">
+      <span class="gm-placement">${placementLabel(p.placement)}</span>
+      <span class="gm-name" style="color:${escapeHtml(p.player_color || '#4db8ff')}">${escapeHtml(p.player_name)}</span>
+      <span class="gm-score">${p.final_score}</span>
+      <span class="gm-lp">${p.league_points ?? 0} LP</span>
+    </div>`).join('');
+
+  const commentsHtml = gameComments.length
+    ? `<div class="game-modal-comments">
+         <div class="game-modal-subtitle">Comments</div>
+         ${gameComments.map(c => `
+           <div class="build-comment">
+             <div class="comment-meta">
+               <span class="comment-player" style="color:${escapeHtml(c.player_color || '#4db8ff')}">${escapeHtml(c.player_name)}</span>
+               <span class="comment-placement">${placementLabel(c.placement)}</span>
+             </div>
+             <div class="comment-text">${escapeHtml(c.comment_text)}</div>
+           </div>`).join('')}
+       </div>`
+    : '';
+
+  const overlay = document.createElement('div');
+  overlay.id = 'game-detail-modal';
+  overlay.className = 'delete-modal-overlay';
+  overlay.innerHTML = `
+    <div class="delete-modal-box game-modal-box">
+      <div class="delete-modal-title">Game #${game.id} · ${formatGameDate(game.started_at)}</div>
+      <div class="game-modal-scores">${scoreRows}</div>
+      ${commentsHtml}
+      <div class="delete-modal-actions">
+        <button class="btn" id="gm-close">Close</button>
+      </div>
+    </div>`;
+
+  document.body.appendChild(overlay);
+  const close = () => overlay.remove();
+  overlay.querySelector('#gm-close').addEventListener('click', close);
+  overlay.addEventListener('click', (e) => { if (e.target === overlay) close(); });
 }
 
 function renderBuildComments(buildId, comments, container) {

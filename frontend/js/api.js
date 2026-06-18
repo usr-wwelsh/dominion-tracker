@@ -128,13 +128,16 @@ const gamesAPI = {
     method: 'PUT',
   }),
 
-  updateScore: (gameId, playerId, score) => apiRequest(`/games/${gameId}/scores`, {
+  updateScore: (gameId, playerId, score, editToken = null) => apiRequest(`/games/${gameId}/scores`, {
     method: 'POST',
     body: JSON.stringify({
       player_id: playerId,
       score: score,
+      edit_token: editToken,
     }),
   }),
+
+  getGames: (buildId) => apiRequest(`/builds/${buildId}/games`),
 
   getScoreHistory: (id) => apiRequest(`/games/${id}/scores`),
 
@@ -156,6 +159,55 @@ const authAPI = {
 const statsAPI = {
   getLeaderboard: () => apiRequest('/leaderboard'),
   getExtras: () => apiRequest('/extras'),
+};
+
+// Seasons API
+const seasonsAPI = {
+  getAll:      () => apiRequest('/seasons'),
+  getActive:   () => apiRequest('/seasons/active'),
+  getStandings:(id) => apiRequest(`/seasons/${id}/standings`),
+  getChampion: (id) => apiRequest(`/seasons/${id}/champion`),
+};
+
+// Profiles API
+const profilesAPI = {
+  get:    (playerId) => apiRequest(`/profiles/${playerId}`),
+  update: (playerId, data) => apiRequest(`/profiles/${playerId}`, {
+    method: 'PUT',
+    body: JSON.stringify(data),
+  }),
+};
+
+// Achievements API
+const achievementsAPI = {
+  getForPlayer: (playerId) => apiRequest(`/achievements/${playerId}`),
+};
+
+// Cards API — valid card image filenames for profile customization
+const cardsAPI = {
+  getAll: () => apiRequest('/cards'),
+};
+
+// Banner API
+const bannerAPI = {
+  get: () => apiRequest('/banner'),
+  set: (text, credentials) => apiRequest('/banner', {
+    method: 'PUT',
+    body: JSON.stringify({ text }),
+  }, credentials),
+};
+
+// Push API
+const pushAPI = {
+  getKey: () => apiRequest('/push/key'),
+  subscribe: (subscription, playerId) => apiRequest('/push/subscribe', {
+    method: 'POST',
+    body: JSON.stringify({ subscription, player_id: playerId }),
+  }),
+  unsubscribe: (endpoint) => apiRequest('/push/unsubscribe', {
+    method: 'POST',
+    body: JSON.stringify({ endpoint }),
+  }),
 };
 
 // Tournaments API
