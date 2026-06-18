@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" width="120" height="120" role="img" aria-label="First Blood">
+  <defs>
+    <linearGradient id="g" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#e8cf86"/><stop offset=".5" stop-color="#b8963a"/><stop offset="1" stop-color="#7a621a"/>
+    </linearGradient>
+    <radialGradient id="b" cx=".5" cy=".4" r=".75">
+      <stop offset="0" stop-color="#26314a"/><stop offset="1" stop-color="#121826"/>
+    </radialGradient>
+  </defs>
+  <circle cx="60" cy="60" r="57" fill="url(#b)" stroke="url(#g)" stroke-width="5"/>
+  <circle cx="60" cy="60" r="49" fill="none" stroke="#b8963a" stroke-width="1.5" opacity=".55"/>
+  <g fill="#d4b05a">
+    <circle cx="60" cy="11" r="1.7"/><circle cx="60" cy="109" r="1.7"/><circle cx="11" cy="60" r="1.7"/><circle cx="109" cy="60" r="1.7"/>
+    <circle cx="25" cy="25" r="1.5"/><circle cx="95" cy="25" r="1.5"/><circle cx="25" cy="95" r="1.5"/><circle cx="95" cy="95" r="1.5"/>
+  </g>
+  <path d="M40 72 L44 47 L52 59 L60 42 L68 59 L76 47 L80 72 Z" fill="url(#g)" stroke="#7a621a" stroke-width="1.5" stroke-linejoin="round"/>
+  <rect x="40" y="71" width="40" height="8" rx="2" fill="url(#g)" stroke="#7a621a" stroke-width="1.5"/>
+  <circle cx="44" cy="47" r="2.8" fill="#e05c5c"/>
+  <circle cx="60" cy="42" r="3.6" fill="#e05c5c"/>
+  <circle cx="76" cy="47" r="2.8" fill="#e05c5c"/>
+  <circle cx="60" cy="75" r="2.4" fill="#4db8ff"/>
+</svg>

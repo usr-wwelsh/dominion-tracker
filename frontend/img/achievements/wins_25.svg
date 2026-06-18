@@ -1,0 +1,25 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" width="120" height="120" role="img" aria-label="Conqueror">
+  <defs>
+    <linearGradient id="g" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#e8cf86"/><stop offset=".5" stop-color="#b8963a"/><stop offset="1" stop-color="#7a621a"/>
+    </linearGradient>
+    <radialGradient id="b" cx=".5" cy=".4" r=".75">
+      <stop offset="0" stop-color="#26314a"/><stop offset="1" stop-color="#121826"/>
+    </radialGradient>
+  </defs>
+  <circle cx="60" cy="60" r="57" fill="url(#b)" stroke="url(#g)" stroke-width="5"/>
+  <circle cx="60" cy="60" r="49" fill="none" stroke="#b8963a" stroke-width="1.5" opacity=".55"/>
+  <g fill="#d4b05a">
+    <circle cx="60" cy="11" r="1.7"/><circle cx="60" cy="109" r="1.7"/><circle cx="11" cy="60" r="1.7"/><circle cx="109" cy="60" r="1.7"/>
+    <circle cx="25" cy="25" r="1.5"/><circle cx="95" cy="25" r="1.5"/><circle cx="25" cy="95" r="1.5"/><circle cx="95" cy="95" r="1.5"/>
+  </g>
+  <path d="M34 64 L39 40 L49 53 L60 36 L71 53 L81 40 L86 64 Z" fill="url(#g)" stroke="#7a621a" stroke-width="1.5" stroke-linejoin="round"/>
+  <rect x="34" y="63" width="52" height="9" rx="2" fill="url(#g)" stroke="#7a621a" stroke-width="1.5"/>
+  <circle cx="39" cy="40" r="3" fill="#6ddb6d"/>
+  <circle cx="60" cy="36" r="4" fill="#e05c5c"/>
+  <circle cx="81" cy="40" r="3" fill="#4db8ff"/>
+  <circle cx="49" cy="68" r="2.2" fill="#c47eff"/>
+  <circle cx="60" cy="68" r="2.2" fill="#ffd700"/>
+  <circle cx="71" cy="68" r="2.2" fill="#c47eff"/>
+  <text x="60" y="94" text-anchor="middle" font-family="Georgia, 'Times New Roman', serif" font-size="20" font-weight="bold" fill="#ecdfc8">25</text>
+</svg>

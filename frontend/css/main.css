@@ -848,16 +848,11 @@ tr:hover {
 }
 .achievement-card.locked { opacity: 0.45; }
 .achievement-card .ach-icon {
-  width: 48px;
-  height: 48px;
+  width: 64px;
+  height: 64px;
   margin: 0 auto var(--spacing-sm);
-  border-radius: var(--border-radius-sm);
-  object-fit: cover;
-  background: var(--color-bg-tertiary);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 1.8rem;
+  object-fit: contain;
+  display: block;
 }
 .achievement-card .ach-name {
   font-size: 0.85rem;

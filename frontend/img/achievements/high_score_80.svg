@@ -1,0 +1,28 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" width="120" height="120" role="img" aria-label="Province Rush">
+  <defs>
+    <linearGradient id="g" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#e8cf86"/><stop offset=".5" stop-color="#b8963a"/><stop offset="1" stop-color="#7a621a"/>
+    </linearGradient>
+    <radialGradient id="b" cx=".5" cy=".4" r=".75">
+      <stop offset="0" stop-color="#26314a"/><stop offset="1" stop-color="#121826"/>
+    </radialGradient>
+  </defs>
+  <circle cx="60" cy="60" r="57" fill="url(#b)" stroke="url(#g)" stroke-width="5"/>
+  <circle cx="60" cy="60" r="49" fill="none" stroke="#b8963a" stroke-width="1.5" opacity=".55"/>
+  <g fill="#d4b05a">
+    <circle cx="60" cy="11" r="1.7"/><circle cx="60" cy="109" r="1.7"/><circle cx="11" cy="60" r="1.7"/><circle cx="109" cy="60" r="1.7"/>
+    <circle cx="25" cy="25" r="1.5"/><circle cx="95" cy="25" r="1.5"/><circle cx="25" cy="95" r="1.5"/><circle cx="95" cy="95" r="1.5"/>
+  </g>
+  <path d="M60 30 L60 40" stroke="#9c7c2e" stroke-width="1.5"/>
+  <path d="M60 31 L72 34 L60 38 Z" fill="#e05c5c"/>
+  <g stroke="#1f5226" stroke-width="1.5">
+    <rect x="40" y="50" width="14" height="28" fill="#56a356"/>
+    <rect x="66" y="50" width="14" height="28" fill="#56a356"/>
+    <rect x="52" y="42" width="16" height="36" fill="#67b867"/>
+    <rect x="40" y="46" width="4" height="5" fill="#56a356"/><rect x="50" y="46" width="4" height="5" fill="#56a356"/>
+    <rect x="66" y="46" width="4" height="5" fill="#56a356"/><rect x="76" y="46" width="4" height="5" fill="#56a356"/>
+    <rect x="52" y="38" width="4" height="5" fill="#67b867"/><rect x="64" y="38" width="4" height="5" fill="#67b867"/>
+    <path d="M56 78 V66 a4 4 0 0 1 8 0 V78 Z" fill="#1f5226"/>
+  </g>
+  <text x="60" y="94" text-anchor="middle" font-family="Georgia, 'Times New Roman', serif" font-size="17" font-weight="bold" fill="#ecdfc8">80</text>
+</svg>

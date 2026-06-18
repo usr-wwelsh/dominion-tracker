@@ -311,7 +311,8 @@
       } else {
         ag.innerHTML = earnedAchievements.map(a => `
           <div class="achievement-card earned" title="${a.description}">
-            <div class="ach-icon">🏅</div>
+            <img class="ach-icon" src="/img/achievements/${a.key}.svg" alt="" loading="lazy">
+
             <div class="ach-name">${a.name}</div>
             <div class="ach-desc">${a.description}</div>
             <div style="font-size:0.7rem;color:var(--color-accent);margin-top:4px;">Earned ${formatDate(a.earned_at)}</div>
