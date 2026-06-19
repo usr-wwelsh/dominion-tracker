@@ -9,6 +9,24 @@
   <meta name="theme-color" content="#181f30">
   <link rel="stylesheet" href="css/main.css">
   <style>
+    /* The global noise + vignette overlays (main.css) paint above all page
+       content, darkening the card pickers and dragging a vignette seam across an
+       open panel. Drop them below the content layer on the profile page. */
+    body::before, body::after { z-index: 0; }
+    /* A soft frosted panel so the profile content reads as a contained surface
+       over the tiled card wallpaper rather than floating loose against it. */
+    #profile-container {
+      background: rgba(20, 28, 44, 0.72);
+      backdrop-filter: blur(7px) saturate(115%);
+      -webkit-backdrop-filter: blur(7px) saturate(115%);
+      border: 1px solid var(--color-border);
+      border-radius: var(--border-radius-md);
+      padding: var(--spacing-xl);
+      box-shadow: var(--shadow-lg);
+    }
+    @media (max-width: 640px) {
+      #profile-container { padding: var(--spacing-md); }
+    }
     .stat-grid {
       display: grid;
       grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
@@ -187,7 +205,7 @@
             <textarea id="bio-input" rows="3" maxlength="500" style="resize:vertical;"></textarea>
           </div>
           <div class="form-group">
-            <label>Accent Color</label>
+            <label>Player Color <span style="color:var(--color-text-dim);font-weight:normal;">(your color across the whole app)</span></label>
             <div class="color-swatches" id="accent-swatches"></div>
           </div>
           <div class="form-group">
@@ -211,6 +229,16 @@
   <script src="js/falling-cards.js"></script>
   <script>
   const CARDS_PATH = 'dominion-cards-used-small/';
+
+  // Same palette as the leaderboard color popover — this picker edits the one
+  // players.color value used for avatar borders across the app.
+  const PLAYER_COLORS = [
+    '#c0392b', '#e05c5c', '#ff8a80', '#ff4da6', '#e91e8c', '#c2185b',
+    '#e67e22', '#ff8c42', '#f5a623', '#ffd700', '#f9e23c', '#b5e853',
+    '#27ae60', '#6ddb6d', '#00c853', '#00e0c0', '#1de9b6', '#80cbc4',
+    '#00bcd4', '#4db8ff', '#2196f3', '#5c7eff', '#7c4dff', '#c47eff',
+    '#c0a464', '#a0826d', '#8d6e63', '#90a4ae', '#cfcfcf', '#ffffff',
+  ];
 
   document.addEventListener('DOMContentLoaded', async () => {
     apiRequest('/banner').then(({ banner }) => {
@@ -243,7 +271,7 @@
       document.getElementById('loading').style.display = 'none';
       document.getElementById('profile-container').style.display = 'block';
 
-      const { player, profile, accent_presets } = profileData;
+      const { player, profile } = profileData;
 
       // Header
       document.getElementById('profile-name').textContent = player.name;
@@ -251,7 +279,7 @@
       if (profile?.bio) document.getElementById('profile-bio').textContent = profile.bio;
 
       // Header background is tinted with the player's chosen color (readable dark scrim);
-      // border uses the accent color if set, else the player's color.
+      // border uses the player's color.
       const playerColor = player.color || '#4db8ff';
 
       if (profile?.avatar_card) {
@@ -263,14 +291,23 @@
       const headerEl = document.getElementById('profile-header');
       headerEl.style.background =
         `linear-gradient(135deg, ${hexToRgba(playerColor, 0.55)} 0%, var(--color-bg-tertiary) 70%)`;
-      headerEl.style.borderColor = profile?.accent_color || playerColor;
+      headerEl.style.borderColor = playerColor;
+
+      // Tint the profile panel with the player's color (the same one that drives
+      // their avatar border across the app): colored border, faint top-down wash,
+      // and a soft outer glow.
+      const pc = document.getElementById('profile-container');
+      pc.style.borderColor = hexToRgba(playerColor, 0.55);
+      pc.style.background =
+        `linear-gradient(${hexToRgba(playerColor, 0.12)}, ${hexToRgba(playerColor, 0.03)}), rgba(20, 28, 44, 0.72)`;
+      pc.style.boxShadow = `var(--shadow-lg), 0 0 22px ${hexToRgba(playerColor, 0.18)}`;
 
       // The background card (if set) tiles the whole profile page like wallpaper,
       // replacing the default stone bricks, behind a dark scrim for readability.
       if (profile?.background_card) {
         document.body.style.backgroundColor = '#0b1220';
         document.body.style.backgroundImage =
-          `linear-gradient(rgba(11,18,30,0.88), rgba(11,18,30,0.88)), url('${CARDS_PATH}${profile.background_card}')`;
+          `linear-gradient(rgba(11,18,30,0.6), rgba(11,18,30,0.6)), url('${CARDS_PATH}${profile.background_card}')`;
         document.body.style.backgroundRepeat = 'repeat';
         document.body.style.backgroundSize = '120px auto';
         document.body.style.backgroundAttachment = 'fixed';
@@ -316,18 +353,18 @@
       }
 
       // Edit profile form
-      // Accent swatches
+      // Player color swatches — edits players.color (same value used everywhere)
       const swatchContainer = document.getElementById('accent-swatches');
-      let selectedAccent = profile?.accent_color || '';
-      accent_presets.forEach(color => {
+      let selectedColor = playerColor;
+      PLAYER_COLORS.forEach(color => {
         const sw = document.createElement('div');
-        sw.className = 'color-swatch' + (color === selectedAccent ? ' selected' : '');
+        sw.className = 'color-swatch' + (color.toLowerCase() === selectedColor.toLowerCase() ? ' selected' : '');
         sw.style.background = color;
         sw.title = color;
         sw.addEventListener('click', () => {
           swatchContainer.querySelectorAll('.color-swatch').forEach(s => s.classList.remove('selected'));
           sw.classList.add('selected');
-          selectedAccent = color;
+          selectedColor = color;
         });
         swatchContainer.appendChild(sw);
       });
@@ -349,15 +386,17 @@
         btn.disabled = true;
         btn.textContent = 'Saving…';
         try {
-          await apiRequest(`/profiles/${playerId}`, {
-            method: 'PUT',
-            body: JSON.stringify({
-              bio: document.getElementById('bio-input').value,
-              accent_color: selectedAccent || null,
-              avatar_card: avatarPicker.value || null,
-              background_card: bgPicker.value || null,
+          await Promise.all([
+            apiRequest(`/profiles/${playerId}`, {
+              method: 'PUT',
+              body: JSON.stringify({
+                bio: document.getElementById('bio-input').value,
+                avatar_card: avatarPicker.value || null,
+                background_card: bgPicker.value || null,
+              }),
             }),
-          });
+            playersAPI.updateColor(playerId, selectedColor),
+          ]);
           const msg = document.getElementById('profile-save-msg');
           msg.textContent = 'Saved!';
           setTimeout(() => { msg.textContent = ''; location.reload(); }, 1200);

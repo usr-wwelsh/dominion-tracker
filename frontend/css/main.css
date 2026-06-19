@@ -102,9 +102,12 @@ body {
   animation: page-fade-in 0.4s ease both;
 }
 
+/* Opacity-only fade. A retained `transform` here (fill-mode: both) would make
+   <body> the containing block for position:fixed children, breaking the
+   viewport-fixed noise/vignette overlays and `background-attachment: fixed`. */
 @keyframes page-fade-in {
-  from { opacity: 0; transform: translateY(6px); }
-  to   { opacity: 1; transform: translateY(0); }
+  from { opacity: 0; }
+  to   { opacity: 1; }
 }
 
 /* Noise grain overlay */
