@@ -1,0 +1,42 @@
+name: Server sync (manual)
+
+# Manual one-shot: pull the latest compose + restart the stack over SSH.
+#
+# Day-to-day deploys are automatic and pull-based (Watchtower on the host), so
+# this is NOT needed for normal code changes. Run it only to:
+#   - bootstrap Watchtower the first time (after adding it to docker-compose.yml)
+#   - apply docker-compose.yml / server-config changes
+#
+# Requires a reachable SSH_HOST secret. Trigger from the Actions tab or:
+#   gh workflow run server-sync.yml
+on:
+  workflow_dispatch:
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      # Drone SSH prints the resolved IP on a dial failure. SSH_HOST is a
+      # hostname (masked), but its resolved IP is not — mask it so a failed
+      # sync can't leak the server's address into public logs.
+      - name: Mask resolved host IP
+        env:
+          SSH_HOST: ${{ secrets.SSH_HOST }}
+        run: |
+          getent hosts "$SSH_HOST" | awk '{print $1}' | while read -r ip; do
+            [ -n "$ip" ] && echo "::add-mask::$ip"
+          done
+
+      - name: Sync stack via SSH
+        uses: appleboy/ssh-action@v1.2.0
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USER }}
+          key: ${{ secrets.SSH_KEY }}
+          port: ${{ secrets.SSH_PORT }}
+          script: |
+            set -e
+            cd ~/dominion-app/dominion-tracker
+            git pull origin main
+            docker compose pull
+            docker compose up -d

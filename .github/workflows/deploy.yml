@@ -1,4 +1,9 @@
-name: Build and Deploy
+name: Build and Push
+
+# Publishes the image to the registry. Deployment is pull-based: Watchtower on
+# the host polls for the new :latest and redeploys itself, so a push never
+# depends on the host being reachable. Server-side config changes (compose,
+# first-time Watchtower bootstrap) go through the manual server-sync workflow.
 
 on:
   push:
@@ -58,21 +63,3 @@ jobs:
           file: backend/Dockerfile
           push: true
           tags: ${{ steps.meta.outputs.tags }}
-
-  deploy:
-    needs: build
-    runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/main'
-    steps:
-      - name: Deploy via SSH
-        uses: appleboy/ssh-action@v1.2.0
-        with:
-          host: ${{ secrets.SSH_HOST }}
-          username: ${{ secrets.SSH_USER }}
-          key: ${{ secrets.SSH_KEY }}
-          port: ${{ secrets.SSH_PORT }}
-          script: |
-            cd ~/dominion-app/dominion-tracker
-            git pull origin main
-            docker compose pull
-            docker compose up -d

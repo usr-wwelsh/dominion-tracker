@@ -16,6 +16,19 @@ services:
     volumes:
       - sqlite_data:/data
     restart: unless-stopped
+    labels:
+      # Marks this container for Watchtower auto-updates.
+      - "com.centurylinklabs.watchtower.enable=true"
+
+  # Pull-based auto-deploy. Polls the registry and recreates any container
+  # labelled watchtower.enable=true when its :latest image changes — so pushing
+  # a new image redeploys it with no inbound connection to this host.
+  watchtower:
+    image: containrrr/watchtower
+    command: --cleanup --label-enable --interval 120
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    restart: unless-stopped
 
 networks:
   proxy:
