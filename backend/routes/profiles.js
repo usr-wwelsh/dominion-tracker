@@ -4,12 +4,13 @@ const { query } = require('../db');
 const fs = require('fs');
 const path = require('path');
 
-// Preload valid card filenames from the frontend assets directory
-let validCards = new Set();
 const CARDS_DIR = path.join(__dirname, '..', '..', 'frontend', 'dominion-cards-used-small');
-try {
-  validCards = new Set(fs.readdirSync(CARDS_DIR).filter(f => /\.(png|jpg|webp)$/i.test(f)));
-} catch { /* running without frontend assets is fine in tests */ }
+
+function getValidCards() {
+  try {
+    return new Set(fs.readdirSync(CARDS_DIR).filter(f => /\.(png|jpg|webp)$/i.test(f)));
+  } catch { return new Set(); }
+}
 
 const ACCENT_PRESETS = new Set([
   '#a08850', '#3d6a8a', '#8a3d3d', '#3d8a5a', '#7a3d8a',
@@ -19,6 +20,7 @@ const ACCENT_PRESETS = new Set([
 
 function validateProfile(body) {
   const { bio, avatar_card, background_card, accent_color } = body;
+  const validCards = getValidCards();
   if (avatar_card && !validCards.has(avatar_card)) return 'Invalid avatar card filename';
   if (background_card && !validCards.has(background_card)) return 'Invalid background card filename';
   if (accent_color && !ACCENT_PRESETS.has(accent_color)) return 'Color must be one of the preset options';

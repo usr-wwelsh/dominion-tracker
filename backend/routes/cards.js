@@ -18,16 +18,15 @@ function labelFor(filename) {
     .replace(/\b\w/g, c => c.toUpperCase());
 }
 
-let cards = [];
-try {
-  cards = fs.readdirSync(CARDS_DIR)
-    .filter(f => /\.(png|jpg|webp)$/i.test(f))
-    .map(filename => ({ filename, label: labelFor(filename) }))
-    .sort((a, b) => a.label.localeCompare(b.label));
-} catch { /* assets absent in tests */ }
-
 // GET /api/cards — valid card image filenames + readable labels
 router.get('/', (req, res) => {
+  let cards = [];
+  try {
+    cards = fs.readdirSync(CARDS_DIR)
+      .filter(f => /\.(png|jpg|webp)$/i.test(f))
+      .map(filename => ({ filename, label: labelFor(filename) }))
+      .sort((a, b) => a.label.localeCompare(b.label));
+  } catch { /* assets absent in tests */ }
   res.json(cards);
 });
 
