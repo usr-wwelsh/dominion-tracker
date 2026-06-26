@@ -10,6 +10,7 @@ function hydrateBuild(row) {
   row.events     = typeof row.events     === 'string' ? JSON.parse(row.events)     : (row.events     || []);
   row.prophecies = typeof row.prophecies === 'string' ? JSON.parse(row.prophecies) : (row.prophecies || []);
   row.use_platinum_colony = !!row.use_platinum_colony;
+  row.use_shelters = !!row.use_shelters;
   return row;
 }
 
@@ -37,7 +38,7 @@ router.get('/', async (req, res, next) => {
 
 router.post('/', async (req, res, next) => {
   try {
-    const { nickname, cards, landmarks, events, prophecies, use_platinum_colony } = req.body;
+    const { nickname, cards, landmarks, events, prophecies, use_platinum_colony, use_shelters } = req.body;
 
     if (!nickname || nickname.trim() === '') {
       return res.status(400).json({ error: 'Build nickname is required' });
@@ -47,8 +48,8 @@ router.post('/', async (req, res, next) => {
     }
 
     const result = await query(
-      `INSERT INTO builds (nickname, cards, landmarks, events, prophecies, use_platinum_colony)
-       VALUES (?, ?, ?, ?, ?, ?) RETURNING *`,
+      `INSERT INTO builds (nickname, cards, landmarks, events, prophecies, use_platinum_colony, use_shelters)
+       VALUES (?, ?, ?, ?, ?, ?, ?) RETURNING *`,
       [
         nickname.trim(),
         JSON.stringify(cards),
@@ -56,6 +57,7 @@ router.post('/', async (req, res, next) => {
         JSON.stringify(Array.isArray(events) ? events : []),
         JSON.stringify(Array.isArray(prophecies) ? prophecies : []),
         use_platinum_colony === true ? 1 : 0,
+        use_shelters === true ? 1 : 0,
       ]
     );
 
@@ -79,7 +81,7 @@ router.get('/:id', async (req, res, next) => {
 
 router.put('/:id', requireAuth, async (req, res, next) => {
   try {
-    const { nickname, cards, landmarks, events, prophecies, use_platinum_colony } = req.body;
+    const { nickname, cards, landmarks, events, prophecies, use_platinum_colony, use_shelters } = req.body;
 
     if (!nickname || nickname.trim() === '') {
       return res.status(400).json({ error: 'Build nickname is required' });
@@ -90,7 +92,7 @@ router.put('/:id', requireAuth, async (req, res, next) => {
 
     const result = await query(
       `UPDATE builds SET nickname = ?, cards = ?, landmarks = ?, events = ?, prophecies = ?,
-       use_platinum_colony = ? WHERE id = ? RETURNING *`,
+       use_platinum_colony = ?, use_shelters = ? WHERE id = ? RETURNING *`,
       [
         nickname.trim(),
         JSON.stringify(cards),
@@ -98,6 +100,7 @@ router.put('/:id', requireAuth, async (req, res, next) => {
         JSON.stringify(Array.isArray(events) ? events : []),
         JSON.stringify(Array.isArray(prophecies) ? prophecies : []),
         use_platinum_colony === true ? 1 : 0,
+        use_shelters === true ? 1 : 0,
         req.params.id,
       ]
     );

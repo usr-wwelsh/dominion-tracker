@@ -287,12 +287,15 @@ async function startGame() {
       }
     }
 
-    // Create game
+    // Create game (server sets each player's starting score:
+    // 3 starting Estates, or 0 when the build uses Shelters)
     const playerIds = selectedPlayers.map(p => p.id);
-    currentGame = await gamesAPI.create(buildId, playerIds);
+    const createdGame = await gamesAPI.create(buildId, playerIds);
+    const startScores = {};
+    (createdGame.players || []).forEach(p => { startScores[p.player_id] = p.final_score; });
 
     // Start the game
-    currentGame = await gamesAPI.start(currentGame.id);
+    currentGame = await gamesAPI.start(createdGame.id);
 
     // Initialize game state
     gameStartTime = parseServerTime(currentGame.started_at);
@@ -300,10 +303,10 @@ async function startGame() {
     showShareToken();
     connectScoreStream();
 
-    // Initialize player scores from game (everyone starts with 3 victory points in Dominion)
+    // Initialize player scores from the game the server created
     selectedPlayers = selectedPlayers.map(player => ({
       ...player,
-      score: 3
+      score: startScores[player.id] ?? 3
     }));
 
     // Show game section

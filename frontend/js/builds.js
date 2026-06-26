@@ -49,6 +49,16 @@ const DOMINION_CARDS = {
     'Samurai',
     'Rice'
   ],
+  dark_ages: [
+    'Poor House',
+    'Beggar', 'Squire', 'Vagrant',
+    'Forager', 'Hermit', 'Market Square', 'Sage', 'Storeroom', 'Urchin',
+    'Armory', 'Death Cart', 'Feodum', 'Fortress', 'Ironmonger', 'Marauder', 'Procession', 'Rats',
+    'Scavenger', 'Wandering Minstrel',
+    'Band of Misfits', 'Bandit Camp', 'Catacombs', 'Count', 'Counterfeit', 'Cultist', 'Graverobber',
+    'Junk Dealer', 'Knights', 'Mystic', 'Pillage', 'Rebuild', 'Rogue',
+    'Altar', 'Hunting Grounds'
+  ],
 };
 
 // Non-kingdom supplemental cards
@@ -144,6 +154,16 @@ const CARD_COSTS = {
   'Rice Broker': '$5', 'Ronin': '$5', 'Tanuki': '$5', 'Tea House': '$5',
   'Samurai': '$5',
   'Rice': '$4',
+  // Dark Ages
+  'Poor House': '$1',
+  'Beggar': '$2', 'Squire': '$2', 'Vagrant': '$2',
+  'Forager': '$3', 'Hermit': '$3', 'Market Square': '$3', 'Sage': '$3', 'Storeroom': '$3', 'Urchin': '$3',
+  'Armory': '$4', 'Death Cart': '$4', 'Feodum': '$4', 'Fortress': '$4', 'Ironmonger': '$4',
+  'Marauder': '$4', 'Procession': '$4', 'Rats': '$4', 'Scavenger': '$4', 'Wandering Minstrel': '$4',
+  'Band of Misfits': '$5', 'Bandit Camp': '$5', 'Catacombs': '$5', 'Count': '$5', 'Counterfeit': '$5',
+  'Cultist': '$5', 'Graverobber': '$5', 'Junk Dealer': '$5', 'Knights': '$5', 'Mystic': '$5',
+  'Pillage': '$5', 'Rebuild': '$5', 'Rogue': '$5',
+  'Altar': '$6', 'Hunting Grounds': '$6',
 };
 
 // Reverse lookup: card name → expansion key
@@ -167,6 +187,7 @@ const EXPANSION_DISPLAY = {
   prosperity: 'Prosperity',
   empires: 'Empires',
   rising_sun: 'Rising Sun',
+  dark_ages: 'Dark Ages',
 };
 
 let buildsData = [];
@@ -220,6 +241,7 @@ function renderCardCheckboxes() {
   renderExpansionCards('prosperity', 'prosperity-cards', 'kingdom');
   renderExpansionCards('empires', 'empires-cards', 'kingdom');
   renderExpansionCards('rising_sun', 'rising-sun-cards', 'kingdom');
+  renderExpansionCards('dark_ages', 'dark-ages-cards', 'kingdom');
 
   // Landmarks (Empires)
   renderSupplementalCards(DOMINION_LANDMARKS.empires, 'empires-landmarks', 'landmark');
@@ -345,13 +367,15 @@ async function handleFormSubmit(event) {
 
   try {
     const usePlatinumColony = document.getElementById('use-platinum-colony').checked;
+    const useShelters = document.getElementById('use-shelters').checked;
     await buildsAPI.create(
       nickname,
       Array.from(selectedCards),
       Array.from(selectedLandmarks),
       Array.from(selectedEvents),
       Array.from(selectedProphecies),
-      usePlatinumColony
+      usePlatinumColony,
+      useShelters
     );
 
     showSuccess(`Build "${nickname}" created successfully!`);
@@ -366,6 +390,7 @@ async function handleFormSubmit(event) {
 function clearForm() {
   document.getElementById('build-nickname').value = '';
   document.getElementById('use-platinum-colony').checked = false;
+  document.getElementById('use-shelters').checked = false;
 
   document.querySelectorAll('.card-checkbox input[type="checkbox"]').forEach(checkbox => {
     checkbox.checked = false;
@@ -520,7 +545,7 @@ function renderTagGroup(label, items) {
 // Render kingdom cards grouped by expansion with costs
 function renderKingdomByExpansion(cards) {
   if (!cards || cards.length === 0) return '';
-  const expansionOrder = ['base', 'intrigue', 'seaside', 'prosperity', 'empires', 'rising_sun'];
+  const expansionOrder = ['base', 'intrigue', 'seaside', 'prosperity', 'empires', 'rising_sun', 'dark_ages'];
   const groups = {};
   cards.forEach(card => {
     const exp = CARD_EXPANSION_MAP[card] || 'unknown';
@@ -560,6 +585,7 @@ function createBuildItem(build) {
           <span>Games: ${gamesPlayed}</span>
           <span>Avg Score: ${avgScore.toFixed(2)}</span>
           ${build.use_platinum_colony ? '<span class="platinum-colony-badge">Platinum / Colony</span>' : ''}
+          ${build.use_shelters ? '<span class="platinum-colony-badge">Shelters</span>' : ''}
         </div>
       </div>
       <div class="build-header-right">
@@ -639,6 +665,10 @@ function showEditModal(build, credentials) {
           <input type="checkbox" id="em-platinum-colony">
           Use Platinum &amp; Colony
         </label>
+        <label class="toggle-label">
+          <input type="checkbox" id="em-shelters">
+          Use Shelters (Dark Ages)
+        </label>
       </div>
       <div class="edit-modal-error" id="em-error"></div>
       <div class="edit-modal-actions">
@@ -652,6 +682,7 @@ function showEditModal(build, credentials) {
 
   overlay.querySelector('#em-nickname').value = build.nickname;
   overlay.querySelector('#em-platinum-colony').checked = !!build.use_platinum_colony;
+  overlay.querySelector('#em-shelters').checked = !!build.use_shelters;
 
   function getEditSet(type) {
     switch (type) {
@@ -741,6 +772,7 @@ function showEditModal(build, credentials) {
     { key: 'prosperity', label: 'Prosperity',  badge: '2e', id: 'em-prosperity-cards' },
     { key: 'empires',    label: 'Empires',     badge: '1e', id: 'em-empires-cards' },
     { key: 'rising_sun', label: 'Rising Sun',  badge: '1e', id: 'em-rising-sun-cards' },
+    { key: 'dark_ages',  label: 'Dark Ages',   badge: null, id: 'em-dark-ages-cards' },
   ];
   kingdomExpansions.forEach(({ key, label, badge, id }) => {
     const badgeHtml = badge ? ` <span class="edition-badge">${badge}</span>` : '';
@@ -827,6 +859,7 @@ function showEditModal(build, credentials) {
         Array.from(editEvents),
         Array.from(editProphecies),
         overlay.querySelector('#em-platinum-colony').checked,
+        overlay.querySelector('#em-shelters').checked,
         credentials
       );
       close();

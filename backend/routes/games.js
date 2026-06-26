@@ -469,6 +469,13 @@ async function createGameTx(client, { build_id, player_ids }) {
 
   const editToken = crypto.randomBytes(6).toString('hex');
 
+  // Shelters (Dark Ages) are worth 0 VP, so players start at 0 instead of the 3 starting Estates
+  let startingScore = 3;
+  if (build_id) {
+    const buildRow = await query('SELECT use_shelters FROM builds WHERE id = ?', [build_id]);
+    if (buildRow.rows[0]?.use_shelters) startingScore = 0;
+  }
+
   const gameResult = await client.query(
     'INSERT INTO games (build_id, season_id, edit_token) VALUES (?, ?, ?) RETURNING *',
     [build_id || null, seasonId, editToken]
@@ -477,12 +484,12 @@ async function createGameTx(client, { build_id, player_ids }) {
 
   for (const player_id of player_ids) {
     await client.query(
-      'INSERT INTO game_players (game_id, player_id, final_score) VALUES (?, ?, 3)',
-      [game.id, player_id]
+      'INSERT INTO game_players (game_id, player_id, final_score) VALUES (?, ?, ?)',
+      [game.id, player_id, startingScore]
     );
     await client.query(
-      'INSERT INTO score_snapshots (game_id, player_id, score) VALUES (?, ?, 3)',
-      [game.id, player_id]
+      'INSERT INTO score_snapshots (game_id, player_id, score) VALUES (?, ?, ?)',
+      [game.id, player_id, startingScore]
     );
   }
 
