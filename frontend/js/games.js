@@ -726,6 +726,17 @@ function drawChartStaticElements(ctx, width, height, padding, chartWidth, chartH
     ctx.stroke();
   }
 
+  // Emphasized zero baseline when any score went negative
+  if (minScore < 0) {
+    const zeroY = height - padding.bottom - ((0 - minScore) / scoreRange) * chartHeight;
+    ctx.strokeStyle = 'rgba(184, 168, 132, 0.7)';
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.moveTo(padding.left, zeroY);
+    ctx.lineTo(width - padding.right, zeroY);
+    ctx.stroke();
+  }
+
   // X-axis time labels and vertical gridlines
   const totalMinutes = globalTimeRange / 60000;
   const intervalMinutes = totalMinutes <= 20 ? 5 : totalMinutes <= 60 ? 10 : totalMinutes <= 120 ? 20 : 30;
