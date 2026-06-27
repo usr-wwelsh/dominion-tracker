@@ -75,6 +75,14 @@
     .tab-btn.active { background: var(--color-blue-dim); border-color: var(--color-blue); color: var(--color-text-primary); }
     .tab-panel { display: none; }
     .tab-panel.active { display: block; }
+    .ach-header { display: flex; align-items: baseline; justify-content: space-between; gap: var(--spacing-sm); }
+    .ach-view-all {
+      background: none; border: none; padding: 0; cursor: pointer;
+      color: var(--color-blue); font-size: 0.85rem; font-weight: 600;
+      box-shadow: none; transform: none;
+    }
+    .ach-view-all:hover { color: var(--color-blue-hover); transform: none; box-shadow: none; text-decoration: underline; }
+    .ach-view-all #ach-count { color: var(--color-text-dim); font-weight: normal; }
     .card-picker { position: relative; max-width: 360px; }
     .card-picker-toggle {
       display: flex; align-items: center; gap: var(--spacing-sm);
@@ -189,7 +197,10 @@
       <!-- Stats tab -->
       <div class="tab-panel active" id="tab-stats">
         <div class="stat-grid" id="stat-grid"></div>
-        <h3 class="section-heading">Achievements</h3>
+        <div class="ach-header">
+          <h3 class="section-heading">Achievements</h3>
+          <button type="button" id="view-all-ach" class="ach-view-all">View all <span id="ach-count"></span></button>
+        </div>
         <div class="achievement-grid" id="achievement-grid"></div>
       </div>
 
@@ -220,6 +231,17 @@
           <span id="profile-save-msg" style="margin-left:var(--spacing-md);color:var(--color-success);"></span>
         </div>
       </div>
+    </div>
+  </div>
+
+  <!-- All-achievements modal: every earnable achievement with locked/earned state -->
+  <div class="modal-overlay" id="ach-modal" style="display:none;">
+    <div class="modal-box">
+      <div class="modal-header">
+        <h3 style="margin:0;">All Achievements <span id="ach-modal-count" style="color:var(--color-text-dim);font-weight:normal;font-size:0.9rem;"></span></h3>
+        <button type="button" class="modal-close" id="ach-modal-close" aria-label="Close">&times;</button>
+      </div>
+      <div class="achievement-grid" id="ach-modal-grid"></div>
     </div>
   </div>
 
@@ -336,7 +358,7 @@
         `<div class="stat-box"><div class="val">${fmtNum(s.val)}</div><div class="lbl">${s.lbl}</div></div>`
       ).join('');
 
-      // Achievements — only show earned ones
+      // Achievements — grid shows earned ones; modal shows all earnable ones
       const ag = document.getElementById('achievement-grid');
       const earnedAchievements = achievements.filter(a => a.earned);
       if (earnedAchievements.length === 0) {
@@ -351,6 +373,28 @@
             <div style="font-size:0.7rem;color:var(--color-accent);margin-top:4px;">Earned ${formatDate(a.earned_at)}</div>
           </div>`).join('');
       }
+
+      // All-achievements modal: every earnable achievement, locked ones dimmed
+      const total = achievements.length;
+      const earnedCount = earnedAchievements.length;
+      document.getElementById('ach-count').textContent = `${earnedCount} / ${total}`;
+      document.getElementById('ach-modal-count').textContent = `${earnedCount} of ${total} earned`;
+      document.getElementById('ach-modal-grid').innerHTML = achievements.map(a => `
+        <div class="achievement-card ${a.earned ? 'earned' : 'locked'}" title="${a.description}">
+          <img class="ach-icon" src="/img/achievements/${a.key}.svg" alt="" loading="lazy">
+          <div class="ach-name">${a.name}</div>
+          <div class="ach-desc">${a.description}</div>
+          <div style="font-size:0.7rem;margin-top:4px;color:${a.earned ? 'var(--color-accent)' : 'var(--color-text-dim)'};">
+            ${a.earned ? 'Earned ' + formatDate(a.earned_at) : 'Locked'}
+          </div>
+        </div>`).join('');
+
+      const achModal = document.getElementById('ach-modal');
+      const closeAchModal = () => { achModal.style.display = 'none'; };
+      document.getElementById('view-all-ach').addEventListener('click', () => { achModal.style.display = 'flex'; });
+      document.getElementById('ach-modal-close').addEventListener('click', closeAchModal);
+      achModal.addEventListener('click', e => { if (e.target === achModal) closeAchModal(); });
+      document.addEventListener('keydown', e => { if (e.key === 'Escape') closeAchModal(); });
 
       // Edit profile form
       // Player color swatches — edits players.color (same value used everywhere)
