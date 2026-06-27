@@ -83,6 +83,25 @@
     }
     .ach-view-all:hover { color: var(--color-blue-hover); transform: none; box-shadow: none; text-decoration: underline; }
     .ach-view-all #ach-count { color: var(--color-text-dim); font-weight: normal; }
+    .crop-viewport {
+      width: 240px; height: 240px; margin: 0 auto;
+      border-radius: var(--border-radius-md);
+      border: 2px solid var(--color-accent);
+      overflow: hidden; position: relative;
+      background: var(--color-bg-tertiary);
+      cursor: grab; touch-action: none;
+    }
+    .crop-viewport.dragging { cursor: grabbing; }
+    .crop-viewport img {
+      width: 100%; height: 100%;
+      object-fit: cover;
+      object-position: var(--cx, 50%) var(--cy, 50%);
+      transform: scale(var(--cz, 1));
+      transform-origin: var(--cx, 50%) var(--cy, 50%);
+      user-select: none; -webkit-user-drag: none; pointer-events: none;
+    }
+    .crop-controls { display: flex; align-items: center; gap: var(--spacing-sm); margin-top: var(--spacing-md); }
+    .crop-controls input[type=range] { flex: 1; }
     .card-picker { position: relative; max-width: 360px; }
     .card-picker-toggle {
       display: flex; align-items: center; gap: var(--spacing-sm);
@@ -222,6 +241,7 @@
           <div class="form-group">
             <label>Avatar Card</label>
             <div class="card-picker" id="avatar-picker"></div>
+            <button type="button" id="open-crop-btn" class="btn" style="margin-top:var(--spacing-sm);">Adjust crop</button>
           </div>
           <button id="save-profile-btn" class="btn btn-primary">Save Profile</button>
           <span id="profile-save-msg" style="margin-left:var(--spacing-md);color:var(--color-success);"></span>
@@ -238,6 +258,26 @@
         <button type="button" class="modal-close" id="ach-modal-close" aria-label="Close">&times;</button>
       </div>
       <div class="achievement-grid" id="ach-modal-grid"></div>
+    </div>
+  </div>
+
+  <!-- Avatar crop modal: WYSIWYG square viewport using the same CSS as rendered avatars -->
+  <div class="modal-overlay" id="crop-modal" style="display:none;">
+    <div class="modal-box" style="max-width:340px;">
+      <div class="modal-header">
+        <h3 style="margin:0;">Adjust Avatar</h3>
+        <button type="button" class="modal-close" id="crop-cancel" aria-label="Close">&times;</button>
+      </div>
+      <p style="color:var(--color-text-dim);font-size:0.85rem;margin-top:0;">Drag to reposition, slider to zoom.</p>
+      <div class="crop-viewport" id="crop-viewport"><img id="crop-img" src="" alt=""></div>
+      <div class="crop-controls">
+        <label for="crop-zoom" style="font-size:0.85rem;">Zoom</label>
+        <input type="range" id="crop-zoom" min="1" max="4" step="0.05" value="1">
+      </div>
+      <div style="display:flex;gap:var(--spacing-sm);justify-content:flex-end;margin-top:var(--spacing-md);">
+        <button type="button" class="btn" id="crop-reset">Reset</button>
+        <button type="button" class="btn btn-primary" id="crop-apply">Apply</button>
+      </div>
     </div>
   </div>
 
@@ -417,7 +457,73 @@
       if (cards.length === 0) {
         try { cards = await cardsAPI.getAll(); } catch (e) { console.error('card list load failed', e); }
       }
-      const avatarPicker = createCardPicker(document.getElementById('avatar-picker'), cards, profile?.avatar_card || '');
+      // Crop state, seeded from any saved crop. cropActive gates whether crop is
+      // sent on save — un-cropped avatars keep the default framing.
+      let cropState = {
+        zoom: profile?.avatar_zoom ?? 1,
+        x: profile?.avatar_x ?? 50,
+        y: profile?.avatar_y ?? 50,
+      };
+      let cropActive = profile?.avatar_zoom != null;
+
+      const avatarPicker = createCardPicker(document.getElementById('avatar-picker'), cards, profile?.avatar_card || '', () => {
+        // A new card needs fresh framing; drop any crop until re-adjusted.
+        cropState = { zoom: 1, x: 50, y: 50 };
+        cropActive = false;
+      });
+
+      // Avatar crop modal — preview uses the same object-position + zoom as the
+      // rendered avatar, so what you see here is what ships.
+      const cropModal = document.getElementById('crop-modal');
+      const cropViewport = document.getElementById('crop-viewport');
+      const cropImg = document.getElementById('crop-img');
+      const cropZoom = document.getElementById('crop-zoom');
+
+      function renderCropPreview() {
+        cropViewport.style.setProperty('--cx', cropState.x + '%');
+        cropViewport.style.setProperty('--cy', cropState.y + '%');
+        cropViewport.style.setProperty('--cz', cropState.zoom);
+      }
+      const closeCrop = () => { cropModal.style.display = 'none'; };
+
+      document.getElementById('open-crop-btn').addEventListener('click', () => {
+        if (!avatarPicker.value) { alert('Choose an avatar card first.'); return; }
+        cropImg.src = CARDS_PATH + avatarPicker.value;
+        cropZoom.value = cropState.zoom;
+        renderCropPreview();
+        cropModal.style.display = 'flex';
+      });
+      document.getElementById('crop-cancel').addEventListener('click', closeCrop);
+      cropModal.addEventListener('click', e => { if (e.target === cropModal) closeCrop(); });
+      cropZoom.addEventListener('input', () => { cropState.zoom = parseFloat(cropZoom.value); renderCropPreview(); });
+      document.getElementById('crop-reset').addEventListener('click', () => {
+        cropState = { zoom: 1, x: 50, y: 50 };
+        cropZoom.value = 1;
+        renderCropPreview();
+      });
+      document.getElementById('crop-apply').addEventListener('click', () => { cropActive = true; closeCrop(); });
+
+      // Drag to pan. The preview uses the true CSS, so imperfect drag scaling
+      // only affects feel, never the saved result.
+      let dragging = false, lastX = 0, lastY = 0;
+      cropViewport.addEventListener('pointerdown', e => {
+        dragging = true; lastX = e.clientX; lastY = e.clientY;
+        cropViewport.classList.add('dragging');
+        cropViewport.setPointerCapture(e.pointerId);
+      });
+      cropViewport.addEventListener('pointermove', e => {
+        if (!dragging) return;
+        const rect = cropViewport.getBoundingClientRect();
+        const dx = (e.clientX - lastX) / rect.width * 100 / cropState.zoom;
+        const dy = (e.clientY - lastY) / rect.height * 100 / cropState.zoom;
+        cropState.x = Math.min(100, Math.max(0, cropState.x - dx));
+        cropState.y = Math.min(100, Math.max(0, cropState.y - dy));
+        lastX = e.clientX; lastY = e.clientY;
+        renderCropPreview();
+      });
+      const endDrag = () => { dragging = false; cropViewport.classList.remove('dragging'); };
+      cropViewport.addEventListener('pointerup', endDrag);
+      cropViewport.addEventListener('pointercancel', endDrag);
 
       document.getElementById('save-profile-btn').addEventListener('click', async () => {
         const btn = document.getElementById('save-profile-btn');
@@ -431,6 +537,9 @@
                 bio: document.getElementById('bio-input').value,
                 avatar_card: avatarPicker.value || null,
                 background_card: null,
+                avatar_zoom: (avatarPicker.value && cropActive) ? Math.round(cropState.zoom * 100) / 100 : null,
+                avatar_x: (avatarPicker.value && cropActive) ? Math.round(cropState.x) : null,
+                avatar_y: (avatarPicker.value && cropActive) ? Math.round(cropState.y) : null,
               }),
             }),
             playersAPI.updateColor(playerId, selectedColor),
@@ -454,7 +563,7 @@
 
   // Dropdown replacement for card selection: toggle button shows the current
   // card's thumbnail; the panel is a searchable grid of card art previews.
-  function createCardPicker(container, cards, initialValue) {
+  function createCardPicker(container, cards, initialValue, onChange) {
     const state = { value: initialValue || '' };
     const labels = Object.fromEntries(cards.map(c => [c.filename, c.label]));
 
@@ -500,9 +609,11 @@
     }
 
     function pick(filename) {
+      const changed = filename !== state.value;
       state.value = filename;
       renderToggle();
       container.classList.remove('open');
+      if (changed && onChange) onChange(filename);
     }
 
     toggle.addEventListener('click', () => {
