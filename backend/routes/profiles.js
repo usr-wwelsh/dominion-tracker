@@ -18,13 +18,23 @@ const ACCENT_PRESETS = new Set([
   '#c0a464', '#5183a8', '#b05050', '#50b078', '#9050b0',
 ]);
 
+// Avatar crop: null clears it; otherwise zoom is a scale >= 1 and x/y are
+// object-position percentages in [0,100]. Only validated when avatar_card is set.
+function validateCropField(v, min, max) {
+  if (v === null || v === undefined) return true;
+  return typeof v === 'number' && Number.isFinite(v) && v >= min && v <= max;
+}
+
 function validateProfile(body) {
-  const { bio, avatar_card, background_card, accent_color } = body;
+  const { bio, avatar_card, background_card, accent_color, avatar_zoom, avatar_x, avatar_y } = body;
   const validCards = getValidCards();
   if (avatar_card && !validCards.has(avatar_card)) return 'Invalid avatar card filename';
   if (background_card && !validCards.has(background_card)) return 'Invalid background card filename';
   if (accent_color && !ACCENT_PRESETS.has(accent_color)) return 'Color must be one of the preset options';
   if (bio && bio.length > 500) return 'Bio must be 500 characters or fewer';
+  if (!validateCropField(avatar_zoom, 1, 5)) return 'Invalid avatar zoom';
+  if (!validateCropField(avatar_x, 0, 100)) return 'Invalid avatar crop position';
+  if (!validateCropField(avatar_y, 0, 100)) return 'Invalid avatar crop position';
   return null;
 }
 
@@ -60,19 +70,28 @@ router.put('/:playerId', async (req, res, next) => {
     const err = validateProfile(req.body);
     if (err) return res.status(400).json({ error: err });
 
-    const { bio = null, avatar_card = null, background_card = null, accent_color = null, theme_json = null } = req.body;
+    const { bio = null, avatar_card = null, background_card = null, accent_color = null, theme_json = null,
+            avatar_zoom = null, avatar_x = null, avatar_y = null } = req.body;
+    // Crop only makes sense alongside an avatar; clear it when none is set.
+    const zoom = avatar_card ? avatar_zoom : null;
+    const cropX = avatar_card ? avatar_x : null;
+    const cropY = avatar_card ? avatar_y : null;
 
     await query(
-      `INSERT INTO player_profiles (player_id, bio, avatar_card, background_card, accent_color, theme_json, updated_at)
-       VALUES (?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+      `INSERT INTO player_profiles (player_id, bio, avatar_card, background_card, accent_color, theme_json, avatar_zoom, avatar_x, avatar_y, updated_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
        ON CONFLICT(player_id) DO UPDATE SET
          bio = excluded.bio,
          avatar_card = excluded.avatar_card,
          background_card = excluded.background_card,
          accent_color = excluded.accent_color,
          theme_json = excluded.theme_json,
+         avatar_zoom = excluded.avatar_zoom,
+         avatar_x = excluded.avatar_x,
+         avatar_y = excluded.avatar_y,
          updated_at = CURRENT_TIMESTAMP`,
-      [playerId, bio || null, avatar_card || null, background_card || null, accent_color || null, theme_json || null]
+      [playerId, bio || null, avatar_card || null, background_card || null, accent_color || null, theme_json || null,
+       zoom, cropX, cropY]
     );
 
     const result = await query('SELECT * FROM player_profiles WHERE player_id = ?', [playerId]);

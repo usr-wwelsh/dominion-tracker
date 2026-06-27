@@ -916,6 +916,21 @@ tr:hover {
   left: -58.7%;
   top: -34.8%;
 }
+/* Manual crop: player-chosen framing via object-position + zoom, overriding the
+   default hardcoded transform above. Only applied when a profile has crop data. */
+.card-art-avatar.cropped img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  max-width: none;
+  left: auto;
+  top: auto;
+  object-fit: cover;
+  object-position: var(--av-x, 50%) var(--av-y, 50%);
+  transform: scale(var(--av-zoom, 1));
+  transform-origin: var(--av-x, 50%) var(--av-y, 50%);
+}
 
 .profile-avatar {
   position: relative;

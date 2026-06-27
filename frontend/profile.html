@@ -305,6 +305,8 @@
         const frame = document.getElementById('profile-avatar-frame');
         frame.style.borderColor = playerColor;
         frame.style.display = 'block';
+        const crop = avatarCrop(profile);
+        if (crop.cls) { frame.classList.add('cropped'); frame.style.cssText += crop.style; }
       }
       const headerEl = document.getElementById('profile-header');
       headerEl.style.background =
