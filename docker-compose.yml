@@ -24,8 +24,17 @@ services:
   # labelled watchtower.enable=true when its :latest image changes — so pushing
   # a new image redeploys it with no inbound connection to this host.
   watchtower:
-    image: containrrr/watchtower
+    image: containrrr/watchtower:1.7.1
     command: --cleanup --label-enable --interval 120
+    environment:
+      # Pin the Docker API version Watchtower negotiates down to. Without this,
+      # Watchtower's bundled client requests a version the host daemon doesn't
+      # support and throws "client version too new", crash-looping forever
+      # (never polling the registry, so backend never updates). 1.41 (Engine
+      # 20.10+) is supported by every modern daemon, so negotiating down to it
+      # is always safe. Override in .env if you ever need newer API features:
+      # docker version --format '{{.Server.APIVersion}}'
+      DOCKER_API_VERSION: ${DOCKER_API_VERSION:-1.41}
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
     restart: unless-stopped
