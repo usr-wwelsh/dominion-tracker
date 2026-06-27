@@ -102,6 +102,8 @@
     }
     .crop-controls { display: flex; align-items: center; gap: var(--spacing-sm); margin-top: var(--spacing-md); }
     .crop-controls input[type=range] { flex: 1; }
+    /* Flat solid player-color background: suppress the global vignette + grain. */
+    body.solid-bg::after, body.solid-bg::before { display: none; }
     .card-picker { position: relative; max-width: 360px; }
     .card-picker-toggle {
       display: flex; align-items: center; gap: var(--spacing-sm);
@@ -362,13 +364,12 @@
         `linear-gradient(${hexToRgba(playerColor, 0.12)}, ${hexToRgba(playerColor, 0.03)}), rgba(20, 28, 44, 0.72)`;
       pc.style.boxShadow = `var(--shadow-lg), 0 0 22px ${hexToRgba(playerColor, 0.18)}`;
 
-      // Profile page decor is a flat wash of the player's color over a dark base,
-      // replacing the default stone bricks (no card-tiling wallpaper).
-      document.body.style.backgroundColor = '#0b1220';
-      document.body.style.backgroundImage =
-        `linear-gradient(${hexToRgba(playerColor, 0.14)}, ${hexToRgba(playerColor, 0.14)})`;
-      document.body.style.backgroundRepeat = 'no-repeat';
-      document.body.style.backgroundAttachment = 'fixed';
+      // Profile page decor is a flat, solid fill of the player's color,
+      // replacing the default stone bricks (no card-tiling wallpaper). The
+      // solid-bg class drops the global vignette so the color stays flat.
+      document.body.classList.add('solid-bg');
+      document.body.style.backgroundColor = playerColor;
+      document.body.style.backgroundImage = 'none';
 
       // Level badge
       document.getElementById('level-badge').textContent = `Lv ${levelData.level}`;
