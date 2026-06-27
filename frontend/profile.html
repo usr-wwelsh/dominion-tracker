@@ -223,10 +223,6 @@
             <label>Avatar Card</label>
             <div class="card-picker" id="avatar-picker"></div>
           </div>
-          <div class="form-group">
-            <label>Background Card <span style="color:var(--color-text-dim);font-weight:normal;">(tiles your profile page)</span></label>
-            <div class="card-picker" id="bg-picker"></div>
-          </div>
           <button id="save-profile-btn" class="btn btn-primary">Save Profile</button>
           <span id="profile-save-msg" style="margin-left:var(--spacing-md);color:var(--color-success);"></span>
         </div>
@@ -324,16 +320,13 @@
         `linear-gradient(${hexToRgba(playerColor, 0.12)}, ${hexToRgba(playerColor, 0.03)}), rgba(20, 28, 44, 0.72)`;
       pc.style.boxShadow = `var(--shadow-lg), 0 0 22px ${hexToRgba(playerColor, 0.18)}`;
 
-      // The background card (if set) tiles the whole profile page like wallpaper,
-      // replacing the default stone bricks, behind a dark scrim for readability.
-      if (profile?.background_card) {
-        document.body.style.backgroundColor = '#0b1220';
-        document.body.style.backgroundImage =
-          `linear-gradient(rgba(11,18,30,0.6), rgba(11,18,30,0.6)), url('${CARDS_PATH}${profile.background_card}')`;
-        document.body.style.backgroundRepeat = 'repeat';
-        document.body.style.backgroundSize = '120px auto';
-        document.body.style.backgroundAttachment = 'fixed';
-      }
+      // Profile page decor is a flat wash of the player's color over a dark base,
+      // replacing the default stone bricks (no card-tiling wallpaper).
+      document.body.style.backgroundColor = '#0b1220';
+      document.body.style.backgroundImage =
+        `linear-gradient(${hexToRgba(playerColor, 0.14)}, ${hexToRgba(playerColor, 0.14)})`;
+      document.body.style.backgroundRepeat = 'no-repeat';
+      document.body.style.backgroundAttachment = 'fixed';
 
       // Level badge
       document.getElementById('level-badge').textContent = `Lv ${levelData.level}`;
@@ -423,7 +416,6 @@
         try { cards = await cardsAPI.getAll(); } catch (e) { console.error('card list load failed', e); }
       }
       const avatarPicker = createCardPicker(document.getElementById('avatar-picker'), cards, profile?.avatar_card || '');
-      const bgPicker = createCardPicker(document.getElementById('bg-picker'), cards, profile?.background_card || '');
 
       document.getElementById('save-profile-btn').addEventListener('click', async () => {
         const btn = document.getElementById('save-profile-btn');
@@ -436,7 +428,7 @@
               body: JSON.stringify({
                 bio: document.getElementById('bio-input').value,
                 avatar_card: avatarPicker.value || null,
-                background_card: bgPicker.value || null,
+                background_card: null,
               }),
             }),
             playersAPI.updateColor(playerId, selectedColor),
