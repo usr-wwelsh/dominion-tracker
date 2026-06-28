@@ -27,14 +27,16 @@ services:
     image: containrrr/watchtower:1.7.1
     command: --cleanup --label-enable --interval 120
     environment:
-      # Pin the Docker API version Watchtower negotiates down to. Without this,
-      # Watchtower's bundled client requests a version the host daemon doesn't
-      # support and throws "client version too new", crash-looping forever
-      # (never polling the registry, so backend never updates). 1.41 (Engine
-      # 20.10+) is supported by every modern daemon, so negotiating down to it
-      # is always safe. Override in .env if you ever need newer API features:
-      # docker version --format '{{.Server.APIVersion}}'
-      DOCKER_API_VERSION: ${DOCKER_API_VERSION:-1.41}
+      # Pin the Docker API version Watchtower talks to the host daemon with.
+      # Setting DOCKER_API_VERSION forces an exact version (no negotiation), so
+      # it must land within the daemon's supported range. The host was upgraded
+      # to an Engine that dropped API < 1.44, so the old 1.41 pin now crash-loops
+      # with "client version 1.41 is too old. Minimum supported API version is
+      # 1.44" — never polling the registry, so backend never updates. 1.44
+      # (Engine 25.0+) is the daemon's current floor and is supported by
+      # Watchtower 1.7.1's bundled client. If the host is upgraded again, set
+      # this to the new floor from: docker version --format '{{.Server.APIVersion}}'
+      DOCKER_API_VERSION: ${DOCKER_API_VERSION:-1.44}
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
     restart: unless-stopped
