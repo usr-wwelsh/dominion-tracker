@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Dominion Tracker — Big Picture</title>
+  <link rel="apple-touch-icon" href="/icon-192.png">
+  <meta name="theme-color" content="#181f30">
+  <link rel="stylesheet" href="css/main.css">
+  <link rel="stylesheet" href="css/bigpicture.css">
+</head>
+<body class="bp-body">
+  <div id="bp-root">
+
+    <!-- ── Launcher (horizontal console carousel) ── -->
+    <section class="bp-screen" id="screen-launcher">
+      <div class="bp-launcher-head">
+        <span class="bp-brand">Dominion</span>
+        <span class="bp-clock" id="bp-clock"></span>
+      </div>
+      <div class="bp-carousel" data-bp-carousel>
+        <div class="bp-carousel-track" id="bp-launcher-track"><!-- tiles injected --></div>
+      </div>
+      <div class="bp-hint">◀ ▶ to move · OK to select · Back to exit</div>
+    </section>
+
+    <!-- ── Leaderboard ── -->
+    <section class="bp-screen" id="screen-leaderboard">
+      <div class="bp-screen-head"><h1>Leaderboard</h1><span class="bp-page" id="lb-page"></span></div>
+      <div class="bp-list" id="lb-list"></div>
+      <div class="bp-hint">◀ ▶ / ▲ ▼ pages · Back to menu</div>
+    </section>
+
+    <!-- ── Live ── -->
+    <section class="bp-screen" id="screen-live">
+      <div class="bp-screen-head"><h1>Live</h1><span class="bp-page" id="live-page"></span></div>
+      <div class="bp-live-wrap" id="live-wrap"></div>
+      <div class="bp-hint">◀ ▶ switch game · Back to menu</div>
+    </section>
+
+    <!-- ── Recent games ── -->
+    <section class="bp-screen" id="screen-recent">
+      <div class="bp-screen-head"><h1>Recent Games</h1><span class="bp-page" id="recent-page"></span></div>
+      <div class="bp-list" id="recent-list"></div>
+      <div class="bp-hint">▲ ▼ pick game · ◀ ▶ pages · OK to view · Back to menu</div>
+    </section>
+
+    <!-- ── Play: pick build ── -->
+    <section class="bp-screen" id="screen-play-build">
+      <div class="bp-screen-head"><h1>Choose a Build</h1></div>
+      <div class="bp-carousel" data-bp-carousel>
+        <div class="bp-carousel-track" id="pb-track"></div>
+      </div>
+      <div class="bp-hint">◀ ▶ to move · OK to choose · Back to menu</div>
+    </section>
+
+    <!-- ── Play: pick players ── -->
+    <section class="bp-screen" id="screen-play-players">
+      <div class="bp-screen-head"><h1>Who's Playing?</h1><span class="bp-page" id="pp-count"></span></div>
+      <div class="bp-grid" id="pp-grid"></div>
+      <div class="bp-add-row" id="pp-add-row" style="display:none;">
+        <input type="text" id="pp-new-name" maxlength="50" placeholder="New player name…">
+        <button type="button" class="bp-btn bp-focusable" id="pp-add-confirm">Add</button>
+      </div>
+      <div class="bp-actions">
+        <button type="button" class="bp-btn bp-focusable" id="pp-add-btn">+ New Player</button>
+        <button type="button" class="bp-btn bp-btn-go bp-focusable bp-disabled" id="pp-start">Start Game</button>
+      </div>
+      <div class="bp-hint">Pick 2+ players · OK to toggle · Back</div>
+    </section>
+
+    <!-- ── Play: scoring ── -->
+    <section class="bp-screen" id="screen-play-score">
+      <div class="bp-screen-head">
+        <h1>Game in Progress</h1>
+        <span class="bp-page" id="ps-timer">00:00</span>
+      </div>
+      <div class="bp-score-rows" id="ps-rows"></div>
+      <div class="bp-actions">
+        <button type="button" class="bp-btn bp-btn-go bp-focusable" id="ps-end">End Game</button>
+      </div>
+      <div class="bp-hint">◀ ▶ pick player · ▲ ▼ adjust / move · Back</div>
+    </section>
+
+    <!-- ── Play: result (winner + animated chart) ── -->
+    <section class="bp-screen" id="screen-result">
+      <div class="bp-result-head">
+        <h1 id="bp-result-winner"></h1>
+        <span class="bp-result-sub" id="bp-result-sub"></span>
+      </div>
+      <div class="bp-chart-wrap"><canvas id="bp-result-chart"></canvas></div>
+      <div class="bp-actions">
+        <button type="button" class="bp-btn bp-btn-go bp-focusable" id="bp-result-done">Back to Menu</button>
+      </div>
+    </section>
+
+    <!-- ── Recent game detail (winner + animated chart) ── -->
+    <section class="bp-screen" id="screen-game-detail">
+      <div class="bp-result-head">
+        <h1 id="bp-detail-winner"></h1>
+        <span class="bp-result-sub" id="bp-detail-sub"></span>
+      </div>
+      <div class="bp-chart-wrap"><canvas id="bp-detail-chart"></canvas></div>
+      <div class="bp-actions">
+        <button type="button" class="bp-btn bp-btn-go bp-focusable" id="bp-detail-back">Back</button>
+      </div>
+    </section>
+
+    <!-- ── Generic confirm / result modal ── -->
+    <section class="bp-screen" id="screen-modal">
+      <div class="bp-modal">
+        <h2 id="bp-modal-title"></h2>
+        <div id="bp-modal-body"></div>
+        <div class="bp-actions" id="bp-modal-actions"></div>
+      </div>
+    </section>
+
+  </div>
+
+  <script src="js/api.js"></script>
+  <script src="js/score-chart.js"></script>
+  <script src="js/confetti.js"></script>
+  <script src="js/bigpicture-nav.js"></script>
+  <script src="js/bigpicture.js"></script>
+</body>
+</html>
