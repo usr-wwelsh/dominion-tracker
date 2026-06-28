@@ -1,0 +1,62 @@
+name: Watchtower diagnostics (manual)
+
+# Manual one-shot: SSH in and dump Watchtower's state + logs into the Actions
+# log so we can see *why* it crash-loops without needing interactive SSH.
+# Read-only — it never restarts or changes anything on the host.
+#
+# Trigger from the Actions tab or:
+#   gh workflow run watchtower-logs.yml
+on:
+  workflow_dispatch:
+    inputs:
+      tail:
+        description: "Number of log lines to fetch"
+        type: string
+        default: "200"
+
+jobs:
+  diagnose:
+    runs-on: ubuntu-latest
+    steps:
+      # SSH_HOST is masked, but its resolved IP is not — mask it so a dial
+      # failure can't leak the server address into public logs.
+      - name: Mask resolved host IP
+        env:
+          SSH_HOST: ${{ secrets.SSH_HOST }}
+        run: |
+          getent hosts "$SSH_HOST" | awk '{print $1}' | while read -r ip; do
+            [ -n "$ip" ] && echo "::add-mask::$ip"
+          done
+
+      - name: Dump Watchtower diagnostics
+        uses: appleboy/ssh-action@v1.2.0
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USER }}
+          key: ${{ secrets.SSH_KEY }}
+          port: ${{ secrets.SSH_PORT }}
+          command_timeout: 5m
+          script: |
+            cd ~/dominion-app/dominion-tracker
+
+            echo "===== docker compose ps ====="
+            docker compose ps -a || true
+
+            echo
+            echo "===== watchtower inspect (state) ====="
+            cid=$(docker compose ps -aq watchtower)
+            if [ -n "$cid" ]; then
+              docker inspect \
+                --format 'Status={{.State.Status}} ExitCode={{.State.ExitCode}} Restarts={{.RestartCount}} OOMKilled={{.State.OOMKilled}} Error={{.State.Error}}' \
+                "$cid" || true
+            else
+              echo "no watchtower container found"
+            fi
+
+            echo
+            echo "===== watchtower logs (last ${{ inputs.tail }}) ====="
+            docker compose logs --tail ${{ inputs.tail }} --no-color watchtower 2>&1 || true
+
+            echo
+            echo "===== host docker daemon version ====="
+            docker version --format 'Server APIVersion={{.Server.APIVersion}} Version={{.Server.Version}}' || true
