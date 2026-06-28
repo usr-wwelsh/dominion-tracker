@@ -79,7 +79,7 @@ router.get('/leaderboard', async (req, res, next) => {
         pp.avatar_x,
         pp.avatar_y,
         cs.total_games,
-        cs.total_lp AS total_league_points,
+        ROUND(CAST(cs.total_lp AS REAL), 2) AS total_league_points,
         ROUND(CAST(cs.total_lp AS REAL) / MAX(cs.total_games, 1), 2) AS avg_league_points,
         cs.total_wins,
         cs.avg_score,
