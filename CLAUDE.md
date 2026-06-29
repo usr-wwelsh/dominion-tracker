@@ -44,16 +44,18 @@ Vanilla JS with no build step. Each page is self-contained:
 | Page | HTML | JS |
 |------|------|----|
 | Leaderboard | `index.html` | `js/leaderboard.js` |
-| Recent Games | `games.html` | `js/games.js` |
+| Recent Games | `games.html` | `js/games.js`, `js/score-chart.js` |
 | Builds | `builds.html` | `js/builds.js` |
 | Live Scoreboard | `scoreboard.html` | `js/scoreboard.js` |
+| Big Picture | `bigpicture.html` | `js/bigpicture-nav.js`, `js/bigpicture.js` |
 
 - `js/api.js` — centralized fetch wrapper; exports `playersAPI`, `buildsAPI`, `gamesAPI`, `statsAPI`, `authAPI`. All pages load this first via `<script>`.
+- `js/score-chart.js` — Shared animated score-progression chart. `drawScoreChart()` draws from `score_snapshots`.
 - `css/main.css` — all CSS variables, stone-tile background, theme. Page-specific CSS files extend it.
 
 ### Key Data Flow
 1. **Starting a game**: `POST /api/games` creates the game + `game_players` rows (initial `final_score = 3`, initial snapshot inserted) → `PUT /api/games/:id/start` timestamps it.
-2. **Score updates**: `POST /api/games/:id/scores` updates `game_players.final_score` AND inserts a `score_snapshots` row. Frontend debounces 500ms before sending.
+2. **Score updates**: `POST /api/games/:id/scores` updates `game_players.final_score` (now allows negative values) AND inserts a `score_snapshots` row. Frontend debounces 500ms before sending.
 3. **Ending a game**: `PUT /api/games/:id/end` calculates placements by score DESC, assigns league points using the formula `LP = 100 × (n − p) / (n − 1)`, averaging points for ties.
 4. **Leaderboard**: single aggregation query in `routes/stats.js` — no caching layer.
 
@@ -67,7 +69,7 @@ CSS variables live in `main.css`. Key palette:
 - Stone tile background is an inline SVG data URL on `body` with offset brick rows
 
 ### Score Charts
-Canvas-based (no chart library). `drawScoreChart()` in `games.js` draws from `score_snapshots`. Chart is rendered after a 50ms delay post-expand to ensure the container has a measured width before setting `canvas.width = canvas.offsetWidth`.
+Canvas-based (no chart library). `drawScoreChart()` in `js/score-chart.js` draws from `score_snapshots`. Chart is rendered after a 50ms delay post-expand to ensure the container has a measured width before setting `canvas.width = canvas.offsetWidth`.
 
 ## Environment
 Backend reads `backend/.env`:
