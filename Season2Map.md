@@ -93,7 +93,8 @@ Single consolidated file with the final shape of *all* tables (incl. Phase-0 tou
 
 ### Query ports
 - **`routes/builds.js`** (only route touching arrays): `JSON.stringify` cards/landmarks/events/prophecies on write; add `hydrateBuild(row)` that `JSON.parse`s them on every read (incl. `RETURNING *` rows). Keeps API response shape identical → frontend unchanged. Note `use_platinum_colony` now reads `0/1`.
-- **`routes/stats.js`**: `json_agg`→`json_group_array` (order via the existing ordered CTE; no inline ORDER BY in the agg), drop `::numeric`/`::json` casts, `ROUND(...)` for precision, `CAST(... AS REAL)` on integer-division ratios, keep `NULLS LAST` (supported on 3.45). `JSON.parse(row.recent_form)` in route.
+- **`routes/players.js`**: player individual stats (`/players/:id/stats`) now also filter to the **active** season. Aggregates are guarded on `g.id`.
+- **`routes/stats.js`**: `total_league_points` in leaderboard query is now `ROUND(CAST(cs.total_lp AS REAL), 2)`. `/extras` endpoints (rivalry, high score, most played build) now also filter to the **active** season. `json_agg`→`json_group_array` (order via the existing ordered CTE; no inline ORDER BY in the agg), drop `::numeric`/`::json` casts, `ROUND(...)` for precision, `CAST(... AS REAL)` on integer-division ratios, keep `NULLS LAST` (supported on 3.45). `JSON.parse(row.recent_form)` in route.
 - **`routes/games.js`** JSON-agg queries (game list/detail `players` arrays): minimal port — `json_object`/`json_group_array` + `JSON.parse` in the route (less churn, identical response shape). Window functions + `RETURNING` need no changes.
 
 ### One-time copy script `backend/scripts/pg-to-sqlite.js`
@@ -129,10 +130,10 @@ Make "season" a first-class concept so Season 1 is preserved and Season 2 starts
 
 # PHASE 4 — Player profile pages (open edit, itch.io-style)
 
-No auth — anyone can customize, with guardrails (preset palettes; avatar/background restricted to the 167 card images in `frontend/dominion-cards-used-small/`).
-- Baseline adds `player_profiles(player_id PK FK, bio TEXT, avatar_card TEXT, background_card TEXT, accent_color TEXT, theme_json TEXT, updated_at)`.
+No auth — anyone can customize, with guardrails (preset palettes; avatar restricted to the 167 card images in `frontend/dominion-cards-used-small/`).
+- Baseline adds `player_profiles(player_id PK FK, bio TEXT, avatar_card TEXT, avatar_zoom REAL, avatar_x REAL, avatar_y REAL, accent_color TEXT, theme_json TEXT, updated_at)`. `background_card` is no longer used.
 - `GET /api/players/:id/profile`, `PUT /api/players/:id/profile` (validate avatar/background against the known card-filename list; validate color against presets).
-- **`profile.html` + `js/profile.js`**: header with avatar (card closeup) + customizable background/accent; reuses existing `/players/:id/stats` and `/players/:id/h2h`; shows level/XP (Phase 6) and achievements (Phase 5). Link player names across leaderboard/games/bracket to `profile.html?id=`.
+- **`profile.html` + `js/profile.js`**: header with avatar (now with adjustable cropping) + customizable accent. Profile page backgrounds are now a solid color matching the player's accent (no longer a tiled background card); reuses existing `/players/:id/stats` and `/players/:id/h2h`; shows level/XP (Phase 6) and achievements (Phase 5). Link player names across leaderboard/games/bracket to `profile.html?id=`.
 
 ---
 
@@ -141,7 +142,7 @@ No auth — anyone can customize, with guardrails (preset palettes; avatar/backg
 Build the framework; seed a starter catalog (specific milestones/art TBD by owner). Icons = card art.
 - Baseline adds `achievements(id, key, name, description, icon_card)` and `player_achievements(player_id, achievement_id, earned_at, UNIQUE(player_id,achievement_id))`.
 - **Evaluation hook**: on game end (after placement/LP), run `evaluateAchievements(playerIds)` against criteria (e.g. first win, N wins, high score, win streak, played-with-build) and insert newly earned rows. Keep criteria as small pure functions in `routes/achievements.js`.
-- `GET /api/players/:id/achievements`; display grid on profile (earned vs locked silhouettes).
+- `GET /api/players/:id/achievements`; display grid on profile (earned vs locked silhouettes), now with a 'View all' button and modal for all achievements.
 
 ---
 
@@ -158,7 +159,8 @@ Build the framework; seed a starter catalog (specific milestones/art TBD by owne
 - Baseline adds `games.edit_token TEXT`. On game create, generate a short random token; the starter shares it.
 - **SSE**: `GET /api/games/:id/stream` keeps a per-game set of `res` objects; `POST /games/:id/scores` broadcasts `{player_id, score}` to subscribers via `res.write` (no new dependency). Clean up on `req.on('close')`.
 - **Edit gating**: `POST /games/:id/scores` accepts an `edit_token`; valid token → allowed to edit, otherwise read-only. Viewers without the token watch live; entering the token unlocks the +/- controls.
-- **`live.html` + `js/live.js`**: list in-progress games (`started_at` set, `ended_at` null); open one to a live read-only view (reuse the canvas live chart from `scoreboard.js`, refactored into a shared render function) that subscribes via `EventSource`. Token entry unlocks editing.
+- **`live.html` + `js/live.js`**: list in-progress games (`started_at` set, `ended_at` null); open one to a live read-only view (reuse the canvas live chart from `js/score-chart.js`, refactored into a shared render function) that subscribes via `EventSource`. Token entry unlocks editing.
+- A new 'Big Picture Mode' (`bigpicture.html`) provides a console-style, remote-friendly interface with a live games screen that auto-updates, conceptually similar to `live.html` but focused on a different display context.
 
 ---
 
@@ -168,11 +170,11 @@ Build the framework; seed a starter catalog (specific milestones/art TBD by owne
 - Add `web-push` dep; env `VAPID_PUBLIC`, `VAPID_PRIVATE`, `VAPID_SUBJECT`. Baseline adds `push_subscriptions(id, endpoint, p256dh, auth, player_id?, created_at)`.
 - `routes/push.js`: `GET /api/push/key` (public VAPID key), `POST /api/push/subscribe`.
 - **Frontend**: request Notification permission, `PushManager.subscribe` with VAPID key, POST subscription. iOS only works when installed to home screen on 16.4+ — surface that in UI copy.
-- **`sw.js`**: add `push` + `notificationclick` handlers; bump cache version.
+- **`sw.js`**: add `push` + `notificationclick` handlers; bump cache version to `dominion-s2-v3`.
 - **Triggers**: on game end / leaderboard recompute, detect rank changes (new #1, big jumps) and push (`"X jumped to first on the leaderboard"`); optionally notify on live-game start.
 
 ### Visual redesign + animations
-- Refresh the medieval theme by swapping/extending the CSS variables in `frontend/css/main.css` (palette, depth, accents) so Season 2 feels new without a rewrite. Add tasteful micro-animations: page/section fade-ins, score-bump pulses, leaderboard rank-change transitions, hover states; reuse `confetti.js` for milestone moments. Use the `frontend-design` skill for the redesign pass to keep it polished and distinctive. Tighten the mobile/PWA layout (the hamburger nav + 768px breakpoint already exist) for a more native feel.
+- Refresh the medieval theme by swapping/extending the CSS variables in `frontend/css/main.css` (palette, depth, accents) so Season 2 feels new without a rewrite. The new 'Big Picture Mode' (`bigpicture.html`) implements a console-style, viewport-locked UI, serving as a primary component of the visual redesign. Profile page backgrounds now use a solid player color instead of tiled background cards. Add tasteful micro-animations: page/section fade-ins, score-bump pulses, leaderboard rank-change transitions, hover states; reuse `confetti.js` for milestone moments. Use the `frontend-design` skill for the redesign pass to keep it polished and distinctive. Tighten the mobile/PWA layout (the hamburger nav + 768px breakpoint already exist) for a more native feel.
 
 ---
 
@@ -187,6 +189,7 @@ Build the framework; seed a starter catalog (specific milestones/art TBD by owne
 - JSON-agg ports: **minimal SQL port** (`json_object`/`json_group_array` + `JSON.parse`), not a flat-join refactor.
 - 2-player exact-VP tie in a match: **operator picks the winner** in the bracket UI (no silent auto-pick).
 - Leveling: **derived from playtime**, not stored.
+- Scoreboard: **negative scores are now allowed** for players in live games.
 
 ---
 
