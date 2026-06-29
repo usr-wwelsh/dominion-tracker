@@ -40,25 +40,46 @@ function paginate(items, containerEl, minRowPx) {
 // ─────────────────────────────────────────────────────────────
 // Launcher
 // ─────────────────────────────────────────────────────────────
+const HUE = { gold: '#d4b05a', green: '#5fbf6a', blue: '#4e8fc0', crimson: '#c0494a' };
 const LAUNCH_TILES = [
-  { icon: '♛', label: 'Leaderboard', screen: 'leaderboard' },
-  { icon: '◉', label: 'Live',        screen: 'live' },
-  { icon: '↻', label: 'Recent',      screen: 'recent' },
-  { icon: '▶', label: 'Play',        screen: 'play-build' },
+  { icon: '♛', label: 'Leaderboard', sub: 'Season standings',     screen: 'leaderboard', hue: 'gold' },
+  { icon: '◉', label: 'Live',        sub: 'Games in progress',    screen: 'live',        hue: 'green' },
+  { icon: '↻', label: 'Recent',      sub: 'Past games & charts',  screen: 'recent',      hue: 'blue' },
+  { icon: '▶', label: 'Play',        sub: 'Start a new game',     screen: 'play-build',  hue: 'crimson' },
 ];
 
 function buildLauncher() {
   const track = $('bp-launcher-track');
   track.innerHTML = LAUNCH_TILES.map(t =>
-    `<button class="bp-tile bp-focusable" data-screen="${t.screen}">
-       <span class="bp-tile-icon">${t.icon}</span><span>${t.label}</span>
+    `<button class="bp-tile bp-focusable" data-screen="${t.screen}" data-hue="${t.hue}" style="--tile:${HUE[t.hue]}">
+       <span class="bp-tile-art"><span class="bp-tile-icon">${t.icon}</span></span>
+       <span class="bp-tile-meta">
+         <span class="bp-tile-label">${t.label}</span>
+         <span class="bp-tile-sub">${t.sub}</span>
+       </span>
      </button>`).join('');
   track.querySelectorAll('.bp-tile').forEach(btn =>
     btn.addEventListener('click', () => BP.showScreen(btn.dataset.screen)));
+  // Reactive ambient backdrop + parallax: emblem layers drift by distance from
+  // the focused tile, so the carousel reads as layered depth as it settles.
+  // Tile rotation is a constant rest angle (CSS); focus straightens it to 0.
+  track.addEventListener('bp:focus', (e) => {
+    const tile = e.target.closest && e.target.closest('.bp-tile');
+    if (!tile) return;
+    $('bp-ambient').style.setProperty('--amb', HUE[tile.dataset.hue]);
+    const tiles = [...track.children];
+    const fi = tiles.indexOf(tile);
+    tiles.forEach((t, i) => {
+      const art = t.querySelector('.bp-tile-art');
+      if (art) art.style.transform = `translateX(${(fi - i) * 16}px)`;
+    });
+  });
 }
 
 function tickClock() {
-  $('bp-clock').textContent = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  const now = new Date();
+  $('bp-clock').textContent = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  $('bp-date').textContent = now.toLocaleDateString([], { weekday: 'short', month: 'short', day: 'numeric' });
 }
 
 // ─────────────────────────────────────────────────────────────
@@ -227,8 +248,9 @@ async function showPlayBuild() {
   try { builds = await buildsAPI.getAll(); } catch (e) { builds = []; }
   const tiles = [{ id: null, nickname: 'No Build' }, ...builds];
   track.innerHTML = tiles.map(b =>
-    `<button class="bp-tile bp-focusable" data-build="${b.id ?? ''}">
-       <span class="bp-tile-icon">⚔</span><span>${escapeHtml(b.nickname)}</span>
+    `<button class="bp-tile bp-focusable" data-build="${b.id ?? ''}" style="--tile:${HUE.crimson}">
+       <span class="bp-tile-art"><span class="bp-tile-icon">⚔</span></span>
+       <span class="bp-tile-meta"><span class="bp-tile-label">${escapeHtml(b.nickname)}</span></span>
      </button>`).join('');
   track.querySelectorAll('.bp-tile').forEach(btn => btn.addEventListener('click', () => {
     play.buildId = btn.dataset.build ? Number(btn.dataset.build) : null;

@@ -6,6 +6,7 @@ const BP = (() => {
   let currentScreen = null;
   let focusables = [];
   let focusIdx = -1;
+  let focusedEl = null;   // actual element, so we clear the right one across screen swaps
 
   // ── Fullscreen ──────────────────────────────────────────────
   // Browsers only allow this from a user gesture, so we fire it on the first
@@ -45,12 +46,13 @@ const BP = (() => {
   }
 
   function setFocus(i) {
-    if (focusIdx >= 0 && focusables[focusIdx]) focusables[focusIdx].classList.remove('bp-focus');
+    if (focusedEl) focusedEl.classList.remove('bp-focus');
     focusIdx = i;
-    if (i >= 0 && focusables[i]) {
-      const el = focusables[i];
-      el.classList.add('bp-focus');
-      centerCarousel(el);
+    focusedEl = (i >= 0 && focusables[i]) ? focusables[i] : null;
+    if (focusedEl) {
+      focusedEl.classList.add('bp-focus');
+      centerCarousel(focusedEl);
+      focusedEl.dispatchEvent(new CustomEvent('bp:focus', { bubbles: true, detail: { el: focusedEl } }));
     }
   }
 

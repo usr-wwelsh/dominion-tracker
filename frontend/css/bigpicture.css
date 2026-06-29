@@ -31,6 +31,24 @@ body.bp-body { cursor: default; }
   font-size: clamp(1rem, 2vw, 1.6rem);
   color: var(--color-text-secondary);
 }
+
+/* ── Launcher top bar ── */
+.bp-launcher-head { align-items: center; }
+.bp-brand-wrap { display: flex; align-items: baseline; gap: 0.6rem; }
+.bp-brand { letter-spacing: 0.05em; text-shadow: 0 2px 18px rgba(0,0,0,0.5); }
+.bp-brand-sub {
+  font-family: var(--font-display);
+  color: var(--color-text-dim);
+  font-size: clamp(0.85rem, 1.6vw, 1.4rem);
+  letter-spacing: 0.34em; text-transform: uppercase;
+}
+.bp-clock-wrap { display: flex; flex-direction: column; align-items: flex-end; gap: 0.2rem; }
+.bp-clock { font-family: var(--font-display); }
+.bp-date {
+  font-size: clamp(0.65rem, 1.1vw, 0.95rem);
+  color: var(--color-text-dim);
+  letter-spacing: 0.12em; text-transform: uppercase;
+}
 .bp-hint {
   flex: 0 0 auto; text-align: center; margin-top: 2vh;
   color: var(--color-text-dim);
@@ -48,42 +66,122 @@ body.bp-body { cursor: default; }
 }
 .bp-disabled { opacity: 0.4; }
 
+/* ── Reactive ambient backdrop (launcher) ── */
+@property --amb {
+  syntax: '<color>';
+  inherits: false;
+  initial-value: #d4b05a;
+}
+.bp-ambient {
+  position: absolute; inset: 0; z-index: 0; pointer-events: none;
+  --amb: #d4b05a;
+  background:
+    radial-gradient(58% 55% at 50% 36%, color-mix(in srgb, var(--amb) 26%, transparent), transparent 70%),
+    radial-gradient(130% 80% at 50% 122%, color-mix(in srgb, var(--amb) 16%, transparent), transparent 60%);
+  transition: --amb 0.5s ease;
+}
+/* Cinematic edge vignette + keep content above the ambient layers */
+#screen-launcher::after {
+  content: ''; position: absolute; inset: 0; z-index: 0; pointer-events: none;
+  background: radial-gradient(125% 105% at 50% 45%, transparent 52%, rgba(0,0,0,0.5));
+}
+#screen-launcher > *:not(.bp-ambient) { position: relative; z-index: 1; }
+
 /* ── Launcher carousel ── */
 .bp-carousel {
   flex: 1 1 auto;
   display: flex; align-items: center;
-  overflow: hidden; position: relative;
+  overflow: visible; position: relative;
+  perspective: 1500px;            /* Cover Flow depth */
+  perspective-origin: 50% 50%;
 }
 .bp-carousel-track {
   position: relative;
-  display: flex; align-items: center; gap: 3vw;
+  display: flex; align-items: center; gap: 2.4vw;
+  transform-style: preserve-3d;   /* tiles keep their 3D rotation in this space */
   transition: transform 0.32s cubic-bezier(.22,.61,.36,1);
   will-change: transform;
   padding: 0 50vw; /* lets first/last tile center */
 }
 .bp-tile {
+  --tile: var(--color-accent);
   flex: 0 0 auto;
+  position: relative;
   width: clamp(180px, 22vw, 340px);
-  height: clamp(220px, 30vh, 380px);
-  display: flex; flex-direction: column; align-items: center; justify-content: center;
-  gap: 1.2rem;
-  background: linear-gradient(160deg, var(--color-bg-secondary), var(--color-bg-tertiary));
-  border: 2px solid var(--color-border);
-  border-radius: 18px;
+  height: clamp(220px, 32vh, 400px);
+  display: flex; flex-direction: column;
+  padding: 1.6rem 1.2rem 1.4rem;
+  box-sizing: border-box;
+  background:
+    linear-gradient(165deg,
+      color-mix(in srgb, var(--tile) 16%, var(--color-bg-secondary)),
+      var(--color-bg-tertiary));
+  border: 1px solid color-mix(in srgb, var(--tile) 28%, var(--color-border));
+  border-radius: 20px;
   color: var(--color-text-primary);
-  font-family: var(--font-display);
-  font-size: clamp(1.3rem, 2.4vw, 2.2rem);
   cursor: pointer;
-  transition: transform 0.32s cubic-bezier(.22,.61,.36,1), border-color var(--transition-base);
-  opacity: 0.55;
-  transform: scale(0.82);
+  box-shadow: 0 10px 28px rgba(0,0,0,0.35);
+  filter: saturate(0.65) brightness(0.78);
+  --ry: -58deg;                    /* all tiles face the same way (left) at rest */
+  transform: rotateY(var(--ry)) scale(0.84);
+  backface-visibility: hidden;
+  /* springy overshoot on focus for a tactile "pop" */
+  transition: transform 0.42s cubic-bezier(.34,1.56,.64,1),
+              filter 0.32s ease, border-color var(--transition-base), box-shadow 0.32s ease;
+}
+/* Specular sheen along the top edge */
+.bp-tile::before {
+  content: ''; position: absolute; inset: 0; border-radius: inherit; pointer-events: none;
+  background: linear-gradient(180deg, rgba(255,255,255,0.08), transparent 40%);
 }
 .bp-tile.bp-focus {
-  opacity: 1;
-  transform: scale(1.06);
-  border-color: var(--color-accent);
+  filter: none;
+  outline: none;
+  transform: rotateY(0deg) scale(1.08) translateY(-1vh) translateZ(70px);
+  border-color: var(--tile);
+  box-shadow:
+    0 0 0 2px color-mix(in srgb, var(--tile) 55%, transparent),
+    0 22px 55px -12px color-mix(in srgb, var(--tile) 55%, transparent),
+    0 30px 60px rgba(0,0,0,0.5);
 }
-.bp-tile .bp-tile-icon { font-size: clamp(3rem, 7vw, 6rem); line-height: 1; }
+
+/* Emblem zone with a glow disc behind the icon */
+.bp-tile-art {
+  position: relative; flex: 1 1 auto;
+  display: flex; align-items: center; justify-content: center;
+  transform: translateX(0);
+  transition: transform 0.45s cubic-bezier(.22,.61,.36,1);
+}
+.bp-tile-art::before {
+  content: ''; position: absolute;
+  width: 7.5em; height: 7.5em; border-radius: 50%;
+  background: radial-gradient(circle, color-mix(in srgb, var(--tile) 50%, transparent), transparent 70%);
+  opacity: 0; transition: opacity 0.35s ease;
+}
+.bp-tile.bp-focus .bp-tile-art::before { opacity: 1; }
+.bp-tile-icon {
+  position: relative;
+  font-size: clamp(3rem, 7vw, 6rem); line-height: 1;
+  color: var(--tile);
+  text-shadow: 0 3px 10px rgba(0,0,0,0.45);
+}
+
+/* Label + reveal-on-focus description */
+.bp-tile-meta { display: flex; flex-direction: column; align-items: center; gap: 0.25rem; }
+.bp-tile-label {
+  font-family: var(--font-display);
+  font-size: clamp(1.2rem, 2.3vw, 2rem);
+  color: var(--color-text-primary);
+}
+.bp-tile-sub {
+  font-family: var(--font-primary);
+  font-size: clamp(0.78rem, 1.3vw, 1.05rem);
+  color: var(--color-text-dim);
+  letter-spacing: 0.02em;
+  max-height: 0; opacity: 0; overflow: hidden;
+  transition: max-height 0.35s ease, opacity 0.35s ease;
+}
+.bp-tile.bp-focus .bp-tile-sub { max-height: 2.5em; opacity: 1; }
 
 /* ── Lists (leaderboard / recent) — flex rows fill the screen (hybrid fit) ── */
 .bp-list { flex: 1 1 auto; display: flex; flex-direction: column; gap: 1vh; min-height: 0; }
@@ -126,7 +224,7 @@ button.bp-row { cursor: pointer; }
   flex: 1 1 auto; min-height: 0;
   display: grid; grid-template-columns: repeat(auto-fill, minmax(clamp(140px,16vw,220px), 1fr));
   grid-auto-rows: min-content;
-  gap: 1.4vw; align-content: start; overflow: hidden;
+  gap: 1.4vw; align-content: start; overflow: visible;
 }
 .bp-player-tile {
   display: flex; align-items: center; gap: 0.8rem;
