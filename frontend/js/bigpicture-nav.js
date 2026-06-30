@@ -52,6 +52,8 @@ const BP = (() => {
     if (focusedEl) {
       focusedEl.classList.add('bp-focus');
       centerCarousel(focusedEl);
+      // Keep focus visible inside long, scrollable screens (e.g. card pickers).
+      if (focusedEl.closest('[data-bp-scroll]')) focusedEl.scrollIntoView({ block: 'nearest' });
       focusedEl.dispatchEvent(new CustomEvent('bp:focus', { bubbles: true, detail: { el: focusedEl } }));
     }
   }

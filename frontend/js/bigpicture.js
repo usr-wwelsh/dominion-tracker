@@ -42,11 +42,12 @@ function paginate(items, containerEl, minRowPx) {
 // ─────────────────────────────────────────────────────────────
 // Launcher
 // ─────────────────────────────────────────────────────────────
-const HUE = { gold: '#d4b05a', green: '#5fbf6a', blue: '#4e8fc0', crimson: '#c0494a' };
+const HUE = { gold: '#d4b05a', green: '#5fbf6a', blue: '#4e8fc0', crimson: '#c0494a', violet: '#9b7bd0' };
 const LAUNCH_TILES = [
   { icon: '♛', label: 'Leaderboard', sub: 'Season standings',     screen: 'leaderboard', hue: 'gold' },
   { icon: '◉', label: 'Live',        sub: 'Games in progress',    screen: 'live',        hue: 'green' },
   { icon: '↻', label: 'Recent',      sub: 'Past games & charts',  screen: 'recent',      hue: 'blue' },
+  { icon: '⚒', label: 'Builds',      sub: 'Browse & make builds', screen: 'builds-menu', hue: 'violet' },
   { icon: '▶', label: 'Play',        sub: 'Start a new game',     screen: 'play-build',  hue: 'crimson' },
 ];
 
@@ -256,8 +257,17 @@ async function showPlayBuild() {
     `<button class="bp-tile bp-focusable" data-build="${b.id ?? ''}" style="--tile:${HUE.crimson}">
        <span class="bp-tile-art"><span class="bp-tile-icon">⚔</span></span>
        <span class="bp-tile-meta"><span class="bp-tile-label">${escapeHtml(b.nickname)}</span></span>
-     </button>`).join('');
+     </button>`).join('') +
+    // "Don't see your build? Make one" — drops into the creator, returns here when saved.
+    `<button class="bp-tile bp-focusable" data-make="1" style="--tile:${HUE.violet}">
+       <span class="bp-tile-art"><span class="bp-tile-icon">＋</span></span>
+       <span class="bp-tile-meta">
+         <span class="bp-tile-label">New Build</span>
+         <span class="bp-tile-sub">Don't see your build?</span>
+       </span>
+     </button>`;
   track.querySelectorAll('.bp-tile').forEach(btn => btn.addEventListener('click', () => {
+    if (btn.dataset.make) { startBuildCreator('play-build'); return; }
     play.buildId = btn.dataset.build ? Number(btn.dataset.build) : null;
     BP.showScreen('play-players');
   }));
@@ -448,6 +458,336 @@ function showResult() {
 }
 
 // ─────────────────────────────────────────────────────────────
+// Builds — menu, browser, detail, and the remote-friendly creator
+// ─────────────────────────────────────────────────────────────
+const EXPANSION_ORDER = ['base', 'intrigue', 'seaside', 'prosperity', 'empires', 'rising_sun', 'dark_ages'];
+
+// ── Builds menu (View / Make) ──
+const BUILDS_MENU = [
+  { icon: '▤', label: 'View Builds',  sub: 'Browse the library', action: 'view', hue: 'blue' },
+  { icon: '＋', label: 'Make a Build', sub: 'Create a new one',    action: 'make', hue: 'crimson' },
+];
+function showBuildsMenu() {
+  clearScreenTimers();
+  const track = $('bm-track');
+  track.innerHTML = BUILDS_MENU.map(t =>
+    `<button class="bp-tile bp-focusable" data-action="${t.action}" style="--tile:${HUE[t.hue]}">
+       <span class="bp-tile-art"><span class="bp-tile-icon">${t.icon}</span></span>
+       <span class="bp-tile-meta">
+         <span class="bp-tile-label">${t.label}</span>
+         <span class="bp-tile-sub">${t.sub}</span>
+       </span>
+     </button>`).join('');
+  track.querySelectorAll('.bp-tile').forEach(btn => btn.addEventListener('click', () => {
+    if (btn.dataset.action === 'make') startBuildCreator('builds-menu');
+    else BP.showScreen('builds-view');
+  }));
+  BP.refreshFocus(track.querySelector('.bp-tile') || undefined);
+}
+
+// ── Browse builds ──
+let bvPages = [[]], bvIdx = 0, bvBuilds = [];
+
+function buildExpansionsOf(b) {
+  const set = new Set();
+  (b.cards || []).forEach(c => { const e = CARD_EXPANSION_MAP[c]; if (e) set.add(e); });
+  return EXPANSION_ORDER.filter(e => set.has(e)).map(e => EXPANSION_DISPLAY[e]).join(' · ');
+}
+
+async function showBuildsView() {
+  clearScreenTimers();
+  const list = $('bv-list');
+  list.innerHTML = '<div class="bp-empty">Loading…</div>';
+  let builds = [];
+  try { builds = await buildsAPI.getAll(); } catch (e) { list.innerHTML = '<div class="bp-empty">Could not load builds.</div>'; return; }
+  bvBuilds = builds || [];
+  if (!bvBuilds.length) { list.innerHTML = '<div class="bp-empty">No builds yet.<br>Make one from the Builds menu.</div>'; $('bv-page').textContent = ''; return; }
+  list.innerHTML = '';
+  bvPages = paginate(bvBuilds, list, 88);
+  bvIdx = 0;
+  renderBvPage();
+}
+
+function renderBvPage() {
+  const list = $('bv-list');
+  list.innerHTML = bvPages[bvIdx].map(b => {
+    const games = parseInt(b.games_played) || 0;
+    const avg = parseFloat(b.avg_score_per_game) || 0;
+    return `<button class="bp-row bp-focusable" data-bid="${b.id}" style="border-left-color:${HUE.violet}">
+      <span class="bp-rank">⚒</span>
+      <span class="bp-name-wrap"><span class="bp-name">${escapeHtml(b.nickname)}</span>
+        <span class="bp-bio">${escapeHtml(buildExpansionsOf(b) || '—')}</span></span>
+      <span class="bp-stat">${games}<span class="bp-stat-label">games</span></span>
+      <span class="bp-stat-main">${avg.toFixed(1)}<span class="bp-stat-label">avg score</span></span>
+    </button>`;
+  }).join('');
+  list.querySelectorAll('.bp-row').forEach(btn =>
+    btn.addEventListener('click', () => openBuildDetail(Number(btn.dataset.bid))));
+  $('bv-page').textContent = bvPages.length > 1 ? `Page ${bvIdx + 1} / ${bvPages.length}` : '';
+  BP.refreshFocus(list.querySelector('.bp-row') || undefined);
+}
+
+// ── Build detail (read-only) ──
+let bvDetail = null;
+function openBuildDetail(id) { bvDetail = bvBuilds.find(b => b.id === id) || null; if (bvDetail) BP.showScreen('build-detail'); }
+
+function renderKingdomGroups(cards) {
+  if (!cards || !cards.length) return '';
+  const groups = {};
+  cards.forEach(c => { const e = CARD_EXPANSION_MAP[c] || 'unknown'; (groups[e] = groups[e] || []).push(c); });
+  return EXPANSION_ORDER.filter(e => groups[e]).map(e => {
+    const tags = groups[e].slice().sort((a, b) => a.localeCompare(b)).map(c => {
+      const cost = CARD_COSTS[c] ? `<span class="bp-card-cost">${escapeHtml(CARD_COSTS[c])}</span>` : '';
+      return `<span class="bp-detail-tag">${escapeHtml(c)}${cost}</span>`;
+    }).join('');
+    return `<div class="bp-exp-section"><div class="bp-exp-label">${escapeHtml(EXPANSION_DISPLAY[e] || e)}</div><div class="bp-detail-tags">${tags}</div></div>`;
+  }).join('');
+}
+
+function renderTagSection(label, items) {
+  if (!items || !items.length) return '';
+  const tags = items.slice().sort((a, b) => a.localeCompare(b)).map(c => `<span class="bp-detail-tag">${escapeHtml(c)}</span>`).join('');
+  return `<div class="bp-exp-section"><div class="bp-exp-label">${label}</div><div class="bp-detail-tags">${tags}</div></div>`;
+}
+
+function showBuildDetail() {
+  clearScreenTimers();
+  const b = bvDetail;
+  if (!b) { BP.showScreen('builds-view'); return; }
+  $('bd-title').textContent = b.nickname;
+  const games = parseInt(b.games_played) || 0;
+  const avg = parseFloat(b.avg_score_per_game) || 0;
+  $('bd-meta').textContent = `${games} games · ${avg.toFixed(1)} avg`;
+  const badges = [];
+  if (b.use_platinum_colony) badges.push('Platinum / Colony');
+  if (b.use_shelters) badges.push('Shelters');
+  const badgeHtml = badges.length ? `<div class="bp-detail-badges">${badges.map(x => `<span class="bp-detail-badge">${escapeHtml(x)}</span>`).join('')}</div>` : '';
+  const body = $('bd-body');
+  body.innerHTML = badgeHtml + renderKingdomGroups(b.cards) +
+    renderTagSection('Landmarks', b.landmarks) +
+    renderTagSection('Events', b.events) +
+    renderTagSection('Prophecies', b.prophecies);
+  body.scrollTop = 0;
+}
+
+function scrollDetail(dir) {
+  const body = $('bd-body');
+  const amt = body.clientHeight * 0.8;
+  if (dir === 'up') body.scrollBy({ top: -amt, behavior: 'smooth' });
+  else if (dir === 'down') body.scrollBy({ top: amt, behavior: 'smooth' });
+  return true;   // consume arrows; the only focusable here is Back
+}
+
+// ── Creator state + step sequencer (skips steps the expansions don't need) ──
+const mk = { name: '', expansions: new Set(), cards: new Set(), landmarks: new Set(), events: new Set(), prophecies: new Set(), platinumColony: false, shelters: false, touched: new Set(), returnTo: 'builds-menu' };
+
+function startBuildCreator(returnTo) {
+  mk.name = '';
+  mk.expansions = new Set(); mk.cards = new Set();
+  mk.landmarks = new Set(); mk.events = new Set(); mk.prophecies = new Set();
+  mk.platinumColony = false; mk.shelters = false; mk.touched = new Set();
+  mk.returnTo = returnTo || 'builds-menu';
+  BP.showScreen('build-expansions');
+}
+
+function mkSupplementalNeeded() { return mk.expansions.has('empires') || mk.expansions.has('rising_sun'); }
+function mkOptionPrompts() {
+  const out = [];
+  if (mk.expansions.has('prosperity')) out.push({ key: 'platinumColony', label: 'Platinum & Colony', detected: 'Prosperity' });
+  if (mk.expansions.has('dark_ages')) out.push({ key: 'shelters', label: 'Shelters', detected: 'Dark Ages' });
+  return out;
+}
+const MK_STEPS = [
+  { id: 'build-expansions',   needed: () => true },
+  { id: 'build-cards',        needed: () => true },
+  { id: 'build-supplemental', needed: mkSupplementalNeeded },
+  { id: 'build-options',      needed: () => mkOptionPrompts().length > 0 },
+  { id: 'build-name',         needed: () => true },
+];
+function mkStep(fromId, dir) {
+  let i = MK_STEPS.findIndex(s => s.id === fromId) + dir;
+  while (i >= 0 && i < MK_STEPS.length && !MK_STEPS[i].needed()) i += dir;
+  if (i < 0) return mk.returnTo;
+  return MK_STEPS[Math.min(i, MK_STEPS.length - 1)].id;
+}
+function mkNext(fromId) { BP.showScreen(mkStep(fromId, +1)); }
+function mkBack(fromId) { BP.showScreen(mkStep(fromId, -1)); }
+
+function mkSetFor(kind) {
+  switch (kind) {
+    case 'landmark': return mk.landmarks;
+    case 'event':    return mk.events;
+    case 'prophecy': return mk.prophecies;
+    default:         return mk.cards;
+  }
+}
+function mkCardChip(kind, card) {
+  const set = mkSetFor(kind);
+  const cost = (kind === 'card' && CARD_COSTS[card]) ? `<span class="bp-card-cost">${escapeHtml(CARD_COSTS[card])}</span>` : '';
+  return `<button class="bp-card-chip bp-focusable ${set.has(card) ? 'selected' : ''}" data-card="${escapeHtml(card)}" data-kind="${kind}">
+    <span class="bp-card-name">${escapeHtml(card)}</span>${cost}
+    <span class="bp-card-tick">✓</span>
+  </button>`;
+}
+function wireMkChips(container) {
+  container.querySelectorAll('.bp-card-chip').forEach(btn => btn.addEventListener('click', () => {
+    const kind = btn.dataset.kind;
+    const card = btn.dataset.card;
+    const set = mkSetFor(kind);
+    if (set.has(card)) { set.delete(card); btn.classList.remove('selected'); }
+    else {
+      if (kind === 'card' && mk.cards.size >= 10) { flashCardLimit(); return; }
+      set.add(card); btn.classList.add('selected');
+    }
+    if (kind === 'card') updateMkCards(); else updateMkSupplemental();
+  }));
+}
+
+// Step 1: expansions
+function showMkExpansions() {
+  clearScreenTimers();
+  const grid = $('be-grid');
+  grid.innerHTML = EXPANSION_ORDER.map(e =>
+    `<button class="bp-player-tile bp-focusable ${mk.expansions.has(e) ? 'selected' : ''}" data-exp="${e}">
+      <span class="bp-name">${escapeHtml(EXPANSION_DISPLAY[e])}</span>
+      <span class="bp-check">✓</span>
+    </button>`).join('');
+  grid.querySelectorAll('.bp-player-tile').forEach(btn => btn.addEventListener('click', () => {
+    const e = btn.dataset.exp;
+    if (mk.expansions.has(e)) { mk.expansions.delete(e); btn.classList.remove('selected'); }
+    else { mk.expansions.add(e); btn.classList.add('selected'); }
+    updateMkExpansions();
+  }));
+  updateMkExpansions();
+  BP.refreshFocus(grid.querySelector('.bp-player-tile') || undefined);
+}
+function updateMkExpansions() {
+  $('be-count').textContent = mk.expansions.size ? `${mk.expansions.size} selected` : '';
+  $('be-next').classList.toggle('bp-disabled', mk.expansions.size === 0);
+  BP.refreshFocus(document.querySelector('#be-grid .bp-focus') || undefined);
+}
+
+// Step 2: kingdom cards (grouped by expansion, capped at 10)
+function showMkCards() {
+  clearScreenTimers();
+  const body = $('bc-body');
+  body.innerHTML = EXPANSION_ORDER.filter(e => mk.expansions.has(e)).map(e => {
+    const cards = DOMINION_CARDS[e].slice().sort((a, b) => a.localeCompare(b));
+    return `<div class="bp-exp-section">
+      <div class="bp-exp-label">${escapeHtml(EXPANSION_DISPLAY[e])}</div>
+      <div class="bp-card-grid">${cards.map(c => mkCardChip('card', c)).join('')}</div>
+    </div>`;
+  }).join('');
+  wireMkChips(body);
+  updateMkCards();
+  body.scrollTop = 0;
+  BP.refreshFocus(body.querySelector('.bp-card-chip') || undefined);
+}
+function updateMkCards() {
+  const n = mk.cards.size;
+  // A standard Dominion kingdom is exactly 10 piles — gate Next on that.
+  $('bc-count').textContent = n === 10 ? '10 / 10 — ready' : `${n} / 10 cards`;
+  $('bc-next').classList.toggle('bp-disabled', n !== 10);
+  BP.refreshFocus(document.querySelector('#bc-body .bp-focus') || undefined);
+}
+function flashCardLimit() { $('bc-count').textContent = '10 cards max'; setTimeout(updateMkCards, 1200); }
+
+// Step 3: supplemental — only the groups the chosen expansions provide
+function mkSupSection(label, groups) {
+  const inner = groups.map(([sub, cards, kind]) => {
+    const subLabel = sub ? `<div class="bp-exp-sublabel">${escapeHtml(sub)}</div>` : '';
+    const chips = cards.slice().sort((a, b) => a.localeCompare(b)).map(c => mkCardChip(kind, c)).join('');
+    return `${subLabel}<div class="bp-card-grid">${chips}</div>`;
+  }).join('');
+  return `<div class="bp-exp-section"><div class="bp-exp-label">${escapeHtml(label)}</div>${inner}</div>`;
+}
+function showMkSupplemental() {
+  clearScreenTimers();
+  const e = mk.expansions;
+  let html = '';
+  if (e.has('empires')) html += mkSupSection('Landmarks', [['', DOMINION_LANDMARKS.empires, 'landmark']]);
+  const evGroups = [];
+  if (e.has('empires')) evGroups.push(['Empires', DOMINION_EVENTS.empires, 'event']);
+  if (e.has('rising_sun')) evGroups.push(['Rising Sun', DOMINION_EVENTS.rising_sun, 'event']);
+  if (evGroups.length) html += mkSupSection('Events', evGroups);
+  if (e.has('rising_sun')) html += mkSupSection('Prophecies', [['', DOMINION_PROPHECIES.rising_sun, 'prophecy']]);
+  const body = $('bsup-body');
+  body.innerHTML = html;
+  wireMkChips(body);
+  updateMkSupplemental();
+  body.scrollTop = 0;
+  BP.refreshFocus(body.querySelector('.bp-card-chip') || undefined);
+}
+function updateMkSupplemental() {
+  const n = mk.landmarks.size + mk.events.size + mk.prophecies.size;
+  $('bsup-count').textContent = n ? `${n} selected` : 'Optional';
+}
+
+// Step 4: game setup (platinum/colony, shelters) — "we detected X"
+function showMkOptions() {
+  clearScreenTimers();
+  const list = $('bo-list');
+  const prompts = mkOptionPrompts();
+  // Default to Yes: we detected the expansion, so assume it's in play until the user says otherwise.
+  prompts.forEach(p => { if (!mk.touched.has(p.key)) mk[p.key] = true; });
+  list.innerHTML = prompts.map(p =>
+    `<button class="bp-opt-row bp-focusable ${mk[p.key] ? 'on' : ''}" data-key="${p.key}">
+      <span class="bp-opt-text">
+        <span>${escapeHtml(p.label)}</span>
+        <span class="bp-opt-detected">Detected ${escapeHtml(p.detected)} — using ${escapeHtml(p.label)}?</span>
+      </span>
+      <span class="bp-opt-val">${mk[p.key] ? 'Yes' : 'No'}</span>
+    </button>`).join('');
+  list.querySelectorAll('.bp-opt-row').forEach(btn => btn.addEventListener('click', () => {
+    const key = btn.dataset.key;
+    mk[key] = !mk[key];
+    mk.touched.add(key);
+    btn.classList.toggle('on', mk[key]);
+    btn.querySelector('.bp-opt-val').textContent = mk[key] ? 'Yes' : 'No';
+  }));
+  BP.refreshFocus(list.querySelector('.bp-opt-row') || undefined);
+}
+
+// Step 5: name + save
+function mkSummaryText() {
+  const exps = EXPANSION_ORDER.filter(e => mk.expansions.has(e)).map(e => EXPANSION_DISPLAY[e]).join(', ');
+  const extras = [];
+  if (mk.landmarks.size) extras.push(`${mk.landmarks.size} landmark${mk.landmarks.size > 1 ? 's' : ''}`);
+  if (mk.events.size) extras.push(`${mk.events.size} event${mk.events.size > 1 ? 's' : ''}`);
+  if (mk.prophecies.size) extras.push(`${mk.prophecies.size} prophec${mk.prophecies.size > 1 ? 'ies' : 'y'}`);
+  if (mk.platinumColony) extras.push('Platinum/Colony');
+  if (mk.shelters) extras.push('Shelters');
+  return `${mk.cards.size} kingdom cards · ${exps}` + (extras.length ? ` · ${extras.join(' · ')}` : '');
+}
+function showMkName() {
+  clearScreenTimers();
+  $('bn-summary').textContent = mkSummaryText();
+  const input = $('bn-input');
+  input.value = mk.name || '';
+  setTimeout(() => input.focus(), 50);
+}
+async function saveBuild() {
+  const name = $('bn-input').value.trim();
+  if (!name) { $('bn-summary').textContent = 'Please enter a name.'; setTimeout(() => $('bn-input').focus(), 50); return; }
+  // Only honor a toggle if its expansion is actually in the build (guards a
+  // deselected expansion leaving a stale Yes behind).
+  const platinum = mk.expansions.has('prosperity') && mk.platinumColony;
+  const shelters = mk.expansions.has('dark_ages') && mk.shelters;
+  try {
+    await buildsAPI.create(name, [...mk.cards], [...mk.landmarks], [...mk.events], [...mk.prophecies], platinum, shelters);
+    const back = mk.returnTo;
+    showModal({
+      title: 'Build saved!',
+      bodyHtml: escapeHtml(`"${name}" is ready to play.`),
+      actions: [{ label: back === 'play-build' ? 'Back to Game Setup' : 'Done', go: true, onSelect: () => BP.showScreen(back) }],
+      back: () => BP.showScreen(back),
+    });
+  } catch (e) {
+    showInfo('Could not save build', e.message || 'Please try again.');
+  }
+}
+
+// ─────────────────────────────────────────────────────────────
 // Modal
 // ─────────────────────────────────────────────────────────────
 let modalBack = () => BP.showScreen('launcher');
@@ -508,9 +848,38 @@ BP.registerScreen('result', {
 });
 BP.registerScreen('modal', { onShow: () => {}, onBack: () => modalBack() });
 
+// Builds: menu, browser, detail
+BP.registerScreen('builds-menu', { onShow: showBuildsMenu });
+BP.registerScreen('builds-view', {
+  onShow: showBuildsView,
+  onArrow: dir => (dir === 'left' || dir === 'right')
+    ? pageList(dir, () => bvIdx, v => bvIdx = v, bvPages.length, renderBvPage)
+    : false,   // up/down move focus between build rows
+});
+BP.registerScreen('build-detail', { onShow: showBuildDetail, onArrow: scrollDetail, onBack: () => BP.showScreen('builds-view') });
+
+// Builds: creator steps (onBack uses the skip-aware sequencer)
+BP.registerScreen('build-expansions',   { onShow: showMkExpansions,   onBack: () => mkBack('build-expansions') });
+BP.registerScreen('build-cards',        { onShow: showMkCards,        onBack: () => mkBack('build-cards') });
+BP.registerScreen('build-supplemental', { onShow: showMkSupplemental, onBack: () => mkBack('build-supplemental') });
+BP.registerScreen('build-options',      { onShow: showMkOptions,      onBack: () => mkBack('build-options') });
+BP.registerScreen('build-name',         { onShow: showMkName,         onBack: () => mkBack('build-name') });
+
 // Clickable back buttons (for remotes whose hardware Back key doesn't reach the app).
-document.querySelectorAll('.bp-back').forEach(btn =>
+document.querySelectorAll('.bp-back[data-back]').forEach(btn =>
   btn.addEventListener('click', () => BP.showScreen(btn.dataset.back)));
+// Creator back buttons route through the skip-aware sequencer instead of a fixed target.
+document.querySelectorAll('[data-mkback]').forEach(btn =>
+  btn.addEventListener('click', () => mkBack(btn.dataset.mkback)));
+
+// Creator: Next / Save wiring
+$('be-next').addEventListener('click', () => { if (mk.expansions.size) mkNext('build-expansions'); });
+$('bc-next').addEventListener('click', () => { if (mk.cards.size === 10) mkNext('build-cards'); });
+$('bsup-next').addEventListener('click', () => mkNext('build-supplemental'));
+$('bo-next').addEventListener('click', () => mkNext('build-options'));
+$('bn-save').addEventListener('click', saveBuild);
+$('bn-input').addEventListener('input', e => { mk.name = e.target.value; });
+$('bn-input').addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); saveBuild(); } });
 
 // Player-pick add-new wiring
 $('pp-add-btn').addEventListener('click', () => {

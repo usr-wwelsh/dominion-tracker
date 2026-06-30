@@ -335,6 +335,116 @@ button.bp-row { cursor: pointer; }
 .bp-chart-wrap { flex: 1 1 auto; min-height: 0; position: relative; border: 1px solid var(--color-border); border-radius: 14px; overflow: hidden; }
 .bp-chart-wrap canvas { width: 100%; height: 100%; display: block; }
 
+/* ── Builds: scrollable card region (detail + pickers) ── */
+.bp-cards-scroll {
+  flex: 1 1 auto; min-height: 0; overflow-y: auto; overflow-x: hidden;
+  /* Interior padding so the focus ring/scale on edge cards isn't clipped by overflow. */
+  padding: 1vh 1vw; scrollbar-width: thin;
+  /* scrollIntoView('nearest') aligns a focused card flush to the edge, which would
+     clip its outline. scroll-padding tells it to stop short, leaving the ring room. */
+  scroll-padding: 1.5vh 1vw;
+}
+/* Many TV/WebKit engines drop a scroll container's padding-bottom from the
+   scrollable area, so the last row's focus ring gets clipped. An in-flow spacer
+   is counted in scroll height and guarantees clearance below the bottom row. */
+.bp-cards-scroll::after { content: ''; display: block; height: 1.5vh; }
+.bp-exp-section { margin-bottom: 1.8vh; }
+.bp-exp-label {
+  font-family: var(--font-display);
+  color: var(--color-accent);
+  font-size: clamp(1rem, 2.1vw, 1.6rem);
+  letter-spacing: 0.04em;
+  padding-bottom: 0.6vh; margin-bottom: 1vh;
+  border-bottom: 1px solid var(--color-border);
+}
+.bp-exp-sublabel {
+  color: var(--color-text-dim);
+  font-size: clamp(0.8rem, 1.4vw, 1.1rem);
+  text-transform: uppercase; letter-spacing: 0.1em;
+  margin: 0.8vh 0 0.6vh;
+}
+.bp-card-grid {
+  display: grid; gap: 1vw;
+  grid-template-columns: repeat(auto-fill, minmax(clamp(150px, 15vw, 230px), 1fr));
+}
+
+/* Selectable card chip (picker) */
+.bp-card-chip {
+  display: flex; align-items: center; gap: 0.6rem;
+  background: var(--color-bg-secondary);
+  border: 2px solid var(--color-border);
+  border-radius: 10px;
+  padding: 0.7rem 1rem;
+  cursor: pointer; text-align: left;
+  font-size: clamp(0.95rem, 1.5vw, 1.3rem);
+  color: var(--color-text-primary);
+}
+.bp-card-chip .bp-card-name { flex: 1 1 auto; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.bp-card-chip .bp-card-cost {
+  flex: 0 0 auto; color: var(--color-text-dim);
+  font-variant-numeric: tabular-nums; font-size: 0.85em;
+}
+.bp-card-chip .bp-card-tick { flex: 0 0 auto; color: var(--color-accent); visibility: hidden; }
+.bp-card-chip.selected { border-color: var(--color-accent); background: var(--color-blue-dim); }
+.bp-card-chip.selected .bp-card-tick { visibility: visible; }
+
+/* Read-only tags (detail screen) */
+.bp-detail-tags { display: flex; flex-wrap: wrap; gap: 0.7vw; }
+.bp-detail-tag {
+  background: var(--color-bg-tertiary);
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  padding: 0.45rem 0.9rem;
+  font-size: clamp(0.9rem, 1.4vw, 1.25rem);
+  color: var(--color-text-primary);
+}
+.bp-detail-tag .bp-card-cost { color: var(--color-text-dim); font-size: 0.85em; margin-left: 0.4em; }
+.bp-detail-badges { display: flex; gap: 0.8vw; margin-bottom: 1.4vh; flex-wrap: wrap; }
+.bp-detail-badge {
+  background: var(--color-blue-dim); color: var(--color-accent-hover);
+  border: 1px solid var(--color-accent);
+  border-radius: 8px; padding: 0.4rem 0.9rem;
+  font-family: var(--font-display); font-size: clamp(0.85rem, 1.4vw, 1.2rem);
+}
+
+/* ── Game-setup toggle rows ── */
+.bp-opt-row {
+  flex: 0 0 auto;
+  display: flex; align-items: center; gap: 1.6vw;
+  background: var(--color-bg-secondary);
+  border: 2px solid var(--color-border); border-left-width: 8px;
+  border-radius: 12px; padding: 1.4vh 2vw; cursor: pointer;
+  font-size: clamp(1.05rem, 2.2vh, 1.9rem); color: var(--color-text-primary);
+  width: 100%; text-align: left; font-family: inherit;
+}
+.bp-opt-row .bp-opt-text { flex: 1 1 auto; display: flex; flex-direction: column; gap: 0.3em; }
+.bp-opt-row .bp-opt-detected { color: var(--color-text-dim); font-size: 0.62em; }
+.bp-opt-row .bp-opt-val {
+  flex: 0 0 auto; font-family: var(--font-display);
+  min-width: 4ch; text-align: center;
+  padding: 0.3em 0.8em; border-radius: 10px;
+  border: 2px solid var(--color-border); color: var(--color-text-dim);
+}
+.bp-opt-row.on { border-left-color: var(--color-accent); }
+.bp-opt-row.on .bp-opt-val { border-color: var(--color-accent); color: var(--color-accent-hover); }
+
+/* ── Name step ── */
+.bp-name-stage {
+  flex: 1 1 auto; min-height: 0;
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2.5vh;
+}
+.bp-name-stage input {
+  font-family: var(--font-display);
+  font-size: clamp(1.4rem, 3.5vw, 2.8rem); text-align: center;
+  padding: 1.1rem 1.6rem; min-width: min(60vw, 22ch);
+  background: var(--color-bg-tertiary); color: var(--color-text-primary);
+  border: 2px solid var(--color-accent); border-radius: 14px;
+}
+.bp-name-summary {
+  color: var(--color-text-dim); text-align: center;
+  font-size: clamp(0.9rem, 1.6vw, 1.3rem); max-width: 70vw; line-height: 1.5;
+}
+
 /* ── Modal ── */
 #screen-modal { background: rgba(10,14,22,0.82); align-items: center; justify-content: center; }
 .bp-modal {
