@@ -33,28 +33,39 @@
 
     <!-- ── Leaderboard ── -->
     <section class="bp-screen" id="screen-leaderboard">
-      <div class="bp-screen-head"><h1>Leaderboard</h1><span class="bp-page" id="lb-page"></span></div>
+      <div class="bp-screen-head">
+        <div class="bp-head-left"><button type="button" class="bp-back bp-focusable" data-back="launcher">‹ Back</button><h1>Leaderboard</h1></div>
+        <span class="bp-page" id="lb-page"></span>
+      </div>
       <div class="bp-list" id="lb-list"></div>
       <div class="bp-hint">◀ ▶ / ▲ ▼ pages · Back to menu</div>
     </section>
 
     <!-- ── Live ── -->
     <section class="bp-screen" id="screen-live">
-      <div class="bp-screen-head"><h1>Live</h1><span class="bp-page" id="live-page"></span></div>
+      <div class="bp-screen-head">
+        <div class="bp-head-left"><button type="button" class="bp-back bp-focusable" data-back="launcher">‹ Back</button><h1>Live</h1></div>
+        <span class="bp-page" id="live-page"></span>
+      </div>
       <div class="bp-live-wrap" id="live-wrap"></div>
       <div class="bp-hint">◀ ▶ switch game · Back to menu</div>
     </section>
 
     <!-- ── Recent games ── -->
     <section class="bp-screen" id="screen-recent">
-      <div class="bp-screen-head"><h1>Recent Games</h1><span class="bp-page" id="recent-page"></span></div>
+      <div class="bp-screen-head">
+        <div class="bp-head-left"><button type="button" class="bp-back bp-focusable" data-back="launcher">‹ Back</button><h1>Recent Games</h1></div>
+        <span class="bp-page" id="recent-page"></span>
+      </div>
       <div class="bp-list" id="recent-list"></div>
       <div class="bp-hint">▲ ▼ pick game · ◀ ▶ pages · OK to view · Back to menu</div>
     </section>
 
     <!-- ── Play: pick build ── -->
     <section class="bp-screen" id="screen-play-build">
-      <div class="bp-screen-head"><h1>Choose a Build</h1></div>
+      <div class="bp-screen-head">
+        <div class="bp-head-left"><button type="button" class="bp-back bp-focusable" data-back="launcher">‹ Back</button><h1>Choose a Build</h1></div>
+      </div>
       <div class="bp-carousel" data-bp-carousel>
         <div class="bp-carousel-track" id="pb-track"></div>
       </div>
@@ -63,7 +74,10 @@
 
     <!-- ── Play: pick players ── -->
     <section class="bp-screen" id="screen-play-players">
-      <div class="bp-screen-head"><h1>Who's Playing?</h1><span class="bp-page" id="pp-count"></span></div>
+      <div class="bp-screen-head">
+        <div class="bp-head-left"><button type="button" class="bp-back bp-focusable" data-back="play-build">‹ Back</button><h1>Who's Playing?</h1></div>
+        <span class="bp-page" id="pp-count"></span>
+      </div>
       <div class="bp-grid" id="pp-grid"></div>
       <div class="bp-add-row" id="pp-add-row" style="display:none;">
         <input type="text" id="pp-new-name" maxlength="50" placeholder="New player name…">
@@ -84,9 +98,10 @@
       </div>
       <div class="bp-score-rows" id="ps-rows"></div>
       <div class="bp-actions">
+        <button type="button" class="bp-btn bp-btn-cancel bp-focusable" id="ps-cancel">Cancel Game</button>
         <button type="button" class="bp-btn bp-btn-go bp-focusable" id="ps-end">End Game</button>
       </div>
-      <div class="bp-hint">◀ ▶ pick player · ▲ ▼ adjust / move · Back</div>
+      <div class="bp-hint">◀ ▶ pick player · ▲ ▼ adjust · Cancel discards · End saves</div>
     </section>
 
     <!-- ── Play: result (winner + animated chart) ── -->

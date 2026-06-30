@@ -74,6 +74,7 @@ router.get('/leaderboard', async (req, res, next) => {
         p.id,
         p.name,
         p.color,
+        pp.bio,
         pp.avatar_card,
         pp.avatar_zoom,
         pp.avatar_x,

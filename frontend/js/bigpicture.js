@@ -5,6 +5,8 @@ const $ = (id) => document.getElementById(id);
 const escapeHtml = (s) => String(s ?? '').replace(/[&<>"']/g, c =>
   ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const initial = (name) => (name || '?').trim()[0].toUpperCase();
+// DB timestamps are UTC but lack a 'Z'; parse as UTC so the client renders local time.
+const parseDbDate = (ts) => ts ? new Date(ts.includes('T') ? ts : ts.replace(' ', 'T') + 'Z') : null;
 
 // Player avatar — card-art crop (shared with the rest of the site via avatarCrop),
 // falling back to a colored initial. Accepts leaderboard/player/game-player shapes.
@@ -106,10 +108,12 @@ function renderLbPage() {
   list.innerHTML = lbPages[lbIdx].map((p, i) => {
     const color = p.color || '#4db8ff';
     const rank = start + i + 1;
+    const bio = p.bio
+      ? `<span class="bp-bio">${escapeHtml(p.bio)}</span>` : '';
     return `<div class="bp-row" style="border-left-color:${color}">
       <span class="bp-rank">${rank}</span>
       ${avatarHtml(p)}
-      <span class="bp-name">${escapeHtml(p.name)}</span>
+      <span class="bp-name-wrap"><span class="bp-name">${escapeHtml(p.name)}</span>${bio}</span>
       <span class="bp-stat">${p.total_wins}<span class="bp-stat-label">wins</span></span>
       <span class="bp-stat">${p.total_games}<span class="bp-stat-label">games</span></span>
       <span class="bp-stat-main">${p.avg_league_points}<span class="bp-stat-label">avg LP</span></span>
@@ -188,7 +192,8 @@ function renderRecentPage() {
     const players = [...(g.players || [])].sort((a, b) => (a.placement || 99) - (b.placement || 99));
     const winner = players[0];
     const color = winner?.player_color || '#a08850';
-    const date = g.ended_at ? new Date(g.ended_at).toLocaleDateString([], { month: 'short', day: 'numeric' }) : '';
+    const d = parseDbDate(g.ended_at);
+    const date = d ? d.toLocaleDateString([], { month: 'short', day: 'numeric' }) : '';
     const roster = players.map(p => `${escapeHtml(p.player_name)} ${p.final_score}`).join('  ·  ');
     return `<button class="bp-row bp-focusable" data-gid="${g.id}" style="border-left-color:${color}">
       <span class="bp-rank">★</span>
@@ -202,7 +207,7 @@ function renderRecentPage() {
   list.querySelectorAll('.bp-row').forEach(btn =>
     btn.addEventListener('click', () => openGameDetail(Number(btn.dataset.gid))));
   $('recent-page').textContent = recentPages.length > 1 ? `Page ${recentIdx + 1} / ${recentPages.length}` : '';
-  BP.refreshFocus();
+  BP.refreshFocus(list.querySelector('.bp-row') || undefined);
 }
 
 // Recent game → replay the end-of-game winner banner + animated score chart.
@@ -256,7 +261,7 @@ async function showPlayBuild() {
     play.buildId = btn.dataset.build ? Number(btn.dataset.build) : null;
     BP.showScreen('play-players');
   }));
-  BP.refreshFocus();   // onShow is async; re-grab focusables now that tiles exist
+  BP.refreshFocus(track.querySelector('.bp-tile') || undefined);   // onShow is async; re-grab focusables now that tiles exist
 }
 
 async function showPlayPlayers() {
@@ -269,7 +274,7 @@ async function showPlayPlayers() {
   try { players = await playersAPI.getAll(); } catch (e) { players = []; }
   play.players = players;
   renderPlayerGrid();
-  BP.refreshFocus();   // onShow is async; re-grab focusables now that tiles exist
+  BP.refreshFocus(grid.querySelector('.bp-player-tile') || undefined);   // onShow is async; re-grab focusables now that tiles exist
 }
 
 function renderPlayerGrid() {
@@ -333,6 +338,7 @@ function showPlayScore() {
   $('ps-rows').querySelectorAll('.bp-step').forEach(btn =>
     btn.addEventListener('click', () => adjustScore(Number(btn.dataset.pid), Number(btn.dataset.d))));
   $('ps-end').onclick = confirmEnd;
+  $('ps-cancel').onclick = confirmCancel;
 
   const started = Date.parse((play.game.started_at || '').replace(' ', 'T') + 'Z') || Date.now();
   own(setInterval(() => {
@@ -384,6 +390,30 @@ function confirmEnd() {
     ],
     back: () => BP.showScreen('play-score'),
   });
+}
+
+function confirmCancel() {
+  showModal({
+    title: 'Cancel the game?',
+    bodyHtml: 'The game is discarded — no scores saved, no league points awarded.',
+    actions: [
+      { label: 'Cancel Game', go: true, onSelect: doCancel },
+      { label: 'Keep Playing', onSelect: () => BP.showScreen('play-score') },
+    ],
+    back: () => BP.showScreen('play-score'),
+  });
+}
+
+async function doCancel() {
+  Object.values(play.scoreDebounce).forEach(t => clearTimeout(t));
+  play.scoreDebounce = {};
+  try {
+    await gamesAPI.cancel(play.game.id);
+    closeStream();
+    BP.showScreen('launcher');
+  } catch (e) {
+    showInfo('Could not cancel game', e.message || 'Please try again.');
+  }
 }
 
 async function doEnd() {
@@ -470,13 +500,17 @@ BP.registerScreen('play-players', {
 });
 BP.registerScreen('play-score', {
   onShow: showPlayScore,
-  onBack: confirmEnd,
+  onBack: () => {},   // no back out of a live game; use Cancel or End
 });
 BP.registerScreen('result', {
   onShow: () => { clearScreenTimers(); showResult(); },
   onBack: () => BP.showScreen('launcher'),
 });
 BP.registerScreen('modal', { onShow: () => {}, onBack: () => modalBack() });
+
+// Clickable back buttons (for remotes whose hardware Back key doesn't reach the app).
+document.querySelectorAll('.bp-back').forEach(btn =>
+  btn.addEventListener('click', () => BP.showScreen(btn.dataset.back)));
 
 // Player-pick add-new wiring
 $('pp-add-btn').addEventListener('click', () => {
