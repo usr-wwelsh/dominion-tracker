@@ -488,6 +488,10 @@ function showBuildsMenu() {
 // ── Browse builds ──
 let bvPages = [[]], bvIdx = 0, bvBuilds = [];
 
+// Naming convention: '*' prefix = book build, '?' or anything else = custom
+function buildKind(b) { return (b.nickname || '').trim().startsWith('*') ? 'book' : 'custom'; }
+function buildHue(b) { return buildKind(b) === 'book' ? HUE.gold : HUE.blue; }
+
 function buildExpansionsOf(b) {
   const set = new Set();
   (b.cards || []).forEach(c => { const e = CARD_EXPANSION_MAP[c]; if (e) set.add(e); });
@@ -513,8 +517,8 @@ function renderBvPage() {
   list.innerHTML = bvPages[bvIdx].map(b => {
     const games = parseInt(b.games_played) || 0;
     const avg = parseFloat(b.avg_score_per_game) || 0;
-    return `<button class="bp-row bp-focusable" data-bid="${b.id}" style="border-left-color:${HUE.violet}">
-      <span class="bp-rank">⚒</span>
+    return `<button class="bp-row bp-focusable" data-bid="${b.id}" style="border-left-color:${buildHue(b)}">
+      <span class="bp-rank" style="color:${buildHue(b)}">⚒</span>
       <span class="bp-name-wrap"><span class="bp-name">${escapeHtml(b.nickname)}</span>
         <span class="bp-bio">${escapeHtml(buildExpansionsOf(b) || '—')}</span></span>
       <span class="bp-stat">${games}<span class="bp-stat-label">games</span></span>
@@ -555,10 +559,12 @@ function showBuildDetail() {
   const b = bvDetail;
   if (!b) { BP.showScreen('builds-view'); return; }
   $('bd-title').textContent = b.nickname;
+  $('bd-title').style.color = buildHue(b);
   const games = parseInt(b.games_played) || 0;
   const avg = parseFloat(b.avg_score_per_game) || 0;
   $('bd-meta').textContent = `${games} games · ${avg.toFixed(1)} avg`;
   const badges = [];
+  badges.push(buildKind(b) === 'book' ? 'Book Build' : 'Custom Build');
   if (b.use_platinum_colony) badges.push('Platinum / Colony');
   if (b.use_shelters) badges.push('Shelters');
   const badgeHtml = badges.length ? `<div class="bp-detail-badges">${badges.map(x => `<span class="bp-detail-badge">${escapeHtml(x)}</span>`).join('')}</div>` : '';
