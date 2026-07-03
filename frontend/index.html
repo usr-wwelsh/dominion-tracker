@@ -148,6 +148,7 @@
     .champion-row .champion-name a { color: var(--color-accent-hover); }
     .champion-row .champion-stats { font-size: 0.9rem; color: var(--color-text-secondary); }
     .champion-row .champion-crown { color: var(--color-accent); font-size: 2.4rem; }
+    .champion-row .champion-bio { font-size: 0.85rem; color: var(--color-text-dim); max-width: 52ch; line-height: 1.4; margin-top: var(--spacing-xs); }
     .spotlight-actions {
       display: flex;
       flex-direction: column;
@@ -462,11 +463,15 @@
           const avatar = leader.avatar_card
             ? `<a class="card-art-avatar champion-avatar ${crop.cls}" href="profile.html?id=${leader.id}" style="border-color:${color}; ${crop.style}"><img src="dominion-cards-used-small/${leader.avatar_card}" alt=""></a>`
             : `<div class="champion-crown">${crownSvg}</div>`;
+          const bio = leader.bio
+            ? `<div class="champion-bio">${escapeHtml(leader.bio)}</div>`
+            : '';
           document.getElementById('spotlight-champion').innerHTML = `
             ${avatar}
             <div>
               <div class="champion-name"><a href="profile.html?id=${leader.id}">${leader.name}</a></div>
               <div class="champion-stats">${leader.avg_league_points} avg LP &middot; ${leader.total_wins} wins &middot; ${leader.total_games} games</div>
+              ${bio}
             </div>`;
 
           const stats = [
@@ -510,6 +515,12 @@
       }, { confirmLabel: 'Save', pendingLabel: 'Saving...' });
     });
   });
+
+  function escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+  }
   </script>
 </body>
 </html>
