@@ -42,14 +42,20 @@ function paginate(items, containerEl, minRowPx) {
 // ─────────────────────────────────────────────────────────────
 // Launcher
 // ─────────────────────────────────────────────────────────────
-const HUE = { gold: '#d4b05a', green: '#5fbf6a', blue: '#4e8fc0', crimson: '#c0494a', violet: '#9b7bd0' };
+const HUE = { gold: '#d4b05a', green: '#5fbf6a', blue: '#4e8fc0', crimson: '#c0494a', violet: '#9b7bd0', steel: '#8a94a6' };
 const LAUNCH_TILES = [
   { icon: '♛', label: 'Leaderboard', sub: 'Season standings',     screen: 'leaderboard', hue: 'gold' },
   { icon: '◉', label: 'Live',        sub: 'Games in progress',    screen: 'live',        hue: 'green' },
   { icon: '↻', label: 'Recent',      sub: 'Past games & charts',  screen: 'recent',      hue: 'blue' },
   { icon: '⚒', label: 'Builds',      sub: 'Browse & make builds', screen: 'builds-menu', hue: 'violet' },
   { icon: '▶', label: 'Play',        sub: 'Start a new game',     screen: 'play-build',  hue: 'crimson' },
+  { icon: '⏻', label: 'Exit',        sub: 'Back to main site',    screen: 'exit',        hue: 'steel' },
 ];
+
+function exitBigPicture() {
+  if (document.fullscreenElement) document.exitFullscreen().catch(() => {});
+  window.location.href = 'index.html';
+}
 
 function buildLauncher() {
   const track = $('bp-launcher-track');
@@ -62,14 +68,15 @@ function buildLauncher() {
        </span>
      </button>`).join('');
   track.querySelectorAll('.bp-tile').forEach(btn =>
-    btn.addEventListener('click', () => BP.showScreen(btn.dataset.screen)));
+    btn.addEventListener('click', () => btn.dataset.screen === 'exit' ? exitBigPicture() : BP.showScreen(btn.dataset.screen)));
   // Reactive ambient backdrop + parallax: emblem layers drift by distance from
   // the focused tile, so the carousel reads as layered depth as it settles.
   // Tile rotation is a constant rest angle (CSS); focus straightens it to 0.
   track.addEventListener('bp:focus', (e) => {
     const tile = e.target.closest && e.target.closest('.bp-tile');
     if (!tile) return;
-    $('bp-ambient').style.setProperty('--amb', HUE[tile.dataset.hue]);
+    $('bp-ambient').querySelectorAll('.bp-ambient-layer').forEach(l =>
+      l.classList.toggle('active', l.dataset.hue === tile.dataset.hue));
     const tiles = [...track.children];
     const fi = tiles.indexOf(tile);
     tiles.forEach((t, i) => {
