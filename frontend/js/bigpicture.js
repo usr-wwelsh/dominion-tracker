@@ -5,6 +5,9 @@ const $ = (id) => document.getElementById(id);
 const escapeHtml = (s) => String(s ?? '').replace(/[&<>"']/g, c =>
   ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const initial = (name) => (name || '?').trim()[0].toUpperCase();
+// Join winner names for display, handling ties ("Alice", "Alice & Bob", "Alice, Bob & Carl").
+const joinNames = (names) => names.length <= 1 ? (names[0] || '') :
+  names.slice(0, -1).join(', ') + ' & ' + names[names.length - 1];
 // DB timestamps are UTC but lack a 'Z'; parse as UTC so the client renders local time.
 const parseDbDate = (ts) => ts ? new Date(ts.includes('T') ? ts : ts.replace(' ', 'T') + 'Z') : null;
 
@@ -198,15 +201,16 @@ function renderRecentPage() {
   const list = $('recent-list');
   list.innerHTML = recentPages[recentIdx].map(g => {
     const players = [...(g.players || [])].sort((a, b) => (a.placement || 99) - (b.placement || 99));
-    const winner = players[0];
-    const color = winner?.player_color || '#a08850';
+    const winners = players.filter(p => p.placement === 1);
+    const tied = winners.length > 1;
+    const color = !tied && winners[0]?.player_color || '#a08850';
     const d = parseDbDate(g.ended_at);
     const date = d ? d.toLocaleDateString([], { month: 'short', day: 'numeric' }) : '';
     const roster = players.map(p => `${escapeHtml(p.player_name)} ${p.final_score}`).join('  ·  ');
     return `<button class="bp-row bp-focusable" data-gid="${g.id}" style="border-left-color:${color}">
       <span class="bp-rank">★</span>
-      ${winner ? avatarHtml(winner) : ''}
-      <span class="bp-name"><strong>${escapeHtml(winner?.player_name || '—')}</strong>
+      ${winners.map(w => avatarHtml(w)).join('')}
+      <span class="bp-name"><strong>${escapeHtml(joinNames(winners.map(w => w.player_name)) || '—')}</strong>
         <span style="color:var(--color-text-dim);font-size:0.7em"> &nbsp; ${roster}</span></span>
       <span class="bp-stat">${escapeHtml(g.build_nickname || '')}</span>
       <span class="bp-stat">${date}</span>
@@ -232,12 +236,15 @@ async function showGameDetail() {
   const g = detailGame;
   if (!g) { BP.showScreen('recent'); return; }
   const players = [...(g.players || [])].sort((a, b) => (a.placement || 99) - (b.placement || 99));
-  const winner = players[0];
-  const color = winner?.player_color || '#4db8ff';
+  const winners = players.filter(p => p.placement === 1);
+  const tied = winners.length > 1;
+  const color = !tied && winners[0]?.player_color || '#a08850';
   const banner = $('bp-detail-winner');
-  banner.textContent = winner ? `${winner.player_name} wins!` : 'Game';
+  banner.textContent = winners.length
+    ? `${joinNames(winners.map(w => w.player_name))} ${tied ? 'tie!' : 'wins!'}`
+    : 'Game';
   banner.style.color = color;
-  $('bp-detail-sub').textContent = winner ? `${winner.final_score} points` : '';
+  $('bp-detail-sub').textContent = winners.length ? `${winners[0].final_score} points` : '';
 
   $('bp-detail-back').onclick = () => BP.showScreen('recent');
 
@@ -441,8 +448,9 @@ async function doEnd() {
     await gamesAPI.end(play.game.id);
     const history = await gamesAPI.getScoreHistory(play.game.id).catch(() => []);
     closeStream();
-    const winner = [...play.players].sort((a, b) => b.score - a.score)[0];
-    play.result = { winner, history };
+    const maxScore = Math.max(...play.players.map(p => p.score));
+    const winners = play.players.filter(p => p.score === maxScore);
+    play.result = { winners, history };
     BP.showScreen('result');
   } catch (e) {
     showInfo('Could not end game', e.message || 'Please try again.');
@@ -451,13 +459,14 @@ async function doEnd() {
 
 // End-of-game: winner banner + the animated score-progression chart, plus confetti.
 function showResult() {
-  const { winner, history } = play.result || {};
-  if (!winner) { BP.showScreen('launcher'); return; }
-  const color = winner.color || '#4db8ff';
+  const { winners, history } = play.result || {};
+  if (!winners || !winners.length) { BP.showScreen('launcher'); return; }
+  const tied = winners.length > 1;
+  const color = !tied && winners[0].color || '#a08850';
   const banner = $('bp-result-winner');
-  banner.textContent = `${winner.name} wins!`;
+  banner.textContent = `${joinNames(winners.map(w => w.name))} ${tied ? 'tie!' : 'wins!'}`;
   banner.style.color = color;
-  $('bp-result-sub').textContent = `${winner.score} points`;
+  $('bp-result-sub').textContent = `${winners[0].score} points`;
   $('bp-result-done').onclick = () => BP.showScreen('launcher');
   // Canvas is now visible (screen is active), so offsetWidth/Height are measured.
   requestAnimationFrame(() => drawScoreChart($('bp-result-chart'), history));
