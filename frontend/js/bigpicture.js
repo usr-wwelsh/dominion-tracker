@@ -258,7 +258,7 @@ async function showGameDetail() {
 // ─────────────────────────────────────────────────────────────
 // Play — build → players → scoring
 // ─────────────────────────────────────────────────────────────
-const play = { buildId: null, selected: [], players: [], game: null, scoreDebounce: {}, stream: null };
+const play = { buildId: null, selected: [], players: [], game: null, scoreDebounce: {}, stream: null, initialScores: {}, firstBloodShown: false };
 
 async function showPlayBuild() {
   clearScreenTimers();
@@ -340,6 +340,9 @@ async function startPlay() {
     play.players = play.players
       .filter(p => play.selected.includes(p.id))
       .map(p => ({ ...p, score: startScores[p.id] ?? 3 }));
+    play.initialScores = {};
+    play.players.forEach(p => { play.initialScores[p.id] = p.score; });
+    play.firstBloodShown = false;
     BP.showScreen('play-score');
   } catch (e) {
     showInfo('Could not start', e.message || 'Please try again.');
@@ -377,11 +380,32 @@ function setVal(pid, score) {
   if (row) row.textContent = score;
 }
 
+// First blood — the first player to score above the starting baseline this game.
+let firstBloodTimer = null;
+function maybeFirstBlood(p) {
+  if (play.firstBloodShown) return;
+  const base = play.initialScores[p.id];
+  if (base === undefined || p.score <= base) return;
+  play.firstBloodShown = true;
+  const el = $('bp-first-blood');
+  $('bp-first-blood-sub').textContent = `${p.name} draws first blood`;
+  el.classList.remove('show');
+  void el.offsetWidth;   // restart the CSS animation
+  el.classList.add('show');
+  clearTimeout(firstBloodTimer);
+  firstBloodTimer = setTimeout(() => el.classList.remove('show'), 6500);
+}
+function hideFirstBlood() {
+  clearTimeout(firstBloodTimer);
+  $('bp-first-blood').classList.remove('show');
+}
+
 function adjustScore(pid, delta) {
   const p = play.players.find(x => x.id === pid);
   if (!p) return;
   p.score += delta;
   setVal(pid, p.score);
+  maybeFirstBlood(p);
   if (play.scoreDebounce[pid]) clearTimeout(play.scoreDebounce[pid]);
   play.scoreDebounce[pid] = setTimeout(async () => {
     delete play.scoreDebounce[pid];
@@ -397,7 +421,7 @@ function connectStream() {
     const { player_id, score } = JSON.parse(e.data);
     if (play.scoreDebounce[player_id]) return;       // our newer local edit wins
     const p = play.players.find(x => x.id === player_id);
-    if (p && p.score !== score) { p.score = score; setVal(player_id, score); }
+    if (p && p.score !== score) { p.score = score; setVal(player_id, score); maybeFirstBlood(p); }
   });
   play.stream.addEventListener('ended', () => { closeStream(); BP.showScreen('launcher'); });
   play.stream.onerror = () => {};
@@ -431,6 +455,7 @@ function confirmCancel() {
 async function doCancel() {
   Object.values(play.scoreDebounce).forEach(t => clearTimeout(t));
   play.scoreDebounce = {};
+  hideFirstBlood();
   try {
     await gamesAPI.cancel(play.game.id);
     closeStream();
@@ -443,6 +468,7 @@ async function doCancel() {
 async function doEnd() {
   Object.values(play.scoreDebounce).forEach(t => clearTimeout(t));
   play.scoreDebounce = {};
+  hideFirstBlood();
   try {
     for (const p of play.players) await gamesAPI.updateScore(play.game.id, p.id, p.score, play.game.edit_token);
     await gamesAPI.end(play.game.id);
