@@ -14,6 +14,10 @@ body.bp-body { cursor: default; }
   flex-direction: column;
   padding: 4vh 4vw;
   box-sizing: border-box;
+  /* Contains layout/paint invalidation to the active screen, so re-rendering
+     a list (builds paging) or moving carousel focus doesn't force the browser
+     to repaint the whole viewport — including the noise/vignette overlays. */
+  contain: layout paint;
 }
 .bp-screen.active { display: flex; }
 

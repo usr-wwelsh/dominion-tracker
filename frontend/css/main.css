@@ -110,7 +110,11 @@ body {
   to   { opacity: 1; }
 }
 
-/* Noise grain overlay */
+/* Noise grain overlay. will-change forces its own compositor layer so the
+   SVG feTurbulence filter is rasterized once and cheaply re-blended after
+   that — without it, weak TV GPUs re-run the filter on every repaint of
+   anything beneath this full-viewport, z-index:9999 overlay (e.g. every
+   carousel tile transition or list re-render). Same for the vignette below. */
 body::before {
   content: '';
   position: fixed;
@@ -122,6 +126,7 @@ body::before {
   pointer-events: none;
   z-index: 9999;
   opacity: 0.5;
+  will-change: transform;
 }
 
 /* Vignette effect */
@@ -135,6 +140,7 @@ body::after {
   background: radial-gradient(ellipse at center, transparent 40%, rgba(0, 0, 0, 0.55) 100%);
   pointer-events: none;
   z-index: 9998;
+  will-change: transform;
 }
 
 /* Typography */
