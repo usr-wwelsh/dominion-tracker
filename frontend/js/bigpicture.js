@@ -549,8 +549,8 @@ function buildExpansionsOf(b) {
   const set = new Set();
   (b.cards || []).forEach(c => { const e = CARD_EXPANSION_MAP[c]; if (e) set.add(e); });
   const exps = EXPANSION_ORDER.filter(e => set.has(e)).map(e => EXPANSION_DISPLAY[e]).join(' · ');
-  const typeTag = b.build_type && b.build_type !== 'custom' ? BUILD_TYPE_LABEL[b.build_type] : null;
-  return typeTag ? [typeTag, exps].filter(Boolean).join(' · ') : exps;
+  const typeTag = BUILD_TYPE_LABEL[b.build_type] || 'Custom Build';
+  return [typeTag, exps].filter(Boolean).join(' · ');
 }
 
 async function showBuildsView() {

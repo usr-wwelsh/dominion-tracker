@@ -197,7 +197,7 @@ function createBuildItem(build) {
   const gamesPlayed = parseInt(build.games_played) || 0;
   const avgScore = parseFloat(build.avg_score_per_game) || 0;
 
-  const buildTypeLabel = build.build_type === 'suggested' ? 'Suggested' : build.build_type === 'experimental' ? 'Experimental' : null;
+  const buildTypeLabel = build.build_type === 'suggested' ? 'Suggested' : build.build_type === 'experimental' ? 'Experimental' : 'Custom';
 
   div.innerHTML = `
     <div class="build-header">
