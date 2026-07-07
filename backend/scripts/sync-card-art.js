@@ -38,13 +38,14 @@ const fallingList = filenames.slice().sort((a, b) => a.localeCompare(b));
 const fallingArrayLiteral = fallingList.map(f => `    ${JSON.stringify(f)}`).join(',\n');
 
 const falling = fs.readFileSync(FALLING_CARDS_JS, 'utf8');
-const updated = falling.replace(
-  /const CARDS = \[[\s\S]*?\];/,
-  `const CARDS = [\n${fallingArrayLiteral},\n  ];`
-);
-if (updated === falling) {
+const cardsArrayPattern = /const CARDS = \[[\s\S]*?\];/;
+if (!cardsArrayPattern.test(falling)) {
   throw new Error('Could not find CARDS array in falling-cards.js to replace');
 }
+const updated = falling.replace(
+  cardsArrayPattern,
+  `const CARDS = [\n${fallingArrayLiteral},\n  ];`
+);
 fs.writeFileSync(FALLING_CARDS_JS, updated);
 
 console.log(`Synced ${cardImages.length} card images into cards.js and falling-cards.js`);
