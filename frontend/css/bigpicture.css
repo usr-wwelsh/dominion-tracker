@@ -96,7 +96,6 @@ body.bp-body { cursor: default; }
   display: flex; align-items: center; gap: 2.4vw;
   transform-style: preserve-3d;   /* tiles keep their 3D rotation in this space */
   transition: transform 0.32s cubic-bezier(.22,.61,.36,1);
-  will-change: transform;
   padding: 0 50vw; /* lets first/last tile center */
 }
 .bp-tile {
@@ -121,7 +120,6 @@ body.bp-body { cursor: default; }
   --ry: -58deg;                    /* all tiles face the same way (left) at rest */
   transform: rotateY(var(--ry)) scale(0.84);
   backface-visibility: hidden;
-  will-change: transform, opacity;
   /* springy overshoot on focus for a tactile "pop". Dimming is opacity, not
      filter: saturate/brightness — filters force a full bitmap repaint of the
      tile on every frame of the 3D transform, which is where TV-class GPUs fall
