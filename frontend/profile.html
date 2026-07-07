@@ -52,7 +52,22 @@
     }
     .edit-profile-form { display: none; }
     .edit-profile-form.open { display: block; }
-    .color-swatches { display: flex; flex-wrap: wrap; gap: 8px; margin-top: var(--spacing-sm); }
+    /* PLAYER_COLORS has 30 entries — a fixed column count (divisor of 30) keeps
+       every row equal-length instead of flex-wrap breaking wherever it runs out
+       of container width. Fewer columns (more, shorter rows) on narrow screens. */
+    .color-swatches {
+      display: grid;
+      grid-template-columns: repeat(15, 28px);
+      gap: 8px;
+      justify-content: start;
+      margin-top: var(--spacing-sm);
+    }
+    @media (max-width: 900px) {
+      .color-swatches { grid-template-columns: repeat(10, 28px); }
+    }
+    @media (max-width: 400px) {
+      .color-swatches { grid-template-columns: repeat(6, 28px); }
+    }
     .color-swatch {
       width: 28px; height: 28px;
       border-radius: 50%;
@@ -104,38 +119,58 @@
     .crop-controls input[type=range] { flex: 1; }
     /* Flat solid player-color background: suppress the global vignette + grain. */
     body.solid-bg::after, body.solid-bg::before { display: none; }
-    .card-picker { position: relative; max-width: 360px; }
-    .card-picker-toggle {
-      display: flex; align-items: center; gap: var(--spacing-sm);
-      width: 100%;
-      background: var(--color-bg-tertiary);
-      border: 1px solid var(--color-border);
-      border-radius: var(--border-radius-md);
-      color: var(--color-text-primary);
-      padding: var(--spacing-xs) var(--spacing-sm);
-      cursor: pointer;
-      font-size: 0.9rem;
-      text-align: left;
+    /* Edit Profile layout: avatar controls in a fixed side column, bio/color/save
+       filling the rest. Collapses to a single stacked column on narrow screens. */
+    .edit-profile-layout {
+      display: grid;
+      grid-template-columns: 160px 1fr;
+      gap: var(--spacing-xl);
+      align-items: start;
     }
-    .card-picker-toggle img { width: 32px; height: 51px; border-radius: 3px; object-fit: cover; }
-    .card-picker-toggle .caret { margin-left: auto; color: var(--color-text-dim); }
-    .card-picker-panel {
-      display: none;
-      position: absolute; z-index: 50; top: calc(100% + 4px); left: 0;
-      width: min(420px, calc(100vw - 2 * var(--spacing-md)));
-      background: var(--color-bg-secondary);
-      border: 1px solid var(--color-border);
-      border-radius: var(--border-radius-md);
-      padding: var(--spacing-sm);
-      box-shadow: 0 8px 24px rgba(0,0,0,0.5);
+    .edit-profile-avatar-col {
+      display: flex; flex-direction: column; align-items: stretch; gap: var(--spacing-sm);
     }
-    .card-picker.open .card-picker-panel { display: block; }
-    .card-picker-search { width: 100%; margin-bottom: var(--spacing-sm); }
+    .avatar-preview-frame {
+      width: 120px; height: 120px; margin: 0 auto;
+      display: flex; align-items: center; justify-content: center;
+    }
+    .avatar-preview-frame img { display: none; }
+    .avatar-preview-frame.has-avatar img { display: block; }
+    .avatar-preview-frame .avatar-preview-empty {
+      color: var(--color-text-dim); font-size: 0.75rem; text-align: center; padding: var(--spacing-xs);
+    }
+    .avatar-preview-frame.has-avatar .avatar-preview-empty { display: none; }
+    @media (max-width: 640px) {
+      .edit-profile-layout { grid-template-columns: 1fr; }
+      .edit-profile-avatar-col { flex-direction: row; flex-wrap: wrap; align-items: center; justify-content: center; }
+      .avatar-preview-frame { margin: 0; }
+      .edit-profile-avatar-col .btn { flex: 1; }
+    }
+    /* Avatar picker modal: centered dialog on desktop, full-screen sheet on mobile
+       (see the max-width:640px override below) so the 287-card grid always has
+       room to breathe instead of scrolling inside a cramped popover. Scales with
+       the viewport (not a fixed max-width) so wide desktop screens show many more
+       cards per row instead of leaving space unused. */
+    .modal-box-avatar-picker {
+      width: min(94vw, 1400px);
+      max-width: none;
+      max-height: 85vh;
+      display: flex; flex-direction: column;
+    }
+    .card-picker-search { width: 100%; margin-bottom: var(--spacing-sm); flex-shrink: 0; }
     .card-picker-grid {
       display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(72px, 1fr));
+      grid-template-columns: repeat(auto-fill, minmax(84px, 1fr));
       gap: var(--spacing-sm);
-      max-height: 320px; overflow-y: auto;
+      overflow-y: auto;
+      min-height: 0;
+    }
+    @media (max-width: 640px) {
+      .modal-box-avatar-picker {
+        width: 100%; height: 100%; max-height: 100%;
+        border-radius: 0; margin: 0;
+      }
+      .card-picker-grid { grid-template-columns: repeat(auto-fill, minmax(72px, 1fr)); }
     }
     .card-picker-option {
       cursor: pointer; text-align: center;
@@ -232,21 +267,28 @@
           <p style="color:var(--color-text-secondary);font-size:0.9rem;margin-bottom:var(--spacing-md);">
             Profile edits are open — anyone can customize. Avatar and background use Dominion card art.
           </p>
-          <div class="form-group">
-            <label for="bio-input">Bio (max 500 chars)</label>
-            <textarea id="bio-input" rows="3" maxlength="500" style="resize:vertical;"></textarea>
+          <div class="edit-profile-layout">
+            <div class="edit-profile-avatar-col">
+              <div id="avatar-preview-frame" class="avatar-preview-frame card-art-avatar">
+                <img id="avatar-preview-img" src="" alt="">
+                <span class="avatar-preview-empty">&mdash; none &mdash;</span>
+              </div>
+              <button type="button" id="avatar-picker-btn" class="btn">Change avatar</button>
+              <button type="button" id="open-crop-btn" class="btn" disabled>Adjust crop</button>
+            </div>
+            <div class="edit-profile-main-col">
+              <div class="form-group">
+                <label for="bio-input">Bio (max 500 chars)</label>
+                <textarea id="bio-input" rows="3" maxlength="500" style="resize:vertical;"></textarea>
+              </div>
+              <div class="form-group">
+                <label>Player Color <span style="color:var(--color-text-dim);font-weight:normal;">(your color across the whole app)</span></label>
+                <div class="color-swatches" id="accent-swatches"></div>
+              </div>
+              <button id="save-profile-btn" class="btn btn-primary">Save Profile</button>
+              <span id="profile-save-msg" style="margin-left:var(--spacing-md);color:var(--color-success);"></span>
+            </div>
           </div>
-          <div class="form-group">
-            <label>Player Color <span style="color:var(--color-text-dim);font-weight:normal;">(your color across the whole app)</span></label>
-            <div class="color-swatches" id="accent-swatches"></div>
-          </div>
-          <div class="form-group">
-            <label>Avatar Card</label>
-            <div class="card-picker" id="avatar-picker"></div>
-            <button type="button" id="open-crop-btn" class="btn" style="margin-top:var(--spacing-sm);">Adjust crop</button>
-          </div>
-          <button id="save-profile-btn" class="btn btn-primary">Save Profile</button>
-          <span id="profile-save-msg" style="margin-left:var(--spacing-md);color:var(--color-success);"></span>
         </div>
       </div>
     </div>
@@ -260,6 +302,19 @@
         <button type="button" class="modal-close" id="ach-modal-close" aria-label="Close">&times;</button>
       </div>
       <div class="achievement-grid" id="ach-modal-grid"></div>
+    </div>
+  </div>
+
+  <!-- Avatar picker modal: centered dialog on desktop, full-screen sheet on mobile
+       (.modal-box-avatar-picker media query in the <style> block above). -->
+  <div class="modal-overlay" id="avatar-picker-modal" style="display:none;">
+    <div class="modal-box modal-box-avatar-picker">
+      <div class="modal-header">
+        <h3 style="margin:0;">Choose Avatar Card</h3>
+        <button type="button" class="modal-close" id="avatar-picker-close" aria-label="Close">&times;</button>
+      </div>
+      <input type="text" id="avatar-picker-search" class="card-picker-search" placeholder="Search cards…">
+      <div class="card-picker-grid" id="avatar-picker-grid"></div>
     </div>
   </div>
 
@@ -467,10 +522,11 @@
       };
       let cropActive = profile?.avatar_zoom != null;
 
-      const avatarPicker = createCardPicker(document.getElementById('avatar-picker'), cards, profile?.avatar_card || '', () => {
+      const avatarPicker = initAvatarPicker(cards, profile?.avatar_card || '', playerColor, avatarCrop(profile), () => {
         // A new card needs fresh framing; drop any crop until re-adjusted.
         cropState = { zoom: 1, x: 50, y: 50 };
         cropActive = false;
+        avatarPicker.updatePreviewCrop({ cls: '', style: '' });
       });
 
       // Avatar crop modal — preview uses the same object-position + zoom as the
@@ -488,7 +544,6 @@
       const closeCrop = () => { cropModal.style.display = 'none'; };
 
       document.getElementById('open-crop-btn').addEventListener('click', () => {
-        if (!avatarPicker.value) { alert('Choose an avatar card first.'); return; }
         cropImg.src = CARDS_PATH + avatarPicker.value;
         cropZoom.value = cropState.zoom;
         renderCropPreview();
@@ -502,7 +557,14 @@
         cropZoom.value = 1;
         renderCropPreview();
       });
-      document.getElementById('crop-apply').addEventListener('click', () => { cropActive = true; closeCrop(); });
+      document.getElementById('crop-apply').addEventListener('click', () => {
+        cropActive = true;
+        avatarPicker.updatePreviewCrop({
+          cls: 'cropped',
+          style: `--av-x:${cropState.x}%;--av-y:${cropState.y}%;--av-zoom:${cropState.zoom};`,
+        });
+        closeCrop();
+      });
 
       // Drag to pan. The preview uses the true CSS, so imperfect drag scaling
       // only affects feel, never the saved result.
@@ -562,31 +624,37 @@
     }
   });
 
-  // Dropdown replacement for card selection: toggle button shows the current
-  // card's thumbnail; the panel is a searchable grid of card art previews.
-  function createCardPicker(container, cards, initialValue, onChange) {
+  // Avatar picker: a "Change avatar" button opens a screen-adaptive modal (full-
+  // screen sheet on mobile, centered dialog on desktop — see .modal-box-avatar-picker)
+  // containing a searchable grid of card art. Selecting a card updates the live
+  // preview frame next to the button.
+  function initAvatarPicker(cards, initialValue, borderColor, initialCrop, onChange) {
     const state = { value: initialValue || '' };
-    const labels = Object.fromEntries(cards.map(c => [c.filename, c.label]));
 
-    const toggle = document.createElement('button');
-    toggle.type = 'button';
-    toggle.className = 'card-picker-toggle';
+    const btn = document.getElementById('avatar-picker-btn');
+    const modal = document.getElementById('avatar-picker-modal');
+    const closeBtn = document.getElementById('avatar-picker-close');
+    const search = document.getElementById('avatar-picker-search');
+    const grid = document.getElementById('avatar-picker-grid');
+    const previewFrame = document.getElementById('avatar-preview-frame');
+    const previewImg = document.getElementById('avatar-preview-img');
+    const cropBtn = document.getElementById('open-crop-btn');
 
-    const panel = document.createElement('div');
-    panel.className = 'card-picker-panel';
+    previewFrame.style.borderColor = borderColor;
 
-    const search = document.createElement('input');
-    search.type = 'text';
-    search.className = 'card-picker-search';
-    search.placeholder = 'Search cards…';
+    function updatePreviewCrop(crop) {
+      previewFrame.classList.toggle('cropped', !!(crop && crop.cls));
+      previewFrame.style.removeProperty('--av-x');
+      previewFrame.style.removeProperty('--av-y');
+      previewFrame.style.removeProperty('--av-zoom');
+      if (crop && crop.cls) previewFrame.style.cssText += crop.style;
+    }
 
-    const grid = document.createElement('div');
-    grid.className = 'card-picker-grid';
-
-    function renderToggle() {
-      toggle.innerHTML = state.value
-        ? `<img src="${CARDS_PATH}${state.value}" alt=""><span>${labels[state.value] || state.value}</span><span class="caret">&#9662;</span>`
-        : `<span>&mdash; none &mdash;</span><span class="caret">&#9662;</span>`;
+    function renderPreview(crop) {
+      previewFrame.classList.toggle('has-avatar', !!state.value);
+      previewImg.src = state.value ? CARDS_PATH + state.value : '';
+      cropBtn.disabled = !state.value;
+      updatePreviewCrop(crop);
     }
 
     function renderGrid(filter) {
@@ -612,29 +680,29 @@
     function pick(filename) {
       const changed = filename !== state.value;
       state.value = filename;
-      renderToggle();
-      container.classList.remove('open');
+      renderPreview(null);
+      closeModal();
       if (changed && onChange) onChange(filename);
     }
 
-    toggle.addEventListener('click', () => {
-      const opening = !container.classList.contains('open');
-      document.querySelectorAll('.card-picker.open').forEach(p => p.classList.remove('open'));
-      if (opening) {
-        search.value = '';
-        renderGrid('');
-        container.classList.add('open');
-        search.focus();
-      }
-    });
+    function openModal() {
+      search.value = '';
+      renderGrid('');
+      modal.style.display = 'flex';
+      search.focus();
+    }
+    function closeModal() { modal.style.display = 'none'; }
+
+    btn.addEventListener('click', openModal);
+    closeBtn.addEventListener('click', closeModal);
+    modal.addEventListener('click', e => { if (e.target === modal) closeModal(); });
     search.addEventListener('input', () => renderGrid(search.value));
-    document.addEventListener('click', e => {
-      if (!container.contains(e.target)) container.classList.remove('open');
+    document.addEventListener('keydown', e => {
+      if (e.key === 'Escape' && modal.style.display !== 'none') closeModal();
     });
 
-    panel.append(search, grid);
-    container.append(toggle, panel);
-    renderToggle();
+    renderPreview(initialCrop);
+    state.updatePreviewCrop = updatePreviewCrop;
     return state;
   }
 
