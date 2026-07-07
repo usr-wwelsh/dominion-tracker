@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Dominion Tracker - Builds</title>
+  <title>Dominion Tracker - Create Build</title>
   <link rel="manifest" href="manifest.json">
   <link rel="apple-touch-icon" href="/icon-192.png">
   <meta name="theme-color" content="#181f30">
@@ -25,7 +25,13 @@
         <li><a href="scoreboard.html">Play Game</a></li>
         <li><a href="live.html">Live</a></li>
         <li><a href="players.html">Players</a></li>
-        <li><a href="builds.html" class="active">Builds</a></li>
+        <li class="nav-dropdown active">
+          <button type="button" class="nav-dropdown-toggle">Builds &#9662;</button>
+          <ul class="nav-dropdown-menu">
+            <li><a href="builds.html" class="active">Create Build</a></li>
+            <li><a href="view-builds.html">View Builds</a></li>
+          </ul>
+        </li>
         <li class="nav-dropdown">
           <button type="button" class="nav-dropdown-toggle">Standings &#9662;</button>
           <ul class="nav-dropdown-menu">
@@ -40,37 +46,13 @@
   </header>
 
   <div class="container">
-    <div class="page-banner"><h1>Card Builds</h1></div>
+    <div class="page-banner"><h1>Create Build</h1></div>
 
     <div id="error-message" class="error" style="display: none;"></div>
     <div id="success-message" class="success" style="display: none;"></div>
 
-    <!-- Existing Builds Section -->
-    <div class="card">
-      <div class="card-header">Existing Builds</div>
-
-      <div id="loading" class="loading">Loading builds</div>
-
-      <div id="builds-container" style="display: none;">
-        <div class="builds-sort-bar">
-          <span class="sort-label">Sort:</span>
-          <button class="sort-btn active" data-sort="recent">Most Recent</button>
-          <button class="sort-btn" data-sort="alpha">Alphabetical</button>
-          <div class="sort-bar-divider"></div>
-          <button class="sort-btn" id="filter-builds-btn">Expansions</button>
-        </div>
-        <div id="builds-list">
-          <!-- Populated by JavaScript -->
-        </div>
-
-        <div id="no-builds" class="text-center mt-lg" style="display: none;">
-          <p>No builds created yet. Create your first build below!</p>
-        </div>
-      </div>
-    </div>
-
     <!-- Create Build Section -->
-    <div class="card mt-xl">
+    <div class="card">
       <div class="card-header">Create New Build</div>
 
       <form id="create-build-form">
@@ -205,7 +187,7 @@
   <script src="js/api.js"></script>
   <script src="js/header.js"></script>
   <script src="js/dominion-cards.js"></script>
-  <script src="js/builds.js"></script>
+  <script src="js/create-build.js"></script>
   <script src="js/falling-cards.js"></script>
 </body>
 </html>

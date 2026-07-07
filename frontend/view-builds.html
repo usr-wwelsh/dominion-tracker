@@ -3,12 +3,12 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Dominion Tracker - Players</title>
+  <title>Dominion Tracker - View Builds</title>
   <link rel="manifest" href="manifest.json">
   <link rel="apple-touch-icon" href="/icon-192.png">
   <meta name="theme-color" content="#181f30">
   <link rel="stylesheet" href="css/main.css">
-  <link rel="stylesheet" href="css/players.css">
+  <link rel="stylesheet" href="css/builds.css">
   <script>if ('serviceWorker' in navigator) navigator.serviceWorker.register('/sw.js');</script>
 </head>
 <body>
@@ -24,12 +24,12 @@
       <ul>
         <li><a href="scoreboard.html">Play Game</a></li>
         <li><a href="live.html">Live</a></li>
-        <li><a href="players.html" class="active">Players</a></li>
-        <li class="nav-dropdown">
+        <li><a href="players.html">Players</a></li>
+        <li class="nav-dropdown active">
           <button type="button" class="nav-dropdown-toggle">Builds &#9662;</button>
           <ul class="nav-dropdown-menu">
             <li><a href="builds.html">Create Build</a></li>
-            <li><a href="view-builds.html">View Builds</a></li>
+            <li><a href="view-builds.html" class="active">View Builds</a></li>
           </ul>
         </li>
         <li class="nav-dropdown">
@@ -46,21 +46,31 @@
   </header>
 
   <div class="container">
-    <div class="page-banner"><h1>Players</h1></div>
+    <div class="page-banner"><h1>View Builds</h1></div>
 
     <div id="error-message" class="error" style="display: none;"></div>
     <div id="success-message" class="success" style="display: none;"></div>
 
+    <!-- Existing Builds Section -->
     <div class="card">
-      <div class="card-header">All Players</div>
+      <div class="card-header">Existing Builds</div>
 
-      <div id="loading" class="loading">Loading players</div>
+      <div id="loading" class="loading">Loading builds</div>
 
-      <div id="players-container" style="display: none;">
-        <div id="players-list"></div>
+      <div id="builds-container" style="display: none;">
+        <div class="builds-sort-bar">
+          <span class="sort-label">Sort:</span>
+          <button class="sort-btn active" data-sort="recent">Most Recent</button>
+          <button class="sort-btn" data-sort="alpha">Alphabetical</button>
+          <div class="sort-bar-divider"></div>
+          <button class="sort-btn" id="filter-builds-btn">Expansions</button>
+        </div>
+        <div id="builds-list">
+          <!-- Populated by JavaScript -->
+        </div>
 
-        <div id="no-players" class="text-center mt-lg" style="display: none;">
-          <p>No players found.</p>
+        <div id="no-builds" class="text-center mt-lg" style="display: none;">
+          <p>No builds created yet. <a href="builds.html">Create your first build</a>!</p>
         </div>
       </div>
     </div>
@@ -68,7 +78,8 @@
 
   <script src="js/api.js"></script>
   <script src="js/header.js"></script>
-  <script src="js/players.js"></script>
+  <script src="js/dominion-cards.js"></script>
+  <script src="js/view-builds.js"></script>
   <script src="js/falling-cards.js"></script>
 </body>
 </html>
