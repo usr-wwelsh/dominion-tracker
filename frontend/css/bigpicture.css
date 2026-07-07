@@ -14,10 +14,6 @@ body.bp-body { cursor: default; }
   flex-direction: column;
   padding: 4vh 4vw;
   box-sizing: border-box;
-  /* Contains layout/paint invalidation to the active screen, so re-rendering
-     a list (builds paging) or moving carousel focus doesn't force the browser
-     to repaint the whole viewport — including the noise/vignette overlays. */
-  contain: layout paint;
 }
 .bp-screen.active { display: flex; }
 
@@ -219,6 +215,7 @@ body.bp-body { cursor: default; }
   color: var(--tile);
   text-shadow: 0 3px 10px rgba(0,0,0,0.45);
 }
+.bp-tile-icon svg { width: 1em; height: 1em; display: block; filter: drop-shadow(0 3px 6px rgba(0,0,0,0.45)); }
 
 /* Label + reveal-on-focus description */
 .bp-tile-meta { display: flex; flex-direction: column; align-items: center; gap: 0.25rem; }

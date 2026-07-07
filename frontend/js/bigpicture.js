@@ -46,13 +46,27 @@ function paginate(items, containerEl, minRowPx) {
 // Launcher
 // ─────────────────────────────────────────────────────────────
 const HUE = { gold: '#d4b05a', green: '#5fbf6a', blue: '#4e8fc0', crimson: '#c0494a', violet: '#9b7bd0', steel: '#8a94a6' };
+
+// Inline SVG, not glyph codepoints — several tile glyphs (esp. ⏻ U+23FB) fall back
+// to tofu on Smart TV browsers whose bundled fonts lack rare Unicode blocks.
+const ICONS = {
+  crown:  '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 8l4 3 5-6 5 6 4-3-2 10H5L3 8z"/><path d="M5 21h14"/></svg>',
+  live:   '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="3.5" fill="currentColor" stroke="none"/></svg>',
+  clock:  '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l4 2"/></svg>',
+  play:   '<svg viewBox="0 0 24 24"><path d="M6 4l14 8-14 8V4z" fill="currentColor"/></svg>',
+  power:  '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M12 3v8"/><path d="M6.3 6.3a9 9 0 1 0 11.4 0"/></svg>',
+  swords: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20L15 9"/><path d="M20 4l-4 1-1 4 2 2 4-1 1-4z"/><path d="M20 20L9 9"/><path d="M4 4l4 1 1 4-2 2-4-1-1-4z"/></svg>',
+  plus:   '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>',
+  list:   '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><rect x="3.5" y="3.5" width="17" height="17" rx="2"/><path d="M7 8h10M7 12h10M7 16h7"/></svg>',
+};
+
 const LAUNCH_TILES = [
-  { icon: '♛', label: 'Leaderboard', sub: 'Season standings',     screen: 'leaderboard', hue: 'gold' },
-  { icon: '◉', label: 'Live',        sub: 'Games in progress',    screen: 'live',        hue: 'green' },
-  { icon: '↻', label: 'Recent',      sub: 'Past games & charts',  screen: 'recent',      hue: 'blue' },
-  { icon: '⚒', label: 'Builds',      sub: 'Browse & make builds', screen: 'builds-menu', hue: 'violet' },
-  { icon: '▶', label: 'Play',        sub: 'Start a new game',     screen: 'play-build',  hue: 'crimson' },
-  { icon: '⏻', label: 'Exit',        sub: 'Back to main site',    screen: 'exit',        hue: 'steel' },
+  { icon: 'crown',  label: 'Leaderboard', sub: 'Season standings',     screen: 'leaderboard', hue: 'gold' },
+  { icon: 'live',   label: 'Live',        sub: 'Games in progress',    screen: 'live',        hue: 'green' },
+  { icon: 'clock',  label: 'Recent',      sub: 'Past games & charts',  screen: 'recent',      hue: 'blue' },
+  { icon: '⚒',      label: 'Builds',      sub: 'Browse & make builds', screen: 'builds-menu', hue: 'violet' },
+  { icon: 'play',   label: 'Play',        sub: 'Start a new game',     screen: 'play-build',  hue: 'crimson' },
+  { icon: 'power',  label: 'Exit',        sub: 'Back to main site',    screen: 'exit',        hue: 'steel' },
 ];
 
 function exitBigPicture() {
@@ -64,7 +78,7 @@ function buildLauncher() {
   const track = $('bp-launcher-track');
   track.innerHTML = LAUNCH_TILES.map(t =>
     `<button class="bp-tile bp-focusable" data-screen="${t.screen}" data-hue="${t.hue}" style="--tile:${HUE[t.hue]}">
-       <span class="bp-tile-art"><span class="bp-tile-icon">${t.icon}</span></span>
+       <span class="bp-tile-art"><span class="bp-tile-icon">${ICONS[t.icon] || t.icon}</span></span>
        <span class="bp-tile-meta">
          <span class="bp-tile-label">${t.label}</span>
          <span class="bp-tile-sub">${t.sub}</span>
@@ -269,12 +283,12 @@ async function showPlayBuild() {
   const tiles = [{ id: null, nickname: 'No Build' }, ...builds];
   track.innerHTML = tiles.map(b =>
     `<button class="bp-tile bp-focusable" data-build="${b.id ?? ''}" style="--tile:${HUE.crimson}">
-       <span class="bp-tile-art"><span class="bp-tile-icon">⚔</span></span>
+       <span class="bp-tile-art"><span class="bp-tile-icon">${ICONS.swords}</span></span>
        <span class="bp-tile-meta"><span class="bp-tile-label">${escapeHtml(b.nickname)}</span></span>
      </button>`).join('') +
     // "Don't see your build? Make one" — drops into the creator, returns here when saved.
     `<button class="bp-tile bp-focusable" data-make="1" style="--tile:${HUE.violet}">
-       <span class="bp-tile-art"><span class="bp-tile-icon">＋</span></span>
+       <span class="bp-tile-art"><span class="bp-tile-icon">${ICONS.plus}</span></span>
        <span class="bp-tile-meta">
          <span class="bp-tile-label">New Build</span>
          <span class="bp-tile-sub">Don't see your build?</span>
@@ -506,15 +520,15 @@ const EXPANSION_ORDER = ['base', 'intrigue', 'seaside', 'prosperity', 'empires',
 
 // ── Builds menu (View / Make) ──
 const BUILDS_MENU = [
-  { icon: '▤', label: 'View Builds',  sub: 'Browse the library', action: 'view', hue: 'blue' },
-  { icon: '＋', label: 'Make a Build', sub: 'Create a new one',    action: 'make', hue: 'crimson' },
+  { icon: 'list', label: 'View Builds',  sub: 'Browse the library', action: 'view', hue: 'blue' },
+  { icon: 'plus', label: 'Make a Build', sub: 'Create a new one',    action: 'make', hue: 'crimson' },
 ];
 function showBuildsMenu() {
   clearScreenTimers();
   const track = $('bm-track');
   track.innerHTML = BUILDS_MENU.map(t =>
     `<button class="bp-tile bp-focusable" data-action="${t.action}" style="--tile:${HUE[t.hue]}">
-       <span class="bp-tile-art"><span class="bp-tile-icon">${t.icon}</span></span>
+       <span class="bp-tile-art"><span class="bp-tile-icon">${ICONS[t.icon] || t.icon}</span></span>
        <span class="bp-tile-meta">
          <span class="bp-tile-label">${t.label}</span>
          <span class="bp-tile-sub">${t.sub}</span>
