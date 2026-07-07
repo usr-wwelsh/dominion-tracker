@@ -8,6 +8,7 @@
   <link rel="apple-touch-icon" href="/icon-192.png">
   <meta name="theme-color" content="#181f30">
   <link rel="stylesheet" href="css/main.css">
+  <link rel="stylesheet" href="css/games.css">
   <style>
     .live-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: var(--spacing-lg); }
     .live-card {
@@ -132,6 +133,31 @@
     .token-section p { color: var(--color-text-secondary); font-size: 0.9rem; margin-bottom: var(--spacing-sm); }
     .token-input-row { display: flex; gap: var(--spacing-sm); }
     .token-input-row input { flex: 1; }
+
+    #watch-comments-list { max-height: 8.5em; overflow-y: auto; }
+    #watch-comment-send { margin-top: var(--spacing-xs); }
+
+    .comment-toast {
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%) scale(0.92);
+      width: min(92vw, 480px);
+      background: var(--color-bg-secondary);
+      border: 2px solid var(--color-border);
+      border-radius: var(--border-radius-md);
+      padding: var(--spacing-lg) var(--spacing-xl);
+      box-shadow: var(--shadow-md);
+      font-size: 1.2rem;
+      text-align: center;
+      opacity: 0;
+      transition: opacity 0.25s ease, transform 0.25s ease;
+      z-index: 2000;
+      pointer-events: none;
+    }
+    .comment-toast.show { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+    .comment-toast .comment-author { display: block; font-size: 1.05em; margin-bottom: var(--spacing-xs); }
+    .comment-toast .comment-text { font-size: 1em; }
   </style>
 </head>
 <body>
@@ -203,6 +229,16 @@
         </div>
       </div>
       <div class="score-rows" id="score-rows"></div>
+      <div class="game-comment-form">
+        <h3>Comments</h3>
+        <div class="comments-list" id="watch-comments-list"></div>
+        <select id="watch-comment-player" class="comment-player-select">
+          <option value="">Comment as...</option>
+        </select>
+        <textarea id="watch-comment-text" class="comment-textarea" rows="2" maxlength="500" placeholder="Say something..."></textarea>
+        <button class="btn btn-sm" id="watch-comment-send">Send</button>
+        <div class="comment-feedback" id="watch-comment-feedback"></div>
+      </div>
       <div class="token-section">
         <p>Have the edit token? Enter it to unlock score editing.</p>
         <div class="token-input-row">
@@ -227,6 +263,7 @@
   let editToken = null;
   let eventSource = null;
   let debounceTimers = {};
+  let commentsById = new Map();
   let scoreEntryMode = localStorage.getItem('scoreEntryMode') || 'simple';
   let cardEntryAction = 'gain';
 
@@ -247,6 +284,7 @@
     document.getElementById('back-btn').addEventListener('click', showList);
     document.getElementById('unlock-btn').addEventListener('click', tryUnlock);
     document.getElementById('end-game-btn').addEventListener('click', endCurrentGame);
+    document.getElementById('watch-comment-send').addEventListener('click', sendComment);
 
     document.querySelectorAll('#score-mode-toggle .mode-btn').forEach(btn => {
       btn.addEventListener('click', () => {
@@ -332,6 +370,7 @@
     currentGameId = gameId;
     currentPlayers = players;
     editToken = null;
+    commentsById = new Map();
 
     document.getElementById('list-view').style.display = 'none';
     document.getElementById('watch-view').style.display = 'block';
@@ -342,8 +381,88 @@
     updateModeToggle();
     document.getElementById('score-toggles').style.display = 'none';
 
+    const playerSelect = document.getElementById('watch-comment-player');
+    playerSelect.innerHTML = '<option value="">Comment as...</option>' +
+      players.map(p => `<option value="${p.player_id}">${escapeHtml(p.player_name)}</option>`).join('');
+    document.getElementById('watch-comments-list').innerHTML = '';
+    document.getElementById('watch-comment-text').value = '';
+    document.getElementById('watch-comment-feedback').textContent = '';
+
     renderScores(players);
     connectSSE(gameId);
+  }
+
+  function escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+  }
+
+  function formatCommentTime(ts) {
+    const d = new Date(ts.includes('T') ? ts : ts.replace(' ', 'T') + 'Z');
+    return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  }
+
+  function renderComments() {
+    const list = [...commentsById.values()].sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
+    const container = document.getElementById('watch-comments-list');
+    container.innerHTML = list.map(c => `
+      <div class="comment-item">
+        <span class="comment-time">${formatCommentTime(c.created_at)}</span>
+        <span class="comment-author" ${c.player_color ? `style="color:${c.player_color}"` : ''}>${escapeHtml(c.player_name)}</span>
+        <span class="comment-text">${escapeHtml(c.comment_text)}</span>
+      </div>`).join('');
+    container.scrollTop = container.scrollHeight;
+  }
+
+  function mergeComments(list) {
+    list.forEach(c => commentsById.set(c.id, c));
+    renderComments();
+  }
+
+  let commentToastEl = null;
+  let commentToastTimer = null;
+
+  function showCommentToast(c) {
+    if (!commentToastEl) {
+      commentToastEl = document.createElement('div');
+      commentToastEl.className = 'comment-toast';
+      document.body.appendChild(commentToastEl);
+    }
+    commentToastEl.innerHTML = `
+      <span class="comment-author" ${c.player_color ? `style="color:${c.player_color}"` : ''}>${escapeHtml(c.player_name)}</span>
+      <span class="comment-text">${escapeHtml(c.comment_text)}</span>`;
+    commentToastEl.classList.remove('show');
+    void commentToastEl.offsetWidth; // restart the transition
+    commentToastEl.classList.add('show');
+
+    clearTimeout(commentToastTimer);
+    commentToastTimer = setTimeout(() => {
+      commentToastEl.classList.remove('show');
+    }, 4000);
+  }
+
+  function hideCommentToast() {
+    clearTimeout(commentToastTimer);
+    if (commentToastEl) commentToastEl.classList.remove('show');
+  }
+
+  async function sendComment() {
+    const playerId = document.getElementById('watch-comment-player').value;
+    const text = document.getElementById('watch-comment-text').value.trim();
+    const feedback = document.getElementById('watch-comment-feedback');
+    feedback.className = 'comment-feedback';
+    feedback.textContent = '';
+    if (!playerId) { feedback.textContent = 'Please select a player.'; feedback.className = 'comment-feedback error-inline'; return; }
+    if (!text) { feedback.textContent = 'Please enter a comment.'; feedback.className = 'comment-feedback error-inline'; return; }
+
+    try {
+      await gamesAPI.addComment(currentGameId, { player_id: parseInt(playerId), comment_text: text });
+      document.getElementById('watch-comment-text').value = '';
+    } catch (err) {
+      feedback.textContent = err.message || 'Failed to post comment.';
+      feedback.className = 'comment-feedback error-inline';
+    }
   }
 
   function renderScores(players) {
@@ -433,6 +552,13 @@
       showList();
     });
 
+    eventSource.addEventListener('comments-init', e => mergeComments(JSON.parse(e.data)));
+    eventSource.addEventListener('comment', e => {
+      const c = JSON.parse(e.data);
+      mergeComments([c]);
+      showCommentToast(c);
+    });
+
     eventSource.onerror = () => {};
   }
 
@@ -478,6 +604,8 @@
     currentPlayers = [];
     editToken = null;
     debounceTimers = {};
+    commentsById = new Map();
+    hideCommentToast();
     document.getElementById('watch-view').style.display = 'none';
     document.getElementById('list-view').style.display = 'block';
     loadList();

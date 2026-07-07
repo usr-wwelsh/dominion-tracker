@@ -2,8 +2,17 @@
 
 let gamesData = [];
 let scoreHistoryCache = {};
+let commentsHistoryCache = {};
+let allPlayersCache = null;
 let currentOffset = 0;
 const PAGE_SIZE = 20;
+
+async function getAllPlayers() {
+  if (!allPlayersCache) {
+    allPlayersCache = await playersAPI.getAll();
+  }
+  return allPlayersCache;
+}
 
 // Initialize page
 document.addEventListener('DOMContentLoaded', () => {
@@ -303,14 +312,13 @@ function createGameCard(game) {
 }
 
 // Build the inner HTML for game details (chart first, then standings)
-function buildGameDetailsHTML(game) {
-  const playerOptions = game.players
-    ? game.players.map(p =>
-        `<option value="${p.player_id}">${escapeHtml(p.player_name)}</option>`
-      ).join('')
-    : '';
+async function buildGameDetailsHTML(game) {
+  const allPlayers = await getAllPlayers();
+  const playerOptions = allPlayers
+    .map(p => `<option value="${p.id}">${escapeHtml(p.name)}</option>`)
+    .join('');
 
-  const commentSection = game.build_id ? `
+  const commentSection = `
     <div class="game-comment-form">
       <div class="game-comments-list" id="comments-${game.id}"></div>
       <h3>Leave a Comment</h3>
@@ -324,10 +332,10 @@ function buildGameDetailsHTML(game) {
       <div class="form-group">
         <textarea id="comment-text-${game.id}" class="comment-textarea" rows="3" placeholder="Your thoughts on this build..."></textarea>
       </div>
-      <button class="btn btn-primary btn-sm js-submit-comment" data-game-id="${game.id}" data-build-id="${game.build_id}">Post Comment</button>
+      <button class="btn btn-primary btn-sm js-submit-comment" data-game-id="${game.id}">Post Comment</button>
       <div class="comment-feedback" id="comment-feedback-${game.id}"></div>
     </div>
-  ` : '';
+  `;
 
   return `
     <div class="chart-container">
@@ -386,14 +394,13 @@ async function toggleGameCard(card, game) {
     if (!card.dataset.rendered) {
       card.dataset.rendered = '1';
       const detailsEl = card.querySelector('.game-details');
-      detailsEl.innerHTML = buildGameDetailsHTML(game);
+      detailsEl.innerHTML = await buildGameDetailsHTML(game);
 
       // Wire up comment submit if present
       const submitBtn = detailsEl.querySelector('.js-submit-comment');
       if (submitBtn) {
         async function submitComment() {
           const gameId = submitBtn.dataset.gameId;
-          const buildId = submitBtn.dataset.buildId;
           const playerId = detailsEl.querySelector(`#comment-player-${gameId}`).value;
           const commentText = detailsEl.querySelector(`#comment-text-${gameId}`).value.trim();
           const feedback = detailsEl.querySelector(`#comment-feedback-${gameId}`);
@@ -403,7 +410,7 @@ async function toggleGameCard(card, game) {
 
           submitBtn.disabled = true;
           try {
-            await buildsAPI.addComment(buildId, { game_id: parseInt(gameId), player_id: parseInt(playerId), comment_text: commentText });
+            await gamesAPI.addComment(gameId, { player_id: parseInt(playerId), comment_text: commentText });
             feedback.textContent = 'Comment posted!';
             feedback.className = 'comment-feedback success-inline';
             detailsEl.querySelector(`#comment-text-${gameId}`).value = '';
@@ -444,12 +451,20 @@ async function toggleGameCard(card, game) {
         scoreHistoryCache[game.id] = [];
       }
     }
+    if (!commentsHistoryCache[game.id]) {
+      try {
+        commentsHistoryCache[game.id] = await gamesAPI.getComments(game.id);
+      } catch (error) {
+        console.error('Failed to load comments:', error);
+        commentsHistoryCache[game.id] = [];
+      }
+    }
 
     // Draw chart after a short delay to ensure container is fully expanded
     const canvas = card.querySelector(`#chart-${game.id}`);
     if (canvas) {
       setTimeout(() => {
-        drawScoreChart(canvas, scoreHistoryCache[game.id]);
+        drawScoreChart(canvas, scoreHistoryCache[game.id], commentsHistoryCache[game.id]);
       }, 50);
     }
   }
@@ -536,8 +551,7 @@ async function loadComments(game, detailsEl) {
   if (!container) return;
 
   try {
-    const allComments = await buildsAPI.getComments(game.build_id);
-    const comments = allComments.filter(c => String(c.game_id) === String(game.id));
+    const comments = await gamesAPI.getComments(game.id);
 
     if (comments.length === 0) {
       container.innerHTML = '';
@@ -549,6 +563,7 @@ async function loadComments(game, detailsEl) {
       <ul class="comments-list">
         ${comments.map(c => `
           <li class="comment-item">
+            <span class="comment-time">${formatCommentTime(c.created_at)}</span>
             <span class="comment-author" ${c.player_color ? `style="color:${c.player_color}"` : ''}>${escapeHtml(c.player_name)}</span>
             <span class="comment-text">${escapeHtml(c.comment_text)}</span>
           </li>
@@ -565,4 +580,9 @@ function escapeHtml(text) {
   const div = document.createElement('div');
   div.textContent = text;
   return div.innerHTML;
+}
+
+function formatCommentTime(ts) {
+  const d = new Date(ts.includes('T') ? ts : ts.replace(' ', 'T') + 'Z');
+  return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 }

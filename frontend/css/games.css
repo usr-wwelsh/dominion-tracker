@@ -501,6 +501,24 @@
   max-width: 100%;
 }
 
+.chart-comment-bubble {
+  max-width: 150px;
+  padding: 2px 6px;
+  background: rgba(10, 14, 22, 0.92);
+  border-left: 3px solid;
+  border-radius: 3px;
+  font-size: 0.72rem;
+  line-height: 1.3;
+  color: #e8dcc8;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  transform: translateX(-50%);
+  pointer-events: none;
+  transition: opacity 0.1s linear;
+}
+.chart-comment-bubble strong { color: #fff; }
+
 #no-games {
   color: var(--color-text-secondary);
   font-style: italic;
@@ -519,8 +537,15 @@
 
 .comments-list {
   list-style: none;
-  padding: 0;
+  padding: var(--spacing-sm) var(--spacing-md);
   margin: 0 0 var(--spacing-md) 0;
+  background: var(--color-bg-tertiary);
+  border: 1px solid var(--color-border);
+  border-radius: var(--border-radius-sm);
+}
+
+.comments-list:empty {
+  display: none;
 }
 
 .comment-item {
@@ -533,6 +558,14 @@
 
 .comment-item:last-child {
   border-bottom: none;
+}
+
+.comment-time {
+  font-size: 0.75rem;
+  color: var(--color-text-dim);
+  white-space: nowrap;
+  flex-shrink: 0;
+  font-variant-numeric: tabular-nums;
 }
 
 .comment-author {

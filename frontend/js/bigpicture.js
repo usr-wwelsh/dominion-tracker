@@ -29,6 +29,13 @@ let screenTimers = [];
 function clearScreenTimers() {
   screenTimers.forEach(t => clearInterval(t));
   screenTimers = [];
+  // The Live screen's per-game SSE connection isn't an interval — close it
+  // explicitly here too so navigating away doesn't leak the EventSource.
+  if (liveStream) {
+    liveStream.close();
+    liveStream = null;
+    liveStreamGameId = null;
+  }
 }
 function own(id) { screenTimers.push(id); }
 
@@ -157,6 +164,24 @@ function pageList(dir, getIdx, setIdx, pagesLen, render) {
 // Live
 // ─────────────────────────────────────────────────────────────
 let liveGames = [], liveIdx = 0;
+let liveStream = null, liveStreamGameId = null, liveCommentsById = new Map();
+
+// Shared read-only comment feed renderer for Big Picture screens — no posting
+// UI here (TV remote input is too clunky), just live display of comments made
+// elsewhere (e.g. from the live.html spectator page).
+function renderCommentFeedInto(elId, commentsMap) {
+  const el = document.getElementById(elId);
+  if (!el) return;
+  const list = [...commentsMap.values()].sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
+  el.innerHTML = list.map(c => `
+    <div class="bp-comment-item">
+      <span class="bp-comment-time">${parseDbDate(c.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+      <span class="bp-comment-author" ${c.player_color ? `style="color:${c.player_color}"` : ''}>${escapeHtml(c.player_name)}</span>
+      <span class="bp-comment-text">${escapeHtml(c.comment_text)}</span>
+    </div>`).join('');
+  el.scrollTop = el.scrollHeight;
+}
+function mergeLiveComments(list) { list.forEach(c => liveCommentsById.set(c.id, c)); renderCommentFeedInto('live-comments', liveCommentsById); }
 
 async function loadLive(silent) {
   let games = [];
@@ -171,23 +196,40 @@ function renderLive() {
   if (!liveGames.length) {
     wrap.innerHTML = '<div class="bp-empty">No games in progress.<br>Start one from Play.</div>';
     $('live-page').textContent = '';
+    if (liveStream) { liveStream.close(); liveStream = null; liveStreamGameId = null; }
     return;
   }
   const g = liveGames[liveIdx];
   const players = [...(g.players || [])].sort((a, b) => b.final_score - a.final_score);
   $('live-page').textContent = liveGames.length > 1 ? `Game ${liveIdx + 1} / ${liveGames.length}` : '';
+  // Same score-column + comments-column layout as the active play-score
+  // screen, minus the +/- controls — this is someone else's game, read-only.
   wrap.innerHTML =
-    `<div class="bp-live-meta">${g.build_nickname ? escapeHtml(g.build_nickname) : 'No build'}</div>
-     <div class="bp-list">` +
-    players.map((p, i) => {
+    `<div class="bp-play-columns">
+       <div class="bp-score-rows">` +
+    players.map(p => {
       const color = p.player_color || '#4db8ff';
-      return `<div class="bp-row" style="border-left-color:${color}">
-        <span class="bp-rank">${i + 1}</span>
-        ${avatarHtml(p)}
-        <span class="bp-name">${escapeHtml(p.player_name)}</span>
-        <span class="bp-stat-main">${p.final_score}</span>
+      return `<div class="bp-score-row" style="border-left-color:${color}">
+        ${avatarHtml(p, 'bp-av-score')}
+        <span class="bp-sname">${escapeHtml(p.player_name)}</span>
+        <span class="bp-sval">${p.final_score}</span>
       </div>`;
-    }).join('') + '</div>';
+    }).join('') +
+    `  </div>
+       <div class="bp-comments-feed" id="live-comments"></div>
+     </div>`;
+
+  if (g.id !== liveStreamGameId) {
+    if (liveStream) liveStream.close();
+    liveCommentsById = new Map();
+    liveStreamGameId = g.id;
+    liveStream = new EventSource(`${API_BASE_URL}/games/${g.id}/stream`);
+    liveStream.addEventListener('comments-init', e => mergeLiveComments(JSON.parse(e.data)));
+    liveStream.addEventListener('comment', e => mergeLiveComments([JSON.parse(e.data)]));
+    liveStream.onerror = () => {};
+  } else {
+    renderCommentFeedInto('live-comments', liveCommentsById);
+  }
 }
 
 // ─────────────────────────────────────────────────────────────
@@ -262,7 +304,8 @@ async function showGameDetail() {
   const canvas = $('bp-detail-chart');
   let history = [];
   try { history = await gamesAPI.getScoreHistory(g.id); } catch (e) { history = []; }
-  requestAnimationFrame(() => drawScoreChart(canvas, history));
+  const comments = await gamesAPI.getComments(g.id).catch(() => []);
+  requestAnimationFrame(() => drawScoreChart(canvas, history, comments));
   if (window.confetti) window.confetti.fire(4000);
 }
 
@@ -377,12 +420,15 @@ function showPlayScore() {
     btn.addEventListener('click', () => adjustScore(Number(btn.dataset.pid), Number(btn.dataset.d))));
   $('ps-end').onclick = confirmEnd;
   $('ps-cancel').onclick = confirmCancel;
+  $('ps-token').textContent = play.game.edit_token || '';
 
   const started = Date.parse((play.game.started_at || '').replace(' ', 'T') + 'Z') || Date.now();
   own(setInterval(() => {
     const s = Math.floor((Date.now() - started) / 1000);
     $('ps-timer').textContent = `${String(Math.floor(s / 60)).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}`;
   }, 1000));
+  psCommentsById = new Map();
+  renderCommentFeedInto('ps-comments', psCommentsById);
   connectStream();
 }
 
@@ -425,6 +471,9 @@ function adjustScore(pid, delta) {
   }, 500);
 }
 
+let psCommentsById = new Map();
+function mergePsComments(list) { list.forEach(c => psCommentsById.set(c.id, c)); renderCommentFeedInto('ps-comments', psCommentsById); }
+
 function connectStream() {
   if (play.stream) play.stream.close();
   play.stream = new EventSource(`${API_BASE_URL}/games/${play.game.id}/stream`);
@@ -435,6 +484,8 @@ function connectStream() {
     if (p && p.score !== score) { p.score = score; setVal(player_id, score); maybeFirstBlood(p); }
   });
   play.stream.addEventListener('ended', () => { closeStream(); BP.showScreen('launcher'); });
+  play.stream.addEventListener('comments-init', e => mergePsComments(JSON.parse(e.data)));
+  play.stream.addEventListener('comment', e => mergePsComments([JSON.parse(e.data)]));
   play.stream.onerror = () => {};
 }
 function closeStream() { if (play.stream) { play.stream.close(); play.stream = null; } }
@@ -484,10 +535,11 @@ async function doEnd() {
     for (const p of play.players) await gamesAPI.updateScore(play.game.id, p.id, p.score, play.game.edit_token);
     await gamesAPI.end(play.game.id);
     const history = await gamesAPI.getScoreHistory(play.game.id).catch(() => []);
+    const comments = await gamesAPI.getComments(play.game.id).catch(() => []);
     closeStream();
     const maxScore = Math.max(...play.players.map(p => p.score));
     const winners = play.players.filter(p => p.score === maxScore);
-    play.result = { winners, history };
+    play.result = { winners, history, comments };
     BP.showScreen('result');
   } catch (e) {
     showInfo('Could not end game', e.message || 'Please try again.');
@@ -496,7 +548,7 @@ async function doEnd() {
 
 // End-of-game: winner banner + the animated score-progression chart, plus confetti.
 function showResult() {
-  const { winners, history } = play.result || {};
+  const { winners, history, comments } = play.result || {};
   if (!winners || !winners.length) { BP.showScreen('launcher'); return; }
   const tied = winners.length > 1;
   const color = !tied && winners[0].color || '#a08850';
@@ -506,7 +558,7 @@ function showResult() {
   $('bp-result-sub').textContent = `${winners[0].score} points`;
   $('bp-result-done').onclick = () => BP.showScreen('launcher');
   // Canvas is now visible (screen is active), so offsetWidth/Height are measured.
-  requestAnimationFrame(() => drawScoreChart($('bp-result-chart'), history));
+  requestAnimationFrame(() => drawScoreChart($('bp-result-chart'), history, comments));
   if (window.confetti) window.confetti.fire(4000);
 }
 

@@ -164,6 +164,17 @@ const gamesAPI = {
   cancel: (id) => apiRequest(`/games/${id}/cancel`, {
     method: 'DELETE',
   }),
+
+  getComments: (gameId) => apiRequest(`/games/${gameId}/comments`),
+
+  addComment: (gameId, data) => apiRequest(`/games/${gameId}/comments`, {
+    method: 'POST',
+    body: JSON.stringify(data),
+  }),
+
+  deleteComment: (gameId, commentId, credentials) => apiRequest(`/games/${gameId}/comments/${commentId}`, {
+    method: 'DELETE',
+  }, credentials),
 };
 
 // Auth API

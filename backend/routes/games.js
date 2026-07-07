@@ -388,6 +388,95 @@ router.get('/:id/scores', async (req, res, next) => {
   }
 });
 
+const MAX_COMMENT_LEN = 500;
+
+// GET /api/games/:id/comments — full comment history for a game (any state)
+router.get('/:id/comments', async (req, res, next) => {
+  try {
+    const result = await query(`
+      SELECT bc.id, bc.game_id, bc.player_id, bc.build_id, bc.comment_text, bc.created_at,
+             p.name AS player_name, p.color AS player_color
+      FROM build_comments bc
+      JOIN players p ON p.id = bc.player_id
+      WHERE bc.game_id = ?
+      ORDER BY bc.created_at ASC
+    `, [req.params.id]);
+    res.json(result.rows);
+  } catch (error) {
+    next(error);
+  }
+});
+
+// POST /api/games/:id/comments — post as any participant while live, or any
+// registered player once the game has ended. No edit_token required.
+router.post('/:id/comments', async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const { player_id, comment_text } = req.body;
+
+    if (!player_id || !comment_text || comment_text.trim() === '') {
+      return res.status(400).json({ error: 'player_id and comment_text are required' });
+    }
+    const trimmed = comment_text.trim();
+    if (trimmed.length > MAX_COMMENT_LEN) {
+      return res.status(400).json({ error: `Comment must be ${MAX_COMMENT_LEN} characters or fewer` });
+    }
+
+    const gameRow = await query('SELECT id, ended_at, build_id FROM games WHERE id = ?', [id]);
+    if (gameRow.rows.length === 0) return res.status(404).json({ error: 'Game not found' });
+    const game = gameRow.rows[0];
+
+    if (game.ended_at === null) {
+      const valid = await query(
+        'SELECT 1 FROM game_players WHERE game_id = ? AND player_id = ?',
+        [id, player_id]
+      );
+      if (valid.rows.length === 0) {
+        return res.status(400).json({ error: 'Player is not part of this game' });
+      }
+    } else {
+      const valid = await query('SELECT 1 FROM players WHERE id = ?', [player_id]);
+      if (valid.rows.length === 0) {
+        return res.status(400).json({ error: 'Unknown player' });
+      }
+    }
+
+    const inserted = await query(
+      'INSERT INTO build_comments (build_id, game_id, player_id, comment_text) VALUES (?, ?, ?, ?) RETURNING *',
+      [game.build_id, id, player_id, trimmed]
+    );
+
+    const joined = await query(`
+      SELECT bc.id, bc.game_id, bc.player_id, bc.build_id, bc.comment_text, bc.created_at,
+             p.name AS player_name, p.color AS player_color
+      FROM build_comments bc JOIN players p ON p.id = bc.player_id
+      WHERE bc.id = ?
+    `, [inserted.rows[0].id]);
+
+    const commentPayload = joined.rows[0];
+    sseNotify(id, 'comment', commentPayload);
+    res.status(201).json(commentPayload);
+  } catch (error) {
+    next(error);
+  }
+});
+
+// DELETE /api/games/:gameId/comments/:commentId — admin-gated; needed because
+// comments without a build_id can't be reached via the builds-nested route.
+router.delete('/:gameId/comments/:commentId', requireAuth, async (req, res, next) => {
+  try {
+    const { gameId, commentId } = req.params;
+    const result = await query(
+      'DELETE FROM build_comments WHERE id = ? AND game_id = ? RETURNING *',
+      [commentId, gameId]
+    );
+    if (result.rows.length === 0) return res.status(404).json({ error: 'Comment not found' });
+    res.json({ message: 'Comment deleted successfully' });
+  } catch (error) {
+    next(error);
+  }
+});
+
 // GET /api/games/:id/stream — SSE live score feed
 router.get('/:id/stream', (req, res) => {
   const gameId = Number(req.params.id);
@@ -410,6 +499,18 @@ router.get('/:id/stream', (req, res) => {
     WHERE gp.game_id = ?
   `, [gameId]).then(r => {
     res.write(`event: init\ndata: ${JSON.stringify(r.rows)}\n\n`);
+  }).catch(() => {});
+
+  // Send current comment history immediately on connect (order vs. init/score
+  // events not guaranteed — client must merge by id, not append blindly).
+  query(`
+    SELECT bc.id, bc.game_id, bc.player_id, bc.build_id, bc.comment_text, bc.created_at,
+           p.name AS player_name, p.color AS player_color
+    FROM build_comments bc JOIN players p ON p.id = bc.player_id
+    WHERE bc.game_id = ?
+    ORDER BY bc.created_at ASC
+  `, [gameId]).then(r => {
+    res.write(`event: comments-init\ndata: ${JSON.stringify(r.rows)}\n\n`);
   }).catch(() => {});
 
   // Heartbeat

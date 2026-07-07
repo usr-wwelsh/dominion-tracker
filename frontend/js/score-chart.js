@@ -1,7 +1,14 @@
+function escapeChartHtml(text) {
+  const div = document.createElement('div');
+  div.textContent = text;
+  return div.innerHTML;
+}
+
 // Shared animated score-progression chart (canvas, no library).
 // Used by the Recent Games page and Big Picture Mode's end-of-game screen.
-// drawScoreChart(canvas, scoreHistory) where scoreHistory = score_snapshots rows.
-function drawScoreChart(canvas, scoreHistory) {
+// drawScoreChart(canvas, scoreHistory, comments) where scoreHistory = score_snapshots
+// rows and comments = build_comments rows (only those made during play are plotted).
+function drawScoreChart(canvas, scoreHistory, comments = []) {
   if (!scoreHistory || scoreHistory.length === 0) {
     const ctx = canvas.getContext('2d');
     ctx.fillStyle = '#b8a884';
@@ -45,9 +52,38 @@ function drawScoreChart(canvas, scoreHistory) {
   const globalLastTime = Math.max(...allTimestamps);
   const globalTimeRange = globalLastTime - globalFirstTime || 1;
 
-  const padding = { top: 30, right: 10, bottom: 45, left: 50 };
+  // Timed comment markers ("pop out" as the reveal animation sweeps past them).
+  // Only comments made during play (within the score-snapshot time range) are
+  // plotted — post-game comments fall outside [globalFirstTime, globalLastTime].
+  const commentsInRange = comments.filter(c => {
+    const t = new Date(c.created_at).getTime();
+    return t >= globalFirstTime && t <= globalLastTime;
+  });
+
+  // Reserve extra headroom above the plot for readable comment bubbles (up to
+  // two stacked rows) when there are any to show — otherwise keep the usual
+  // tight top padding.
+  const padding = { top: commentsInRange.length ? 62 : 30, right: 10, bottom: 45, left: 50 };
   const chartWidth = width - padding.left - padding.right;
   const chartHeight = height - padding.top - padding.bottom;
+
+  const commentMarkers = commentsInRange.map(c => ({
+    x: padding.left + ((new Date(c.created_at).getTime() - globalFirstTime) / globalTimeRange * chartWidth),
+    color: c.player_color || '#e8dcc8',
+    player_name: c.player_name,
+    comment_text: c.comment_text,
+  }));
+
+  // Stagger markers that land close together in time into a second row so
+  // their bubbles don't overlap (comments are already chronological/x-ascending).
+  const ROW_GAP_PX = 110;
+  const lastXByRow = [];
+  commentMarkers.forEach(m => {
+    let row = 0;
+    while (lastXByRow[row] !== undefined && (m.x - lastXByRow[row]) < ROW_GAP_PX && row < 1) row++;
+    m.row = row;
+    lastXByRow[row] = m.x;
+  });
 
   const fallbackColors = ['#e05c5c', '#4db8ff', '#6ddb6d', '#f5a623', '#c47eff', '#00e0c0'];
 
@@ -85,6 +121,28 @@ function drawScoreChart(canvas, scoreHistory) {
   }).filter(Boolean);
 
   drawChartStaticElements(ctx, width, height, padding, chartWidth, chartHeight, minScore, scoreRange, globalTimeRange);
+
+  // Comment bubbles — canvas can't render selectable/wrapping text well, so
+  // overlay small readable HTML chips positioned over the canvas. The full
+  // text is also in `title` for a native tooltip on hover (desktop bonus).
+  // Bubbles are appended to the canvas's parent, which may have other
+  // siblings above the canvas (e.g. .chart-title), so positions must account
+  // for the canvas's own offset within it, not assume top-left is (0,0).
+  const parent = canvas.parentElement;
+  if (parent) {
+    parent.querySelectorAll(':scope > .chart-comment-bubble').forEach(el => el.remove());
+  }
+  const canvasOffsetLeft = canvas.offsetLeft;
+  const canvasOffsetTop = canvas.offsetTop;
+  const commentBubbleEls = parent ? commentMarkers.map(marker => {
+    const el = document.createElement('div');
+    el.className = 'chart-comment-bubble';
+    el.title = `${marker.player_name}: ${marker.comment_text}`;
+    el.style.cssText = `position:absolute;left:${canvasOffsetLeft + marker.x}px;top:${canvasOffsetTop + 4 + marker.row * 26}px;border-left-color:${marker.color};opacity:0;`;
+    el.innerHTML = `<strong>${escapeChartHtml(marker.player_name)}:</strong> ${escapeChartHtml(marker.comment_text)}`;
+    parent.appendChild(el);
+    return { el, x: marker.x };
+  }) : [];
 
   const totalDuration = 3500;
   const startTime = performance.now();
@@ -182,6 +240,34 @@ function drawScoreChart(canvas, scoreHistory) {
         ctx.fillText(player.finalScore, lastPoint.x - 3, lastPoint.y - 5);
         ctx.globalAlpha = 1;
       }
+    });
+
+    // Timed comment markers — reuse the same fade-in-on-sweep math as the
+    // score dots above, so they "pop out" as the reveal animation passes them.
+    commentMarkers.forEach((marker, i) => {
+      const markProgress = Math.min(1, Math.max(0, (animX - marker.x) / (chartWidth * 0.02 + 1)) * 2);
+      const bubble = commentBubbleEls[i];
+      if (bubble) {
+        bubble.el.style.opacity = String(markProgress);
+        bubble.el.style.pointerEvents = markProgress > 0.5 ? 'auto' : 'none';
+      }
+      if (markProgress <= 0) return;
+
+      ctx.globalAlpha = markProgress;
+      ctx.strokeStyle = marker.color;
+      ctx.lineWidth = 1;
+      ctx.setLineDash([2, 3]);
+      ctx.beginPath();
+      ctx.moveTo(marker.x, padding.top);
+      ctx.lineTo(marker.x, height - padding.bottom);
+      ctx.stroke();
+      ctx.setLineDash([]);
+
+      ctx.fillStyle = marker.color;
+      ctx.beginPath();
+      ctx.arc(marker.x, padding.top, 5 * markProgress, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.globalAlpha = 1;
     });
 
     if (progress < 1) {

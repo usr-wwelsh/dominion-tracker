@@ -215,35 +215,6 @@ router.get('/:id/comments', async (req, res, next) => {
   }
 });
 
-router.post('/:id/comments', async (req, res, next) => {
-  try {
-    const { id } = req.params;
-    const { game_id, player_id, comment_text } = req.body;
-
-    if (!game_id || !player_id || !comment_text || comment_text.trim() === '') {
-      return res.status(400).json({ error: 'game_id, player_id, and comment_text are required' });
-    }
-
-    const valid = await query(`
-      SELECT gp.id FROM game_players gp
-      JOIN games g ON gp.game_id = g.id
-      WHERE gp.game_id = ? AND gp.player_id = ? AND g.build_id = ?
-    `, [game_id, player_id, id]);
-
-    if (valid.rows.length === 0) {
-      return res.status(400).json({ error: 'Player did not participate in this game or game does not use this build' });
-    }
-
-    const result = await query(
-      'INSERT INTO build_comments (build_id, game_id, player_id, comment_text) VALUES (?, ?, ?, ?) RETURNING *',
-      [id, game_id, player_id, comment_text.trim()]
-    );
-    res.status(201).json(result.rows[0]);
-  } catch (error) {
-    next(error);
-  }
-});
-
 router.delete('/:buildId/comments/:commentId', requireAuth, async (req, res, next) => {
   try {
     const { buildId, commentId } = req.params;
