@@ -3,6 +3,7 @@ const crypto = require('crypto');
 const router = express.Router();
 const { query, getClient } = require('../db');
 const { requireAuth } = require('../middleware/auth');
+const EDIT_TOKEN_WORDS = require('../wordlist');
 
 // Per-game SSE subscriber sets: gameId -> Set<res>
 const sseClients = new Map();
@@ -568,7 +569,7 @@ async function createGameTx(client, { build_id, player_ids }) {
   const seasonRow = await query('SELECT id FROM seasons WHERE ended_at IS NULL ORDER BY id DESC LIMIT 1');
   const seasonId = seasonRow.rows[0]?.id || null;
 
-  const editToken = crypto.randomBytes(6).toString('hex');
+  const editToken = EDIT_TOKEN_WORDS[crypto.randomInt(EDIT_TOKEN_WORDS.length)];
 
   // Shelters (Dark Ages) are worth 0 VP, so players start at 0 instead of the 3 starting Estates
   let startingScore = 3;
