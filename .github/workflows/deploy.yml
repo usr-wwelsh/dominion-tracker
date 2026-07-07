@@ -15,11 +15,33 @@ on:
       - "docker-compose.yml"
       - ".github/workflows/deploy.yml"
 
+permissions:
+  contents: write
+
 jobs:
   build:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+
+      - name: Sync card art lists
+        run: node backend/scripts/sync-card-art.js
+
+      - name: Commit regenerated card lists
+        if: github.ref == 'refs/heads/main'
+        continue-on-error: true
+        run: |
+          if ! git diff --quiet -- frontend/js/cards.js frontend/js/falling-cards.js; then
+            git config user.name "github-actions[bot]"
+            git config user.email "github-actions[bot]@users.noreply.github.com"
+            git add frontend/js/cards.js frontend/js/falling-cards.js
+            git commit -m "chore: sync card art lists [skip ci]"
+            git push
+          fi
 
       - name: Log in to Docker Hub
         uses: docker/login-action@v3
