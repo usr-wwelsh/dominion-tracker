@@ -154,15 +154,8 @@ const BP = (() => {
     move(dir);
   }
 
-  // Mouse/touch still work for desktop testing: hovering sets focus.
-  function onMouseOver(e) {
-    const el = e.target.closest && e.target.closest('.bp-focusable');
-    if (el && focusables.includes(el)) setFocus(focusables.indexOf(el));
-  }
-
   function init(startScreen) {
     document.addEventListener('keydown', onKey);
-    document.addEventListener('mouseover', onMouseOver);
     showScreen(startScreen);
   }
 
