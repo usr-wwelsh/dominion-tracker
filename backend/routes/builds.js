@@ -3,6 +3,8 @@ const router = express.Router();
 const { query } = require('../db');
 const { requireAuth } = require('../middleware/auth');
 
+const BUILD_TYPES = ['suggested', 'custom', 'experimental'];
+
 function hydrateBuild(row) {
   if (!row) return row;
   row.cards      = typeof row.cards      === 'string' ? JSON.parse(row.cards)      : (row.cards      || []);
@@ -39,7 +41,7 @@ router.get('/', async (req, res, next) => {
 
 router.post('/', async (req, res, next) => {
   try {
-    const { nickname, cards, landmarks, events, prophecies, traits, use_platinum_colony, use_shelters } = req.body;
+    const { nickname, cards, landmarks, events, prophecies, traits, use_platinum_colony, use_shelters, notes, build_type } = req.body;
 
     if (!nickname || nickname.trim() === '') {
       return res.status(400).json({ error: 'Build nickname is required' });
@@ -47,10 +49,13 @@ router.post('/', async (req, res, next) => {
     if (!cards || !Array.isArray(cards) || cards.length === 0) {
       return res.status(400).json({ error: 'Cards array is required and must not be empty' });
     }
+    if (build_type !== undefined && !BUILD_TYPES.includes(build_type)) {
+      return res.status(400).json({ error: `build_type must be one of: ${BUILD_TYPES.join(', ')}` });
+    }
 
     const result = await query(
-      `INSERT INTO builds (nickname, cards, landmarks, events, prophecies, traits, use_platinum_colony, use_shelters)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?) RETURNING *`,
+      `INSERT INTO builds (nickname, cards, landmarks, events, prophecies, traits, use_platinum_colony, use_shelters, notes, build_type)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING *`,
       [
         nickname.trim(),
         JSON.stringify(cards),
@@ -60,6 +65,8 @@ router.post('/', async (req, res, next) => {
         JSON.stringify(Array.isArray(traits) ? traits : []),
         use_platinum_colony === true ? 1 : 0,
         use_shelters === true ? 1 : 0,
+        typeof notes === 'string' ? notes.trim() : '',
+        build_type || 'custom',
       ]
     );
 
@@ -83,7 +90,7 @@ router.get('/:id', async (req, res, next) => {
 
 router.put('/:id', requireAuth, async (req, res, next) => {
   try {
-    const { nickname, cards, landmarks, events, prophecies, traits, use_platinum_colony, use_shelters } = req.body;
+    const { nickname, cards, landmarks, events, prophecies, traits, use_platinum_colony, use_shelters, notes, build_type } = req.body;
 
     if (!nickname || nickname.trim() === '') {
       return res.status(400).json({ error: 'Build nickname is required' });
@@ -91,10 +98,13 @@ router.put('/:id', requireAuth, async (req, res, next) => {
     if (!cards || !Array.isArray(cards) || cards.length === 0) {
       return res.status(400).json({ error: 'Cards array is required and must not be empty' });
     }
+    if (build_type !== undefined && !BUILD_TYPES.includes(build_type)) {
+      return res.status(400).json({ error: `build_type must be one of: ${BUILD_TYPES.join(', ')}` });
+    }
 
     const result = await query(
       `UPDATE builds SET nickname = ?, cards = ?, landmarks = ?, events = ?, prophecies = ?, traits = ?,
-       use_platinum_colony = ?, use_shelters = ? WHERE id = ? RETURNING *`,
+       use_platinum_colony = ?, use_shelters = ?, notes = COALESCE(?, notes), build_type = COALESCE(?, build_type) WHERE id = ? RETURNING *`,
       [
         nickname.trim(),
         JSON.stringify(cards),
@@ -104,8 +114,31 @@ router.put('/:id', requireAuth, async (req, res, next) => {
         JSON.stringify(Array.isArray(traits) ? traits : []),
         use_platinum_colony === true ? 1 : 0,
         use_shelters === true ? 1 : 0,
+        typeof notes === 'string' ? notes.trim() : null,
+        build_type || null,
         req.params.id,
       ]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Build not found' });
+    }
+    res.json(hydrateBuild(result.rows[0]));
+  } catch (error) {
+    next(error);
+  }
+});
+
+router.patch('/:id/notes', requireAuth, async (req, res, next) => {
+  try {
+    const { notes } = req.body;
+    if (typeof notes !== 'string') {
+      return res.status(400).json({ error: 'notes must be a string' });
+    }
+
+    const result = await query(
+      'UPDATE builds SET notes = ? WHERE id = ? RETURNING *',
+      [notes.trim(), req.params.id]
     );
 
     if (result.rows.length === 0) {
