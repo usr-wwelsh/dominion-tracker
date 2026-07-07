@@ -58,13 +58,13 @@
        default only shows before that first measurement. */
     .color-swatches {
       display: grid;
-      grid-template-columns: repeat(15, 28px);
-      gap: 8px;
-      justify-content: start;
+      grid-template-columns: repeat(15, 40px);
+      gap: 10px;
+      justify-content: center;
       margin-top: var(--spacing-sm);
     }
     .color-swatch {
-      width: 28px; height: 28px;
+      width: 40px; height: 40px;
       border-radius: 50%;
       border: 3px solid transparent;
       cursor: pointer;
@@ -721,7 +721,7 @@
   // re-invoke this once it becomes visible (see the tab-switch handler above).
   function layoutSwatches(container, count) {
     if (!container) return;
-    const size = 28, gap = 8;
+    const size = 40, gap = 10;
     const available = container.clientWidth;
     if (!available) return;
     const maxPerRow = Math.max(1, Math.floor((available + gap) / (size + gap)));
