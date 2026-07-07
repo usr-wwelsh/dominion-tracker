@@ -76,53 +76,12 @@ body.bp-body { cursor: default; }
 }
 .bp-disabled { opacity: 0.4; }
 
-/* ── Reactive ambient backdrop (launcher) ──
-   Five pre-rendered gradient layers crossfaded via opacity instead of animating
-   a live gradient color (animating --amb forced a full-viewport repaint every
-   frame on weak TV GPUs; opacity crossfades are compositor-only). */
-.bp-ambient { position: absolute; inset: 0; z-index: 0; pointer-events: none; }
-.bp-ambient-layer {
-  position: absolute; inset: 0;
-  opacity: 0;
-  transition: opacity 0.5s ease;
-}
-.bp-ambient-layer.active { opacity: 1; }
-.bp-ambient-layer[data-hue="gold"] {
-  background:
-    radial-gradient(58% 55% at 50% 36%, rgba(212,176,90,0.26), transparent 70%),
-    radial-gradient(130% 80% at 50% 122%, rgba(212,176,90,0.16), transparent 60%);
-}
-.bp-ambient-layer[data-hue="green"] {
-  background:
-    radial-gradient(58% 55% at 50% 36%, rgba(95,191,106,0.26), transparent 70%),
-    radial-gradient(130% 80% at 50% 122%, rgba(95,191,106,0.16), transparent 60%);
-}
-.bp-ambient-layer[data-hue="blue"] {
-  background:
-    radial-gradient(58% 55% at 50% 36%, rgba(78,143,192,0.26), transparent 70%),
-    radial-gradient(130% 80% at 50% 122%, rgba(78,143,192,0.16), transparent 60%);
-}
-.bp-ambient-layer[data-hue="crimson"] {
-  background:
-    radial-gradient(58% 55% at 50% 36%, rgba(192,73,74,0.26), transparent 70%),
-    radial-gradient(130% 80% at 50% 122%, rgba(192,73,74,0.16), transparent 60%);
-}
-.bp-ambient-layer[data-hue="violet"] {
-  background:
-    radial-gradient(58% 55% at 50% 36%, rgba(155,123,208,0.26), transparent 70%),
-    radial-gradient(130% 80% at 50% 122%, rgba(155,123,208,0.16), transparent 60%);
-}
-.bp-ambient-layer[data-hue="steel"] {
-  background:
-    radial-gradient(58% 55% at 50% 36%, rgba(138,148,166,0.26), transparent 70%),
-    radial-gradient(130% 80% at 50% 122%, rgba(138,148,166,0.16), transparent 60%);
-}
-/* Cinematic edge vignette + keep content above the ambient layers */
+/* Cinematic edge vignette */
 #screen-launcher::after {
   content: ''; position: absolute; inset: 0; z-index: 0; pointer-events: none;
   background: radial-gradient(125% 105% at 50% 45%, transparent 52%, rgba(0,0,0,0.5));
 }
-#screen-launcher > *:not(.bp-ambient) { position: relative; z-index: 1; }
+#screen-launcher > * { position: relative; z-index: 1; }
 
 /* ── Launcher carousel ── */
 .bp-carousel {

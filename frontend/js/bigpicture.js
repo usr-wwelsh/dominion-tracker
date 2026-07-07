@@ -55,7 +55,6 @@ const ICONS = {
   clock:  '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l4 2"/></svg>',
   play:   '<svg viewBox="0 0 24 24"><path d="M6 4l14 8-14 8V4z" fill="currentColor"/></svg>',
   power:  '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M12 3v8"/><path d="M6.3 6.3a9 9 0 1 0 11.4 0"/></svg>',
-  swords: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20L15 9"/><path d="M20 4l-4 1-1 4 2 2 4-1 1-4z"/><path d="M20 20L9 9"/><path d="M4 4l4 1 1 4-2 2-4-1-1-4z"/></svg>',
   plus:   '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>',
   list:   '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><rect x="3.5" y="3.5" width="17" height="17" rx="2"/><path d="M7 8h10M7 12h10M7 16h7"/></svg>',
 };
@@ -77,7 +76,7 @@ function exitBigPicture() {
 function buildLauncher() {
   const track = $('bp-launcher-track');
   track.innerHTML = LAUNCH_TILES.map(t =>
-    `<button class="bp-tile bp-focusable" data-screen="${t.screen}" data-hue="${t.hue}" style="--tile:${HUE[t.hue]}">
+    `<button class="bp-tile bp-focusable" data-screen="${t.screen}" style="--tile:${HUE[t.hue]}">
        <span class="bp-tile-art"><span class="bp-tile-icon">${ICONS[t.icon] || t.icon}</span></span>
        <span class="bp-tile-meta">
          <span class="bp-tile-label">${t.label}</span>
@@ -86,14 +85,12 @@ function buildLauncher() {
      </button>`).join('');
   track.querySelectorAll('.bp-tile').forEach(btn =>
     btn.addEventListener('click', () => btn.dataset.screen === 'exit' ? exitBigPicture() : BP.showScreen(btn.dataset.screen)));
-  // Reactive ambient backdrop + parallax: emblem layers drift by distance from
-  // the focused tile, so the carousel reads as layered depth as it settles.
-  // Tile rotation is a constant rest angle (CSS); focus straightens it to 0.
+  // Parallax: emblem layers drift by distance from the focused tile, so the
+  // carousel reads as layered depth as it settles. Tile rotation is a constant
+  // rest angle (CSS); focus straightens it to 0.
   track.addEventListener('bp:focus', (e) => {
     const tile = e.target.closest && e.target.closest('.bp-tile');
     if (!tile) return;
-    $('bp-ambient').querySelectorAll('.bp-ambient-layer').forEach(l =>
-      l.classList.toggle('active', l.dataset.hue === tile.dataset.hue));
     const tiles = [...track.children];
     const fi = tiles.indexOf(tile);
     tiles.forEach((t, i) => {
@@ -283,7 +280,7 @@ async function showPlayBuild() {
   const tiles = [{ id: null, nickname: 'No Build' }, ...builds];
   track.innerHTML = tiles.map(b =>
     `<button class="bp-tile bp-focusable" data-build="${b.id ?? ''}" style="--tile:${HUE.crimson}">
-       <span class="bp-tile-art"><span class="bp-tile-icon">${ICONS.swords}</span></span>
+       <span class="bp-tile-art"><span class="bp-tile-icon">⚔</span></span>
        <span class="bp-tile-meta"><span class="bp-tile-label">${escapeHtml(b.nickname)}</span></span>
      </button>`).join('') +
     // "Don't see your build? Make one" — drops into the creator, returns here when saved.

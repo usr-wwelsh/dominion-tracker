@@ -77,7 +77,25 @@ const BP = (() => {
   // penalising drift on the perpendicular axis so we stay in the same row/column.
   function move(dir) {
     if (focusIdx < 0) { setFocus(focusables.length ? 0 : -1); return; }
-    const cur = rectCenter(focusables[focusIdx]);
+    const curEl = focusables[focusIdx];
+
+    // Carousels are a single DOM-ordered row of tiles under a 3D rest transform
+    // (rotateY/scale). Some TV browser engines miscompute getBoundingClientRect
+    // on transformed elements once a few tiles have diverged from rest, which
+    // made the geometric search below snap to the wrong tile. Left/right inside
+    // a carousel doesn't need geometry — just step to the next/previous tile.
+    if (dir === 'left' || dir === 'right') {
+      const car = curEl.closest('[data-bp-carousel]');
+      if (car) {
+        const tiles = focusables.filter(el => car.contains(el));
+        const ci = tiles.indexOf(curEl);
+        const ni = ci + (dir === 'right' ? 1 : -1);
+        if (ni >= 0 && ni < tiles.length) setFocus(focusables.indexOf(tiles[ni]));
+        return;
+      }
+    }
+
+    const cur = rectCenter(curEl);
     let best = -1, bestScore = Infinity;
     focusables.forEach((el, i) => {
       if (i === focusIdx) return;
