@@ -391,6 +391,14 @@
   padding-bottom: 0;
 }
 
+.build-title-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--spacing-sm);
+  flex-wrap: wrap;
+}
+
 .build-title {
   font-size: 1.3rem;
   font-weight: 600;

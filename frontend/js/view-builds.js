@@ -216,8 +216,10 @@ function createBuildItem(build) {
   div.innerHTML = `
     <div class="build-header">
       <div class="build-header-main">
-        <div class="build-title">${escapeHtml(build.nickname)}${buildTypeLabel ? ` <span class="platinum-colony-badge">${buildTypeLabel}</span>` : ''}</div>
-        <div class="expansion-icon-row">${renderExpansionIcons(buildExpansionKeys(build), 'expansion-icon-badge')}</div>
+        <div class="build-title-row">
+          <div class="build-title">${escapeHtml(build.nickname)}${buildTypeLabel ? ` <span class="platinum-colony-badge">${buildTypeLabel}</span>` : ''}</div>
+          <div class="expansion-icon-row">${renderExpansionIcons(buildExpansionKeys(build), 'expansion-icon-badge')}</div>
+        </div>
         <div class="build-stats">
           <span>Games: ${gamesPlayed}</span>
           <span>Avg Score: ${avgScore.toFixed(2)}</span>
