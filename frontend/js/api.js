@@ -95,14 +95,14 @@ const buildsAPI = {
 
   getById: (id) => apiRequest(`/builds/${id}`),
 
-  create: (nickname, cards, landmarks = [], events = [], prophecies = [], traits = [], usePlatinumColony = false, useShelters = false) => apiRequest('/builds', {
+  create: (nickname, cards, landmarks = [], events = [], prophecies = [], traits = [], usePlatinumColony = false, useShelters = false, notes = '', buildType = 'custom') => apiRequest('/builds', {
     method: 'POST',
-    body: JSON.stringify({ nickname, cards, landmarks, events, prophecies, traits, use_platinum_colony: usePlatinumColony, use_shelters: useShelters }),
+    body: JSON.stringify({ nickname, cards, landmarks, events, prophecies, traits, use_platinum_colony: usePlatinumColony, use_shelters: useShelters, notes, build_type: buildType }),
   }),
 
-  update: (id, nickname, cards, landmarks = [], events = [], prophecies = [], traits = [], usePlatinumColony = false, useShelters = false, credentials) => apiRequest(`/builds/${id}`, {
+  update: (id, nickname, cards, landmarks = [], events = [], prophecies = [], traits = [], usePlatinumColony = false, useShelters = false, notes = '', buildType = 'custom', credentials) => apiRequest(`/builds/${id}`, {
     method: 'PUT',
-    body: JSON.stringify({ nickname, cards, landmarks, events, prophecies, traits, use_platinum_colony: usePlatinumColony, use_shelters: useShelters }),
+    body: JSON.stringify({ nickname, cards, landmarks, events, prophecies, traits, use_platinum_colony: usePlatinumColony, use_shelters: useShelters, notes, build_type: buildType }),
   }, credentials),
 
   delete: (id, credentials) => apiRequest(`/builds/${id}`, {

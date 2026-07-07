@@ -253,6 +253,9 @@ const SUPPLEMENTAL_EXPANSION_MAP = {};
   });
 });
 
+// Release-date order, filtered to the expansions this app has card data for.
+const EXPANSION_ORDER = ['base', 'intrigue', 'seaside', 'prosperity', 'hinterlands', 'dark_ages', 'empires', 'nocturne', 'plunder', 'rising_sun'];
+
 const EXPANSION_DISPLAY = {
   base: 'Base',
   intrigue: 'Intrigue',

@@ -166,14 +166,13 @@ function renderTagGroup(label, items) {
 // Render kingdom cards grouped by expansion with costs
 function renderKingdomByExpansion(cards) {
   if (!cards || cards.length === 0) return '';
-  const expansionOrder = ['base', 'intrigue', 'seaside', 'prosperity', 'empires', 'rising_sun', 'dark_ages', 'hinterlands', 'nocturne', 'plunder'];
   const groups = {};
   cards.forEach(card => {
     const exp = CARD_EXPANSION_MAP[card] || 'unknown';
     if (!groups[exp]) groups[exp] = [];
     groups[exp].push(card);
   });
-  const groupsHtml = expansionOrder
+  const groupsHtml = EXPANSION_ORDER
     .filter(exp => groups[exp] && groups[exp].length > 0)
     .map(exp => {
       const label = EXPANSION_DISPLAY[exp] || exp;
@@ -198,10 +197,12 @@ function createBuildItem(build) {
   const gamesPlayed = parseInt(build.games_played) || 0;
   const avgScore = parseFloat(build.avg_score_per_game) || 0;
 
+  const buildTypeLabel = build.build_type === 'suggested' ? 'Suggested' : build.build_type === 'experimental' ? 'Experimental' : null;
+
   div.innerHTML = `
     <div class="build-header">
       <div class="build-header-main">
-        <div class="build-title">${escapeHtml(build.nickname)}</div>
+        <div class="build-title">${escapeHtml(build.nickname)}${buildTypeLabel ? ` <span class="platinum-colony-badge">${buildTypeLabel}</span>` : ''}</div>
         <div class="build-stats">
           <span>Games: ${gamesPlayed}</span>
           <span>Avg Score: ${avgScore.toFixed(2)}</span>
@@ -216,6 +217,7 @@ function createBuildItem(build) {
       </div>
     </div>
     <div class="build-body">
+      ${build.notes ? `<div class="build-notes">${escapeHtml(build.notes)}</div>` : ''}
       <div class="build-cards">
         ${renderKingdomByExpansion(build.cards)}
         ${renderTagGroup('Landmarks', build.landmarks)}
@@ -280,6 +282,18 @@ function showEditModal(build, credentials) {
         <label for="em-nickname">Build Nickname</label>
         <input type="text" id="em-nickname">
       </div>
+      <div class="form-group">
+        <label for="em-notes">Notes</label>
+        <textarea id="em-notes" rows="3" placeholder="Strategy notes, combos to watch for, etc."></textarea>
+      </div>
+      <div class="form-group">
+        <label>Build Type</label>
+        <div class="segmented-control" id="em-build-type">
+          <button type="button" class="segmented-option" data-type="custom">Custom</button>
+          <button type="button" class="segmented-option" data-type="suggested">Suggested</button>
+          <button type="button" class="segmented-option" data-type="experimental">Experimental</button>
+        </div>
+      </div>
       <div id="em-card-count" class="card-count">0 / 10 kingdom cards selected</div>
       <div class="expansion-sections" id="em-kingdom-sections"></div>
       <div class="expansion-sections" id="em-supplemental-sections"></div>
@@ -304,8 +318,19 @@ function showEditModal(build, credentials) {
   document.body.appendChild(overlay);
 
   overlay.querySelector('#em-nickname').value = build.nickname;
+  overlay.querySelector('#em-notes').value = build.notes || '';
   overlay.querySelector('#em-platinum-colony').checked = !!build.use_platinum_colony;
   overlay.querySelector('#em-shelters').checked = !!build.use_shelters;
+
+  let editBuildType = build.build_type || 'custom';
+  const buildTypeButtons = overlay.querySelectorAll('#em-build-type .segmented-option');
+  buildTypeButtons.forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.type === editBuildType);
+    btn.addEventListener('click', () => {
+      editBuildType = btn.dataset.type;
+      buildTypeButtons.forEach(b => b.classList.toggle('active', b === btn));
+    });
+  });
 
   function getEditSet(type) {
     switch (type) {
@@ -499,6 +524,8 @@ function showEditModal(build, credentials) {
         Array.from(editTraits),
         overlay.querySelector('#em-platinum-colony').checked,
         overlay.querySelector('#em-shelters').checked,
+        overlay.querySelector('#em-notes').value.trim(),
+        editBuildType,
         credentials
       );
       close();

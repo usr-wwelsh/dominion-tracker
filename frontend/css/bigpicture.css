@@ -438,6 +438,13 @@ button.bp-row { cursor: pointer; }
   background: var(--color-bg-tertiary); color: var(--color-text-primary);
   border: 2px solid var(--color-accent); border-radius: 14px;
 }
+.bp-name-stage textarea {
+  font-family: inherit;
+  font-size: clamp(0.95rem, 1.8vw, 1.4rem);
+  padding: 0.9rem 1.2rem; width: min(60vw, 50ch); min-height: 4.5em;
+  background: var(--color-bg-tertiary); color: var(--color-text-primary);
+  border: 2px solid var(--color-border); border-radius: 14px; resize: vertical;
+}
 .bp-name-summary {
   color: var(--color-text-dim); text-align: center;
   font-size: clamp(0.9rem, 1.6vw, 1.3rem); max-width: 70vw; line-height: 1.5;

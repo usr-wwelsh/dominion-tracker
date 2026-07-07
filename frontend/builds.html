@@ -51,135 +51,83 @@
     <div id="error-message" class="error" style="display: none;"></div>
     <div id="success-message" class="success" style="display: none;"></div>
 
-    <!-- Create Build Section -->
+    <!-- Create Build Wizard -->
     <div class="card">
       <div class="card-header">Create New Build</div>
 
+      <div class="cb-stepper" id="cb-stepper">
+        <span class="cb-step-dot" data-step="expansions">1<em>Expansions</em></span>
+        <span class="cb-step-dot" data-step="cards">2<em>Cards</em></span>
+        <span class="cb-step-dot" data-step="extras">3<em>Extras</em></span>
+        <span class="cb-step-dot" data-step="name">4<em>Name</em></span>
+      </div>
+
       <form id="create-build-form">
-        <div class="form-group">
-          <label for="build-nickname">Build Nickname *</label>
-          <input
-            type="text"
-            id="build-nickname"
-            name="nickname"
-            placeholder="e.g., Village Engine, Big Money, Chapel Rush"
-            required
-          >
-        </div>
+        <!-- Step 1: Expansions -->
+        <section class="cb-panel" id="cb-panel-expansions">
+          <label>Which expansions are in play? *</label>
+          <div class="expansion-grid" id="cb-expansion-grid"></div>
+          <div class="cb-actions">
+            <span class="cb-hint" id="cb-expansions-hint"></span>
+            <button type="button" class="btn btn-primary cb-next" data-step="expansions">Next</button>
+          </div>
+        </section>
 
-        <div class="form-group">
-          <label>Kingdom Cards (choose 10) *</label>
+        <!-- Step 2: Cards -->
+        <section class="cb-panel" id="cb-panel-cards" hidden>
           <div id="card-count" class="card-count">0 / 10 kingdom cards selected</div>
-
-          <div class="expansion-sections">
-            <!-- Base Set -->
-            <div class="expansion-section">
-              <h3 class="expansion-header">Base Set</h3>
-              <div class="card-grid" id="base-cards"></div>
-            </div>
-
-            <!-- Intrigue 2e -->
-            <div class="expansion-section">
-              <h3 class="expansion-header">Intrigue <span class="edition-badge">2e</span></h3>
-              <div class="card-grid" id="intrigue-cards"></div>
-            </div>
-
-            <!-- Seaside 2e -->
-            <div class="expansion-section">
-              <h3 class="expansion-header">Seaside <span class="edition-badge">2e</span></h3>
-              <div class="card-grid" id="seaside-cards"></div>
-            </div>
-
-            <!-- Prosperity 2e -->
-            <div class="expansion-section">
-              <h3 class="expansion-header">Prosperity <span class="edition-badge">2e</span></h3>
-              <div class="card-grid" id="prosperity-cards"></div>
-            </div>
-
-            <!-- Empires 1e -->
-            <div class="expansion-section">
-              <h3 class="expansion-header">Empires <span class="edition-badge">1e</span></h3>
-              <div class="card-grid" id="empires-cards"></div>
-            </div>
-
-            <!-- Rising Sun 1e -->
-            <div class="expansion-section">
-              <h3 class="expansion-header">Rising Sun <span class="edition-badge">1e</span></h3>
-              <div class="card-grid" id="rising-sun-cards"></div>
-            </div>
-
-            <!-- Dark Ages -->
-            <div class="expansion-section">
-              <h3 class="expansion-header">Dark Ages</h3>
-              <div class="card-grid" id="dark-ages-cards"></div>
-            </div>
-
-            <!-- Hinterlands 2e -->
-            <div class="expansion-section">
-              <h3 class="expansion-header">Hinterlands <span class="edition-badge">2e</span></h3>
-              <div class="card-grid" id="hinterlands-cards"></div>
-            </div>
-
-            <!-- Nocturne -->
-            <div class="expansion-section">
-              <h3 class="expansion-header">Nocturne</h3>
-              <div class="card-grid" id="nocturne-cards"></div>
-            </div>
-
-            <!-- Plunder -->
-            <div class="expansion-section">
-              <h3 class="expansion-header">Plunder</h3>
-              <div class="card-grid" id="plunder-cards"></div>
-            </div>
+          <div class="expansion-sections" id="cb-card-sections"></div>
+          <div class="cb-actions">
+            <button type="button" class="btn cb-back" data-step="cards">Back</button>
+            <button type="button" class="btn btn-primary cb-next" data-step="cards">Next</button>
           </div>
-        </div>
+        </section>
 
-        <div class="expansion-sections">
-          <!-- Landmarks (Empires) -->
-          <div class="expansion-section collapsed">
-            <h3 class="expansion-header">Landmarks — Empires <span class="supplemental-note">(optional, no limit)</span></h3>
-            <div class="card-grid" id="empires-landmarks"></div>
+        <!-- Step 3: Extras (auto-detected from chosen expansions) -->
+        <section class="cb-panel" id="cb-panel-extras" hidden>
+          <div class="cb-options-list" id="cb-options-list"></div>
+          <div class="expansion-sections" id="cb-supplemental-sections"></div>
+          <div class="cb-actions">
+            <button type="button" class="btn cb-back" data-step="extras">Back</button>
+            <button type="button" class="btn btn-primary cb-next" data-step="extras">Next</button>
+          </div>
+        </section>
+
+        <!-- Step 4: Name & Details -->
+        <section class="cb-panel" id="cb-panel-name" hidden>
+          <div class="form-group">
+            <label for="build-nickname">Build Nickname *</label>
+            <input
+              type="text"
+              id="build-nickname"
+              name="nickname"
+              placeholder="e.g., Village Engine, Big Money, Chapel Rush"
+              required
+            >
           </div>
 
-          <!-- Events -->
-          <div class="expansion-section collapsed">
-            <h3 class="expansion-header">Events <span class="supplemental-note">(optional, no limit)</span></h3>
-            <div class="expansion-body">
-              <div class="supplemental-group-label">Empires</div>
-              <div class="card-grid" id="empires-events"></div>
-              <div class="supplemental-group-label">Rising Sun</div>
-              <div class="card-grid" id="rising-sun-events"></div>
-              <div class="supplemental-group-label">Plunder</div>
-              <div class="card-grid" id="plunder-events"></div>
+          <div class="form-group">
+            <label for="build-notes">Notes (optional)</label>
+            <textarea id="build-notes" rows="3" placeholder="Strategy notes, combos to watch for, etc."></textarea>
+          </div>
+
+          <div class="form-group">
+            <label>Build Type</label>
+            <div class="segmented-control" id="build-type-control">
+              <button type="button" class="segmented-option active" data-type="custom">Custom</button>
+              <button type="button" class="segmented-option" data-type="suggested">Suggested</button>
+              <button type="button" class="segmented-option" data-type="experimental">Experimental</button>
             </div>
           </div>
 
-          <!-- Prophecies (Rising Sun) -->
-          <div class="expansion-section collapsed">
-            <h3 class="expansion-header">Prophecies — Rising Sun <span class="supplemental-note">(optional, no limit)</span></h3>
-            <div class="card-grid" id="rising-sun-prophecies"></div>
+          <div class="cb-summary" id="cb-summary"></div>
+
+          <div class="cb-actions">
+            <button type="button" class="btn cb-back" data-step="name">Back</button>
+            <button type="submit" class="btn btn-primary">Create Build</button>
+            <button type="button" class="btn" id="clear-form">Clear Form</button>
           </div>
-
-          <!-- Traits (Plunder) -->
-          <div class="expansion-section collapsed">
-            <h3 class="expansion-header">Traits — Plunder <span class="supplemental-note">(optional, no limit)</span></h3>
-            <div class="card-grid" id="plunder-traits"></div>
-          </div>
-        </div>
-
-        <div class="form-group">
-          <label class="toggle-label">
-            <input type="checkbox" id="use-platinum-colony">
-            Use Platinum &amp; Colony
-          </label>
-          <label class="toggle-label">
-            <input type="checkbox" id="use-shelters">
-            Use Shelters (Dark Ages)
-          </label>
-        </div>
-
-        <button type="submit" class="btn btn-primary">Create Build</button>
-        <button type="button" class="btn" id="clear-form">Clear Form</button>
+        </section>
       </form>
     </div>
   </div>

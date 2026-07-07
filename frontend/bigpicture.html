@@ -209,13 +209,26 @@
       <div class="bp-hint">OK to toggle Yes / No · Back</div>
     </section>
 
-    <!-- ── Make a build: 5. name + save ── -->
+    <!-- ── Make a build: 5. build type ── -->
+    <section class="bp-screen" id="screen-build-type">
+      <div class="bp-screen-head">
+        <div class="bp-head-left"><button type="button" class="bp-back bp-focusable" data-mkback="build-type">‹ Back</button><h1>Build Type</h1></div>
+      </div>
+      <div class="bp-list" id="bt-list"></div>
+      <div class="bp-actions">
+        <button type="button" class="bp-btn bp-btn-go bp-focusable" id="bt-next">Next ›</button>
+      </div>
+      <div class="bp-hint">OK to choose · Back</div>
+    </section>
+
+    <!-- ── Make a build: 6. name + notes + save ── -->
     <section class="bp-screen" id="screen-build-name">
       <div class="bp-screen-head">
         <div class="bp-head-left"><button type="button" class="bp-back bp-focusable" data-mkback="build-name">‹ Back</button><h1>Name Your Build</h1></div>
       </div>
       <div class="bp-name-stage">
         <input type="text" id="bn-input" maxlength="60" placeholder="Build nickname…">
+        <textarea id="bn-notes" maxlength="500" placeholder="Notes (optional)…"></textarea>
         <div class="bp-name-summary" id="bn-summary"></div>
       </div>
       <div class="bp-actions">

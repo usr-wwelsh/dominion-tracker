@@ -513,7 +513,7 @@ function showResult() {
 // ─────────────────────────────────────────────────────────────
 // Builds — menu, browser, detail, and the remote-friendly creator
 // ─────────────────────────────────────────────────────────────
-const EXPANSION_ORDER = ['base', 'intrigue', 'seaside', 'prosperity', 'empires', 'rising_sun', 'dark_ages', 'hinterlands', 'nocturne', 'plunder'];
+// EXPANSION_ORDER lives in dominion-cards.js (shared with create-build.js / view-builds.js)
 
 // ── Builds menu (View / Make) ──
 const BUILDS_MENU = [
@@ -541,14 +541,16 @@ function showBuildsMenu() {
 // ── Browse builds ──
 let bvPages = [[]], bvIdx = 0, bvBuilds = [];
 
-// Naming convention: '*' prefix = book build, '?' or anything else = custom
-function buildKind(b) { return (b.nickname || '').trim().startsWith('*') ? 'book' : 'custom'; }
-function buildHue(b) { return buildKind(b) === 'book' ? HUE.gold : HUE.blue; }
+const BUILD_TYPE_HUE = { custom: HUE.blue, suggested: HUE.gold, experimental: HUE.green };
+const BUILD_TYPE_LABEL = { custom: 'Custom Build', suggested: 'Suggested Build', experimental: 'Experimental Build' };
+function buildHue(b) { return BUILD_TYPE_HUE[b.build_type] || HUE.blue; }
 
 function buildExpansionsOf(b) {
   const set = new Set();
   (b.cards || []).forEach(c => { const e = CARD_EXPANSION_MAP[c]; if (e) set.add(e); });
-  return EXPANSION_ORDER.filter(e => set.has(e)).map(e => EXPANSION_DISPLAY[e]).join(' · ');
+  const exps = EXPANSION_ORDER.filter(e => set.has(e)).map(e => EXPANSION_DISPLAY[e]).join(' · ');
+  const typeTag = b.build_type && b.build_type !== 'custom' ? BUILD_TYPE_LABEL[b.build_type] : null;
+  return typeTag ? [typeTag, exps].filter(Boolean).join(' · ') : exps;
 }
 
 async function showBuildsView() {
@@ -617,7 +619,7 @@ function showBuildDetail() {
   const avg = parseFloat(b.avg_score_per_game) || 0;
   $('bd-meta').textContent = `${games} games · ${avg.toFixed(1)} avg`;
   const badges = [];
-  badges.push(buildKind(b) === 'book' ? 'Book Build' : 'Custom Build');
+  badges.push(BUILD_TYPE_LABEL[b.build_type] || 'Custom Build');
   if (b.use_platinum_colony) badges.push('Platinum / Colony');
   if (b.use_shelters) badges.push('Shelters');
   const badgeHtml = badges.length ? `<div class="bp-detail-badges">${badges.map(x => `<span class="bp-detail-badge">${escapeHtml(x)}</span>`).join('')}</div>` : '';
@@ -639,10 +641,12 @@ function scrollDetail(dir) {
 }
 
 // ── Creator state + step sequencer (skips steps the expansions don't need) ──
-const mk = { name: '', expansions: new Set(), cards: new Set(), landmarks: new Set(), events: new Set(), prophecies: new Set(), traits: new Set(), platinumColony: false, shelters: false, touched: new Set(), returnTo: 'builds-menu' };
+const mk = { name: '', notes: '', buildType: 'custom', expansions: new Set(), cards: new Set(), landmarks: new Set(), events: new Set(), prophecies: new Set(), traits: new Set(), platinumColony: false, shelters: false, touched: new Set(), returnTo: 'builds-menu' };
 
 function startBuildCreator(returnTo) {
   mk.name = '';
+  mk.notes = '';
+  mk.buildType = 'custom';
   mk.expansions = new Set(); mk.cards = new Set();
   mk.landmarks = new Set(); mk.events = new Set(); mk.prophecies = new Set(); mk.traits = new Set();
   mk.platinumColony = false; mk.shelters = false; mk.touched = new Set();
@@ -662,6 +666,7 @@ const MK_STEPS = [
   { id: 'build-cards',        needed: () => true },
   { id: 'build-supplemental', needed: mkSupplementalNeeded },
   { id: 'build-options',      needed: () => mkOptionPrompts().length > 0 },
+  { id: 'build-type',         needed: () => true },
   { id: 'build-name',         needed: () => true },
 ];
 function mkStep(fromId, dir) {
@@ -811,7 +816,35 @@ function showMkOptions() {
   BP.refreshFocus(list.querySelector('.bp-opt-row') || undefined);
 }
 
-// Step 5: name + save
+// Step 5: build type (always shown — pure user choice, not detected)
+const BUILD_TYPES = [
+  { key: 'custom', label: 'Custom', desc: 'A build you put together yourself' },
+  { key: 'suggested', label: 'Suggested', desc: 'A recommended kingdom worth trying' },
+  { key: 'experimental', label: 'Experimental', desc: 'An untested combo you want to try out' },
+];
+function showMkBuildType() {
+  clearScreenTimers();
+  const list = $('bt-list');
+  list.innerHTML = BUILD_TYPES.map(t =>
+    `<button class="bp-opt-row bp-focusable ${mk.buildType === t.key ? 'on' : ''}" data-key="${t.key}">
+      <span class="bp-opt-text">
+        <span>${escapeHtml(t.label)}</span>
+        <span class="bp-opt-detected">${escapeHtml(t.desc)}</span>
+      </span>
+      <span class="bp-opt-val">${mk.buildType === t.key ? '✓' : ''}</span>
+    </button>`).join('');
+  list.querySelectorAll('.bp-opt-row').forEach(btn => btn.addEventListener('click', () => {
+    mk.buildType = btn.dataset.key;
+    list.querySelectorAll('.bp-opt-row').forEach(b => {
+      const on = b.dataset.key === mk.buildType;
+      b.classList.toggle('on', on);
+      b.querySelector('.bp-opt-val').textContent = on ? '✓' : '';
+    });
+  }));
+  BP.refreshFocus(list.querySelector('.bp-opt-row') || undefined);
+}
+
+// Step 6: name + notes + save
 function mkSummaryText() {
   const exps = EXPANSION_ORDER.filter(e => mk.expansions.has(e)).map(e => EXPANSION_DISPLAY[e]).join(', ');
   const extras = [];
@@ -821,6 +854,7 @@ function mkSummaryText() {
   if (mk.traits.size) extras.push(`${mk.traits.size} trait${mk.traits.size > 1 ? 's' : ''}`);
   if (mk.platinumColony) extras.push('Platinum/Colony');
   if (mk.shelters) extras.push('Shelters');
+  if (mk.buildType !== 'custom') extras.push(mk.buildType === 'suggested' ? 'Suggested' : 'Experimental');
   return `${mk.cards.size} kingdom cards · ${exps}` + (extras.length ? ` · ${extras.join(' · ')}` : '');
 }
 function showMkName() {
@@ -828,6 +862,7 @@ function showMkName() {
   $('bn-summary').textContent = mkSummaryText();
   const input = $('bn-input');
   input.value = mk.name || '';
+  $('bn-notes').value = mk.notes || '';
   setTimeout(() => input.focus(), 50);
 }
 async function saveBuild() {
@@ -838,7 +873,7 @@ async function saveBuild() {
   const platinum = mk.expansions.has('prosperity') && mk.platinumColony;
   const shelters = mk.expansions.has('dark_ages') && mk.shelters;
   try {
-    await buildsAPI.create(name, [...mk.cards], [...mk.landmarks], [...mk.events], [...mk.prophecies], [...mk.traits], platinum, shelters);
+    await buildsAPI.create(name, [...mk.cards], [...mk.landmarks], [...mk.events], [...mk.prophecies], [...mk.traits], platinum, shelters, mk.notes, mk.buildType);
     const back = mk.returnTo;
     showModal({
       title: 'Build saved!',
@@ -927,6 +962,7 @@ BP.registerScreen('build-expansions',   { onShow: showMkExpansions,   onBack: ()
 BP.registerScreen('build-cards',        { onShow: showMkCards,        onBack: () => mkBack('build-cards') });
 BP.registerScreen('build-supplemental', { onShow: showMkSupplemental, onBack: () => mkBack('build-supplemental') });
 BP.registerScreen('build-options',      { onShow: showMkOptions,      onBack: () => mkBack('build-options') });
+BP.registerScreen('build-type',         { onShow: showMkBuildType,    onBack: () => mkBack('build-type') });
 BP.registerScreen('build-name',         { onShow: showMkName,         onBack: () => mkBack('build-name') });
 
 // Clickable back buttons (for remotes whose hardware Back key doesn't reach the app).
@@ -941,9 +977,11 @@ $('be-next').addEventListener('click', () => { if (mk.expansions.size) mkNext('b
 $('bc-next').addEventListener('click', () => { if (mk.cards.size === 10) mkNext('build-cards'); });
 $('bsup-next').addEventListener('click', () => mkNext('build-supplemental'));
 $('bo-next').addEventListener('click', () => mkNext('build-options'));
+$('bt-next').addEventListener('click', () => mkNext('build-type'));
 $('bn-save').addEventListener('click', saveBuild);
 $('bn-input').addEventListener('input', e => { mk.name = e.target.value; });
 $('bn-input').addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); saveBuild(); } });
+$('bn-notes').addEventListener('input', e => { mk.notes = e.target.value; });
 
 // Player-pick add-new wiring
 $('pp-add-btn').addEventListener('click', () => {
