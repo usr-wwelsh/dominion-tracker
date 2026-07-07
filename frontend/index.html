@@ -420,6 +420,7 @@
       <div class="flourish-divider">&#9670;</div>
       <p>Made with care by <strong>Will</strong> &amp; <strong>Nate</strong>.</p>
       <p>Free and open source — <a href="https://github.com/usr-wwelsh/dominion-tracker" target="_blank" rel="noopener">host your own copy for free</a>.</p>
+      <p style="text-align:right;font-size:0.8rem;"><a href="privacy.html">Privacy Policy</a></p>
     </footer>
   </div>
 
@@ -427,6 +428,8 @@
   <script src="js/header.js"></script>
   <script src="js/falling-cards.js"></script>
   <script>
+  let verifiedAdminCreds = null; // set once the admin login modal succeeds
+
   document.addEventListener('DOMContentLoaded', async () => {
     // Load admin banner
     try {
@@ -490,29 +493,86 @@
       }
     } catch {}
 
-    // Admin panel toggle
+    // Admin flow: verify credentials once, then offer banner edit / db export
     const adminSect = document.getElementById('admin-section');
-    document.getElementById('show-admin-btn-small').addEventListener('click', () => {
-      adminSect.style.display = adminSect.style.display === 'none' ? 'block' : 'none';
-    });
     document.getElementById('show-admin-btn').addEventListener('click', () => {
       adminSect.style.display = 'none';
     });
 
-    // Load current banner into field
-    try {
-      const { banner } = await apiRequest('/banner');
-      if (banner) document.getElementById('banner-text').value = banner;
-    } catch {}
+    document.getElementById('show-admin-btn-small').addEventListener('click', () => {
+      showDeleteModal('Admin login', async (creds) => {
+        await authAPI.check(creds);
+        verifiedAdminCreds = creds;
+        showAdminPanelModal(creds);
+      }, { confirmLabel: 'Continue', pendingLabel: 'Verifying...' });
+    });
 
-    document.getElementById('save-banner-btn').addEventListener('click', () => {
+    document.getElementById('save-banner-btn').addEventListener('click', async () => {
+      const msgEl = document.getElementById('banner-save-msg');
+      const finish = () => { msgEl.textContent = 'Saved!'; setTimeout(() => { msgEl.textContent = ''; }, 3000); };
+      const text = document.getElementById('banner-text').value;
+
+      if (verifiedAdminCreds) {
+        try {
+          await apiRequest('/banner', { method: 'PUT', body: JSON.stringify({ text }) }, verifiedAdminCreds);
+          finish();
+        } catch (err) {
+          msgEl.textContent = err.message || 'Save failed';
+        }
+        return;
+      }
+
       showDeleteModal('Save site banner (admin credentials required)', async (creds) => {
-        await apiRequest('/banner', { method: 'PUT', body: JSON.stringify({ text: document.getElementById('banner-text').value }) }, creds);
-        document.getElementById('banner-save-msg').textContent = 'Saved!';
-        setTimeout(() => { document.getElementById('banner-save-msg').textContent = ''; }, 3000);
+        await apiRequest('/banner', { method: 'PUT', body: JSON.stringify({ text }) }, creds);
+        finish();
       }, { confirmLabel: 'Save', pendingLabel: 'Saving...' });
     });
   });
+
+  // Shown after admin credentials are verified: pick between editing the banner
+  // and downloading a snapshot of the live db. Reuses the delete-modal styles.
+  function showAdminPanelModal(credentials) {
+    const existing = document.getElementById('admin-panel-modal');
+    if (existing) existing.remove();
+
+    const overlay = document.createElement('div');
+    overlay.id = 'admin-panel-modal';
+    overlay.className = 'delete-modal-overlay';
+    overlay.innerHTML = `
+      <div class="delete-modal-box">
+        <div class="delete-modal-title">Admin panel</div>
+        <div class="delete-modal-error" id="ap-error"></div>
+        <div class="delete-modal-actions" style="justify-content:stretch;flex-direction:column;">
+          <button class="btn btn-primary" id="ap-banner">Change banner text</button>
+          <button class="btn" id="ap-export">Export DB</button>
+        </div>
+      </div>
+    `;
+    document.body.appendChild(overlay);
+
+    overlay.addEventListener('click', (e) => { if (e.target === overlay) overlay.remove(); });
+
+    overlay.querySelector('#ap-banner').addEventListener('click', () => {
+      overlay.remove();
+      document.getElementById('admin-section').style.display = 'block';
+    });
+
+    overlay.querySelector('#ap-export').addEventListener('click', async () => {
+      const btn = overlay.querySelector('#ap-export');
+      const errorEl = overlay.querySelector('#ap-error');
+      errorEl.textContent = '';
+      btn.disabled = true;
+      btn.textContent = 'Exporting...';
+      try {
+        await adminAPI.exportDb(credentials);
+        overlay.remove();
+      } catch (err) {
+        errorEl.textContent = err.message || 'Export failed';
+        btn.disabled = false;
+        btn.textContent = 'Export DB';
+      }
+    });
+  }
 
   function escapeHtml(text) {
     const div = document.createElement('div');

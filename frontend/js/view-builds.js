@@ -7,6 +7,8 @@ let buildsData = [];
 let currentSort = 'recent';
 let activeExpansionFilter = null; // null = no filter
 
+const BUILD_TYPE_SORT_ORDER = { custom: 0, suggested: 1, experimental: 2 };
+
 // Initialize page
 document.addEventListener('DOMContentLoaded', () => {
   setupSortButtons();
@@ -59,6 +61,12 @@ function renderBuilds() {
 
   let sorted = buildsData.slice().sort((a, b) => {
     if (currentSort === 'alpha') return a.nickname.localeCompare(b.nickname);
+    if (currentSort === 'type') {
+      const ta = BUILD_TYPE_SORT_ORDER[a.build_type] ?? 0;
+      const tb = BUILD_TYPE_SORT_ORDER[b.build_type] ?? 0;
+      if (ta !== tb) return ta - tb;
+      return a.nickname.localeCompare(b.nickname);
+    }
     // most recent: API already returns created_at DESC, preserve that order
     return 0;
   });
@@ -110,6 +118,7 @@ function showFilterModal() {
   overlay.innerHTML = `
     <div class="delete-modal-box">
       <div class="delete-modal-title">Filter by Expansions</div>
+      <button type="button" class="filter-select-none-link" id="fm-select-none">Select None</button>
       <div class="filter-expansion-list">${checkboxesHtml}</div>
       <div class="delete-modal-actions">
         <button class="btn btn-primary" id="fm-apply">Apply</button>
@@ -125,6 +134,10 @@ function showFilterModal() {
 
   overlay.querySelector('#fm-cancel').addEventListener('click', close);
   overlay.addEventListener('click', (e) => { if (e.target === overlay) close(); });
+
+  overlay.querySelector('#fm-select-none').addEventListener('click', () => {
+    overlay.querySelectorAll('.filter-expansion-list input[type="checkbox"]').forEach(el => { el.checked = false; });
+  });
 
   overlay.querySelector('#fm-clear').addEventListener('click', () => {
     activeExpansionFilter = null;
@@ -191,18 +204,22 @@ function renderKingdomByExpansion(cards) {
 // Create build item element
 function createBuildItem(build) {
   const div = document.createElement('div');
-  div.className = 'build-item collapsed';
+  const buildType = build.build_type === 'suggested' || build.build_type === 'experimental' ? build.build_type : 'custom';
+  div.className = `build-item collapsed build-type-${buildType}`;
   div.dataset.buildId = build.id;
 
   const gamesPlayed = parseInt(build.games_played) || 0;
   const avgScore = parseFloat(build.avg_score_per_game) || 0;
 
-  const buildTypeLabel = build.build_type === 'suggested' ? 'Suggested' : build.build_type === 'experimental' ? 'Experimental' : null;
+  const buildTypeLabel = build.build_type === 'suggested' ? 'Suggested' : build.build_type === 'experimental' ? 'Experimental' : 'Custom';
 
   div.innerHTML = `
     <div class="build-header">
       <div class="build-header-main">
-        <div class="build-title">${escapeHtml(build.nickname)}${buildTypeLabel ? ` <span class="platinum-colony-badge">${buildTypeLabel}</span>` : ''}</div>
+        <div class="build-title-row">
+          <div class="build-title">${escapeHtml(build.nickname)}${buildTypeLabel ? ` <span class="platinum-colony-badge">${buildTypeLabel}</span>` : ''}</div>
+          <div class="expansion-icon-row">${renderExpansionIcons(buildExpansionKeys(build), 'expansion-icon-badge')}</div>
+        </div>
         <div class="build-stats">
           <span>Games: ${gamesPlayed}</span>
           <span>Avg Score: ${avgScore.toFixed(2)}</span>

@@ -598,11 +598,7 @@ const BUILD_TYPE_LABEL = { custom: 'Custom Build', suggested: 'Suggested Build',
 function buildHue(b) { return BUILD_TYPE_HUE[b.build_type] || HUE.blue; }
 
 function buildExpansionsOf(b) {
-  const set = new Set();
-  (b.cards || []).forEach(c => { const e = CARD_EXPANSION_MAP[c]; if (e) set.add(e); });
-  const exps = EXPANSION_ORDER.filter(e => set.has(e)).map(e => EXPANSION_DISPLAY[e]).join(' · ');
-  const typeTag = b.build_type && b.build_type !== 'custom' ? BUILD_TYPE_LABEL[b.build_type] : null;
-  return typeTag ? [typeTag, exps].filter(Boolean).join(' · ') : exps;
+  return BUILD_TYPE_LABEL[b.build_type] || 'Custom Build';
 }
 
 async function showBuildsView() {
@@ -627,7 +623,10 @@ function renderBvPage() {
     return `<button class="bp-row bp-focusable" data-bid="${b.id}" style="border-left-color:${buildHue(b)}">
       <span class="bp-rank" style="color:${buildHue(b)}">⚒</span>
       <span class="bp-name-wrap"><span class="bp-name">${escapeHtml(b.nickname)}</span>
-        <span class="bp-bio">${escapeHtml(buildExpansionsOf(b) || '—')}</span></span>
+        <span class="bp-bio-row">
+          <span class="bp-bio">${escapeHtml(buildExpansionsOf(b) || '—')}</span>
+          <span class="bp-exp-icon-row">${renderExpansionIcons(buildExpansionKeys(b), 'bp-exp-icon-badge')}</span>
+        </span></span>
       <span class="bp-stat">${games}<span class="bp-stat-label">games</span></span>
       <span class="bp-stat-main">${avg.toFixed(1)}<span class="bp-stat-label">avg score</span></span>
     </button>`;
@@ -675,8 +674,9 @@ function showBuildDetail() {
   if (b.use_platinum_colony) badges.push('Platinum / Colony');
   if (b.use_shelters) badges.push('Shelters');
   const badgeHtml = badges.length ? `<div class="bp-detail-badges">${badges.map(x => `<span class="bp-detail-badge">${escapeHtml(x)}</span>`).join('')}</div>` : '';
+  const expIconsHtml = `<div class="bp-exp-icon-row bp-detail-exp-icons">${renderExpansionIcons(buildExpansionKeys(b), 'bp-exp-icon-badge')}</div>`;
   const body = $('bd-body');
-  body.innerHTML = badgeHtml + renderKingdomGroups(b.cards) +
+  body.innerHTML = badgeHtml + expIconsHtml + renderKingdomGroups(b.cards) +
     renderTagSection('Landmarks', b.landmarks) +
     renderTagSection('Events', b.events) +
     renderTagSection('Prophecies', b.prophecies) +
