@@ -122,11 +122,13 @@
       gap: var(--spacing-xl);
       align-items: start;
     }
+    /* Thumbnail + a button stack beside it, the two buttons splitting the
+       thumbnail's height evenly. Same arrangement at every screen size. */
     .edit-profile-avatar-col {
-      display: flex; flex-direction: column; align-items: stretch; gap: var(--spacing-sm);
+      display: flex; flex-direction: row; align-items: stretch; gap: var(--spacing-sm);
     }
     .avatar-preview-frame {
-      width: 120px; height: 120px; margin: 0 auto;
+      width: 120px; height: 120px; flex-shrink: 0;
       display: flex; align-items: center; justify-content: center;
     }
     .avatar-preview-frame img { display: none; }
@@ -135,11 +137,13 @@
       color: var(--color-text-dim); font-size: 0.75rem; text-align: center; padding: var(--spacing-xs);
     }
     .avatar-preview-frame.has-avatar .avatar-preview-empty { display: none; }
+    .avatar-button-stack {
+      display: flex; flex-direction: column; gap: var(--spacing-sm);
+      flex: 1; min-width: 0;
+    }
+    .avatar-button-stack .btn { flex: 1; min-width: 0; }
     @media (max-width: 640px) {
       .edit-profile-layout { grid-template-columns: minmax(0, 1fr); }
-      .edit-profile-avatar-col { flex-direction: row; flex-wrap: wrap; align-items: center; justify-content: center; }
-      .avatar-preview-frame { margin: 0; }
-      .edit-profile-avatar-col .btn { flex: 1 1 auto; min-width: 0; }
     }
     /* Avatar picker modal: centered dialog on desktop, full-screen sheet on mobile
        (see the max-width:640px override below) so the 287-card grid always has
@@ -268,8 +272,10 @@
                 <img id="avatar-preview-img" src="" alt="">
                 <span class="avatar-preview-empty">&mdash; none &mdash;</span>
               </div>
-              <button type="button" id="avatar-picker-btn" class="btn">Change avatar</button>
-              <button type="button" id="open-crop-btn" class="btn" disabled>Adjust crop</button>
+              <div class="avatar-button-stack">
+                <button type="button" id="avatar-picker-btn" class="btn">Change avatar</button>
+                <button type="button" id="open-crop-btn" class="btn" disabled>Adjust crop</button>
+              </div>
             </div>
             <div class="edit-profile-main-col">
               <div class="form-group">
@@ -719,9 +725,13 @@
     const available = container.clientWidth;
     if (!available) return;
     const maxPerRow = Math.max(1, Math.floor((available + gap) / (size + gap)));
-    const perRow = Math.min(maxPerRow, count);
-    const rows = Math.ceil(count / perRow);
-    const cols = Math.ceil(count / rows);
+    // Only a column count that evenly divides the swatch count keeps every row
+    // the same length — pick the largest divisor that still fits, so it also
+    // uses as much of the available width as it can.
+    let cols = 1;
+    for (let c = Math.min(maxPerRow, count); c >= 1; c--) {
+      if (count % c === 0) { cols = c; break; }
+    }
     container.style.gridTemplateColumns = `repeat(${cols}, ${size}px)`;
   }
 
