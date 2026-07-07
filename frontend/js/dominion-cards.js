@@ -268,3 +268,48 @@ const EXPANSION_DISPLAY = {
   nocturne: 'Nocturne',
   plunder: 'Plunder',
 };
+
+// Expansion icon filenames, in frontend/dominion-icons/. Includes expansions
+// this app doesn't support builds for yet (e.g. Alchemy, Allies) so the icon
+// set doesn't need to be revisited as support is added.
+const EXPANSION_ICON = {
+  base: 'Dominion_icon.png',
+  intrigue: 'Intrigue_icon.png',
+  seaside: 'Seaside_icon.png',
+  prosperity: 'Prosperity_icon.png',
+  empires: 'Empires_icon.png',
+  rising_sun: 'Rising_Sun_icon.png',
+  dark_ages: 'Dark_Ages_icon.png',
+  hinterlands: 'Hinterlands_icon.png',
+  nocturne: 'Nocturne_icon.png',
+  plunder: 'Plunder_icon.png',
+  alchemy: 'Alchemy_icon.png',
+  adventures: 'Adventures_icon.png',
+  allies: 'Allies_icon.png',
+  menagerie: 'Menagerie_icon.png',
+  renaissance: 'Renaissance_icon.png',
+  cornucopia_guilds: 'Cornucopia_&_Guilds_icon.png',
+};
+
+// Expansion keys (in release order) a build touches, across kingdom cards
+// and all supplemental card types.
+function buildExpansionKeys(build) {
+  const set = new Set();
+  (build.cards || []).forEach(c => { const e = CARD_EXPANSION_MAP[c]; if (e) set.add(e); });
+  [...(build.landmarks || []), ...(build.events || []), ...(build.prophecies || []), ...(build.traits || [])]
+    .forEach(c => { const e = SUPPLEMENTAL_EXPANSION_MAP[c]; if (e) set.add(e); });
+  return EXPANSION_ORDER.filter(e => set.has(e));
+}
+
+// Shared <img> markup for a row of expansion icon badges. `sizeClass` lets
+// callers scale badges per-context via CSS (e.g. TV vs. desktop).
+function renderExpansionIcons(expansionKeys, badgeClass, iconBasePath) {
+  if (!expansionKeys || expansionKeys.length === 0) return '';
+  const base = iconBasePath || 'dominion-icons';
+  return expansionKeys.map(e => {
+    const file = EXPANSION_ICON[e];
+    if (!file) return '';
+    const label = EXPANSION_DISPLAY[e] || e;
+    return `<span class="${badgeClass}" title="${label}"><img src="${base}/${encodeURIComponent(file)}" alt="${label}"></span>`;
+  }).join('');
+}
