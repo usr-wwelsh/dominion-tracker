@@ -52,21 +52,16 @@
     }
     .edit-profile-form { display: none; }
     .edit-profile-form.open { display: block; }
-    /* PLAYER_COLORS has 30 entries — a fixed column count (divisor of 30) keeps
-       every row equal-length instead of flex-wrap breaking wherever it runs out
-       of container width. Fewer columns (more, shorter rows) on narrow screens. */
+    /* Column count is computed in JS from the container's actual measured width
+       (see layoutSwatches()) so rows stay equal-length at any screen size
+       without ever forcing the row wider than the available space. This
+       default only shows before that first measurement. */
     .color-swatches {
       display: grid;
       grid-template-columns: repeat(15, 28px);
       gap: 8px;
       justify-content: start;
       margin-top: var(--spacing-sm);
-    }
-    @media (max-width: 900px) {
-      .color-swatches { grid-template-columns: repeat(10, 28px); }
-    }
-    @media (max-width: 400px) {
-      .color-swatches { grid-template-columns: repeat(6, 28px); }
     }
     .color-swatch {
       width: 28px; height: 28px;
@@ -123,7 +118,7 @@
        filling the rest. Collapses to a single stacked column on narrow screens. */
     .edit-profile-layout {
       display: grid;
-      grid-template-columns: 160px 1fr;
+      grid-template-columns: 160px minmax(0, 1fr);
       gap: var(--spacing-xl);
       align-items: start;
     }
@@ -141,10 +136,10 @@
     }
     .avatar-preview-frame.has-avatar .avatar-preview-empty { display: none; }
     @media (max-width: 640px) {
-      .edit-profile-layout { grid-template-columns: 1fr; }
+      .edit-profile-layout { grid-template-columns: minmax(0, 1fr); }
       .edit-profile-avatar-col { flex-direction: row; flex-wrap: wrap; align-items: center; justify-content: center; }
       .avatar-preview-frame { margin: 0; }
-      .edit-profile-avatar-col .btn { flex: 1; }
+      .edit-profile-avatar-col .btn { flex: 1 1 auto; min-width: 0; }
     }
     /* Avatar picker modal: centered dialog on desktop, full-screen sheet on mobile
        (see the max-width:640px override below) so the 287-card grid always has
@@ -372,7 +367,14 @@
         document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
         btn.classList.add('active');
         document.getElementById('tab-' + btn.dataset.tab).classList.add('active');
+        // The panel was just un-hidden, so it's now measurable — re-layout the
+        // swatch grid for the width it's actually getting (it read 0 while
+        // display:none, e.g. on initial page load with Stats active).
+        if (btn.dataset.tab === 'edit') layoutSwatches(document.getElementById('accent-swatches'), PLAYER_COLORS.length);
       });
+    });
+    window.addEventListener('resize', () => {
+      layoutSwatches(document.getElementById('accent-swatches'), PLAYER_COLORS.length);
     });
 
     try {
@@ -503,6 +505,7 @@
         });
         swatchContainer.appendChild(sw);
       });
+      layoutSwatches(swatchContainer, PLAYER_COLORS.length);
 
       // Pre-fill bio
       if (profile?.bio) document.getElementById('bio-input').value = profile.bio;
@@ -704,6 +707,22 @@
     renderPreview(initialCrop);
     state.updatePreviewCrop = updatePreviewCrop;
     return state;
+  }
+
+  // Balances the player-color swatches into equal-length rows that fit whatever
+  // width the container actually has (measured, not guessed via breakpoints) —
+  // the panel is display:none while its tab is inactive, so callers must
+  // re-invoke this once it becomes visible (see the tab-switch handler above).
+  function layoutSwatches(container, count) {
+    if (!container) return;
+    const size = 28, gap = 8;
+    const available = container.clientWidth;
+    if (!available) return;
+    const maxPerRow = Math.max(1, Math.floor((available + gap) / (size + gap)));
+    const perRow = Math.min(maxPerRow, count);
+    const rows = Math.ceil(count / perRow);
+    const cols = Math.ceil(count / rows);
+    container.style.gridTemplateColumns = `repeat(${cols}, ${size}px)`;
   }
 
   function formatDate(ts) {
