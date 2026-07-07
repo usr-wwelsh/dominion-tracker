@@ -19,7 +19,10 @@ function labelFor(filename) {
     .replace(/-\d+x\d+$/, '')
     .replace(/[_-]+/g, ' ')
     .trim()
-    .replace(/\b\w/g, c => c.toUpperCase());
+    // Capitalize the first letter of each whitespace-separated word only —
+    // \b\w would also match after punctuation like an apostrophe, capitalizing
+    // "Devil's" into "Devil'S".
+    .replace(/(^|\s)\S/g, c => c.toUpperCase());
 }
 
 const filenames = fs.readdirSync(CARDS_DIR).filter(f => /\.(png|jpg|webp)$/i.test(f));
