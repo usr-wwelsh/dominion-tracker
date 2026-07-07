@@ -9,6 +9,7 @@ let selectedCards = new Set();
 let selectedLandmarks = new Set();
 let selectedEvents = new Set();
 let selectedProphecies = new Set();
+let selectedTraits = new Set();
 let currentSort = 'recent';
 let activeExpansionFilter = null; // null = no filter
 
@@ -56,6 +57,9 @@ function renderCardCheckboxes() {
   renderExpansionCards('empires', 'empires-cards', 'kingdom');
   renderExpansionCards('rising_sun', 'rising-sun-cards', 'kingdom');
   renderExpansionCards('dark_ages', 'dark-ages-cards', 'kingdom');
+  renderExpansionCards('hinterlands', 'hinterlands-cards', 'kingdom');
+  renderExpansionCards('nocturne', 'nocturne-cards', 'kingdom');
+  renderExpansionCards('plunder', 'plunder-cards', 'kingdom');
 
   // Landmarks (Empires)
   renderSupplementalCards(DOMINION_LANDMARKS.empires, 'empires-landmarks', 'landmark');
@@ -63,9 +67,13 @@ function renderCardCheckboxes() {
   // Events
   renderSupplementalCards(DOMINION_EVENTS.empires, 'empires-events', 'event');
   renderSupplementalCards(DOMINION_EVENTS.rising_sun, 'rising-sun-events', 'event');
+  renderSupplementalCards(DOMINION_EVENTS.plunder, 'plunder-events', 'event');
 
   // Prophecies (Rising Sun)
   renderSupplementalCards(DOMINION_PROPHECIES.rising_sun, 'rising-sun-prophecies', 'prophecy');
+
+  // Traits (Plunder)
+  renderSupplementalCards(DOMINION_TRAITS.plunder, 'plunder-traits', 'trait');
 }
 
 // Render kingdom card checkboxes for an expansion
@@ -138,6 +146,7 @@ function getSelectionSet(type) {
     case 'landmark':  return selectedLandmarks;
     case 'event':     return selectedEvents;
     case 'prophecy':  return selectedProphecies;
+    case 'trait':     return selectedTraits;
     default:          return selectedCards;
   }
 }
@@ -188,6 +197,7 @@ async function handleFormSubmit(event) {
       Array.from(selectedLandmarks),
       Array.from(selectedEvents),
       Array.from(selectedProphecies),
+      Array.from(selectedTraits),
       usePlatinumColony,
       useShelters
     );
@@ -215,6 +225,7 @@ function clearForm() {
   selectedLandmarks.clear();
   selectedEvents.clear();
   selectedProphecies.clear();
+  selectedTraits.clear();
   updateCardCount();
 }
 
@@ -275,7 +286,7 @@ function buildMatchesFilter(build) {
     const exp = CARD_EXPANSION_MAP[card];
     if (exp && !activeExpansionFilter.has(exp)) return false;
   }
-  for (const card of [...(build.landmarks || []), ...(build.events || []), ...(build.prophecies || [])]) {
+  for (const card of [...(build.landmarks || []), ...(build.events || []), ...(build.prophecies || []), ...(build.traits || [])]) {
     const exp = SUPPLEMENTAL_EXPANSION_MAP[card];
     if (exp && !activeExpansionFilter.has(exp)) return false;
   }
@@ -359,7 +370,7 @@ function renderTagGroup(label, items) {
 // Render kingdom cards grouped by expansion with costs
 function renderKingdomByExpansion(cards) {
   if (!cards || cards.length === 0) return '';
-  const expansionOrder = ['base', 'intrigue', 'seaside', 'prosperity', 'empires', 'rising_sun', 'dark_ages'];
+  const expansionOrder = ['base', 'intrigue', 'seaside', 'prosperity', 'empires', 'rising_sun', 'dark_ages', 'hinterlands', 'nocturne', 'plunder'];
   const groups = {};
   cards.forEach(card => {
     const exp = CARD_EXPANSION_MAP[card] || 'unknown';
@@ -414,6 +425,7 @@ function createBuildItem(build) {
         ${renderTagGroup('Landmarks', build.landmarks)}
         ${renderTagGroup('Events', build.events)}
         ${renderTagGroup('Prophecies', build.prophecies)}
+        ${renderTagGroup('Traits', build.traits)}
       </div>
       <div class="build-comments" id="comments-${build.id}">
         <div class="comments-loading">Loading comments...</div>
@@ -460,6 +472,7 @@ function showEditModal(build, credentials) {
   let editLandmarks = new Set(build.landmarks || []);
   let editEvents = new Set(build.events || []);
   let editProphecies = new Set(build.prophecies || []);
+  let editTraits = new Set(build.traits || []);
 
   const overlay = document.createElement('div');
   overlay.id = 'edit-build-modal';
@@ -503,6 +516,7 @@ function showEditModal(build, credentials) {
       case 'landmark': return editLandmarks;
       case 'event':    return editEvents;
       case 'prophecy': return editProphecies;
+      case 'trait':    return editTraits;
       default:         return editCards;
     }
   }
@@ -587,6 +601,9 @@ function showEditModal(build, credentials) {
     { key: 'empires',    label: 'Empires',     badge: '1e', id: 'em-empires-cards' },
     { key: 'rising_sun', label: 'Rising Sun',  badge: '1e', id: 'em-rising-sun-cards' },
     { key: 'dark_ages',  label: 'Dark Ages',   badge: null, id: 'em-dark-ages-cards' },
+    { key: 'hinterlands', label: 'Hinterlands', badge: '2e', id: 'em-hinterlands-cards' },
+    { key: 'nocturne',   label: 'Nocturne',    badge: null, id: 'em-nocturne-cards' },
+    { key: 'plunder',    label: 'Plunder',     badge: null, id: 'em-plunder-cards' },
   ];
   kingdomExpansions.forEach(({ key, label, badge, id }) => {
     const badgeHtml = badge ? ` <span class="edition-badge">${badge}</span>` : '';
@@ -609,7 +626,7 @@ function showEditModal(build, credentials) {
 
   const eventsSection = document.createElement('div');
   eventsSection.className = 'expansion-section' + (
-    [...DOMINION_EVENTS.empires, ...DOMINION_EVENTS.rising_sun].some(c => editEvents.has(c)) ? '' : ' collapsed'
+    [...DOMINION_EVENTS.empires, ...DOMINION_EVENTS.rising_sun, ...DOMINION_EVENTS.plunder].some(c => editEvents.has(c)) ? '' : ' collapsed'
   );
   eventsSection.innerHTML = `
     <h3 class="expansion-header">Events <span class="supplemental-note">(optional)</span></h3>
@@ -618,6 +635,8 @@ function showEditModal(build, credentials) {
       <div class="card-grid" id="em-empires-events"></div>
       <div class="supplemental-group-label">Rising Sun</div>
       <div class="card-grid" id="em-rising-sun-events"></div>
+      <div class="supplemental-group-label">Plunder</div>
+      <div class="card-grid" id="em-plunder-events"></div>
     </div>
   `;
   eventsSection.querySelector('.expansion-header').addEventListener('click', () => {
@@ -626,6 +645,7 @@ function showEditModal(build, credentials) {
   supplementalSections.appendChild(eventsSection);
   renderEditSupplemental(DOMINION_EVENTS.empires, 'em-empires-events', 'event');
   renderEditSupplemental(DOMINION_EVENTS.rising_sun, 'em-rising-sun-events', 'event');
+  renderEditSupplemental(DOMINION_EVENTS.plunder, 'em-plunder-events', 'event');
 
   const propheciesSection = makeExpansionSection(
     'Prophecies — Rising Sun <span class="supplemental-note">(optional)</span>',
@@ -634,6 +654,14 @@ function showEditModal(build, credentials) {
   );
   supplementalSections.appendChild(propheciesSection);
   renderEditSupplemental(DOMINION_PROPHECIES.rising_sun, 'em-rising-sun-prophecies', 'prophecy');
+
+  const traitsSection = makeExpansionSection(
+    'Traits — Plunder <span class="supplemental-note">(optional, no limit)</span>',
+    'em-plunder-traits',
+    DOMINION_TRAITS.plunder.some(c => editTraits.has(c))
+  );
+  supplementalSections.appendChild(traitsSection);
+  renderEditSupplemental(DOMINION_TRAITS.plunder, 'em-plunder-traits', 'trait');
 
   updateEditCardCount();
 
@@ -672,6 +700,7 @@ function showEditModal(build, credentials) {
         Array.from(editLandmarks),
         Array.from(editEvents),
         Array.from(editProphecies),
+        Array.from(editTraits),
         overlay.querySelector('#em-platinum-colony').checked,
         overlay.querySelector('#em-shelters').checked,
         credentials

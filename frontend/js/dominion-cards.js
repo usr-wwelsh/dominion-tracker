@@ -60,6 +60,34 @@ const DOMINION_CARDS = {
     'Junk Dealer', 'Knights', 'Mystic', 'Pillage', 'Rebuild', 'Rogue',
     'Altar', 'Hunting Grounds'
   ],
+  hinterlands: [
+    'Crossroads', "Fool's Gold", 'Cauldron',
+    'Develop', 'Oasis', 'Scheme', 'Tunnel', 'Guard Dog',
+    'Jack of All Trades', 'Spice Merchant', 'Trader', 'Nomads', 'Trail', 'Weaver',
+    'Cartographer', 'Haggler', 'Highway', 'Inn', 'Margrave', 'Stables',
+    'Berserker', 'Souk', 'Wheelwright', "Witch's Hut",
+    'Border Village', 'Farmland'
+  ],
+  nocturne: [
+    'Druid', 'Faithful Hound', 'Guardian', 'Monastery', 'Pixie', 'Tracker',
+    'Changeling', 'Fool', 'Ghost Town', 'Leprechaun', 'Night Watchman', 'Secret Cave',
+    'Bard', 'Blessed Village', 'Cemetery', 'Conclave', "Devil's Workshop", 'Exorcist',
+    'Necromancer', 'Shepherd', 'Skulk',
+    'Cobbler', 'Crypt', 'Cursed Village', 'Den of Sin', 'Idol', 'Pooka', 'Sacred Grove',
+    'Tormentor', 'Tragic Hero', 'Vampire', 'Werewolf',
+    'Raider'
+  ],
+  plunder: [
+    'Cage', 'Grotto', 'Jewelled Egg', 'Search', 'Shaman',
+    'Secluded Shrine', 'Siren', 'Stowaway', 'Taskmaster',
+    'Abundance', 'Cabin Boy', 'Crucible', 'Flagship', 'Fortune Hunter', 'Gondola',
+    'Harbor Village', 'Landing Party', 'Mapmaker', 'Maroon', 'Rope', 'Swamp Shacks', 'Tools',
+    'Buried Treasure', 'Crew', 'Cutthroat', 'Enlarge', 'Figurine', 'First Mate', 'Frigate',
+    'Longship', 'Mining Road', 'Pendant', 'Pickaxe', 'Pilgrim', 'Quartermaster', 'Silver Mine',
+    'Trickster', 'Wealthy Village',
+    'Sack of Loot',
+    "King's Cache"
+  ],
 };
 
 // Non-kingdom supplemental cards
@@ -90,6 +118,14 @@ const DOMINION_EVENTS = {
     'Receive Tribute',
     'Gather'
   ],
+  plunder: [
+    'Bury',
+    'Avoid', 'Deliver', 'Peril', 'Rush',
+    'Foray', 'Launch', 'Mirror', 'Prepare', 'Scrounge',
+    'Journey', 'Maelstrom',
+    'Looting',
+    'Invasion', 'Prosper'
+  ],
 };
 
 const DOMINION_PROPHECIES = {
@@ -97,6 +133,13 @@ const DOMINION_PROPHECIES = {
     'Approaching Army', 'Biding Time', 'Bureaucracy', 'Divine Wind', 'Enlightenment',
     'Flourishing Trade', 'Good Harvest', 'Great Leader', 'Growth', 'Harsh Winter',
     'Kind Emperor', 'Panic', 'Progress', 'Rapid Expansion', 'Sickness'
+  ],
+};
+
+const DOMINION_TRAITS = {
+  plunder: [
+    'Cheap', 'Cursed', 'Fated', 'Fawning', 'Friendly', 'Hasty', 'Inherited', 'Inspiring',
+    'Nearby', 'Patient', 'Pious', 'Reckless', 'Rich', 'Shy', 'Tireless'
   ],
 };
 
@@ -165,6 +208,35 @@ const CARD_COSTS = {
   'Cultist': '$5', 'Graverobber': '$5', 'Junk Dealer': '$5', 'Knights': '$5', 'Mystic': '$5',
   'Pillage': '$5', 'Rebuild': '$5', 'Rogue': '$5',
   'Altar': '$6', 'Hunting Grounds': '$6',
+  // Hinterlands 2nd Edition
+  'Crossroads': '$2', "Fool's Gold": '$2', 'Cauldron': '$2',
+  'Develop': '$3', 'Oasis': '$3', 'Scheme': '$3', 'Tunnel': '$3', 'Guard Dog': '$3',
+  'Jack of All Trades': '$4', 'Spice Merchant': '$4', 'Trader': '$4', 'Nomads': '$4',
+  'Trail': '$4', 'Weaver': '$4',
+  'Cartographer': '$5', 'Haggler': '$5', 'Highway': '$5', 'Inn': '$5', 'Margrave': '$5',
+  'Stables': '$5', 'Berserker': '$5', 'Souk': '$5', 'Wheelwright': '$5', "Witch's Hut": '$5',
+  'Border Village': '$6', 'Farmland': '$6',
+  // Nocturne
+  'Druid': '$2', 'Faithful Hound': '$2', 'Guardian': '$2', 'Monastery': '$2', 'Pixie': '$2', 'Tracker': '$2',
+  'Changeling': '$3', 'Fool': '$3', 'Ghost Town': '$3', 'Leprechaun': '$3', 'Night Watchman': '$3',
+  'Secret Cave': '$3',
+  'Bard': '$4', 'Blessed Village': '$4', 'Cemetery': '$4', 'Conclave': '$4', "Devil's Workshop": '$4',
+  'Exorcist': '$4', 'Necromancer': '$4', 'Shepherd': '$4', 'Skulk': '$4',
+  'Cobbler': '$5', 'Crypt': '$5', 'Cursed Village': '$5', 'Den of Sin': '$5', 'Idol': '$5', 'Pooka': '$5',
+  'Sacred Grove': '$5', 'Tormentor': '$5', 'Tragic Hero': '$5', 'Vampire': '$5', 'Werewolf': '$5',
+  'Raider': '$6',
+  // Plunder
+  'Cage': '$2', 'Grotto': '$2', 'Jewelled Egg': '$2', 'Search': '$2', 'Shaman': '$2',
+  'Secluded Shrine': '$3', 'Siren': '$3', 'Stowaway': '$3', 'Taskmaster': '$3',
+  'Abundance': '$4', 'Cabin Boy': '$4', 'Crucible': '$4', 'Flagship': '$4', 'Fortune Hunter': '$4',
+  'Gondola': '$4', 'Harbor Village': '$4', 'Landing Party': '$4', 'Mapmaker': '$4', 'Maroon': '$4',
+  'Rope': '$4', 'Swamp Shacks': '$4', 'Tools': '$4',
+  'Buried Treasure': '$5', 'Crew': '$5', 'Cutthroat': '$5', 'Enlarge': '$5', 'Figurine': '$5',
+  'First Mate': '$5', 'Frigate': '$5', 'Longship': '$5', 'Mining Road': '$5', 'Pendant': '$5',
+  'Pickaxe': '$5', 'Pilgrim': '$5', 'Quartermaster': '$5', 'Silver Mine': '$5', 'Trickster': '$5',
+  'Wealthy Village': '$5',
+  'Sack of Loot': '$6',
+  "King's Cache": '$7',
 };
 
 // Reverse lookup: card name → expansion key
@@ -173,9 +245,9 @@ Object.entries(DOMINION_CARDS).forEach(([expansion, cards]) => {
   cards.forEach(card => { CARD_EXPANSION_MAP[card] = expansion; });
 });
 
-// Reverse lookup for supplemental cards (landmarks, events, prophecies)
+// Reverse lookup for supplemental cards (landmarks, events, prophecies, traits)
 const SUPPLEMENTAL_EXPANSION_MAP = {};
-[DOMINION_LANDMARKS, DOMINION_EVENTS, DOMINION_PROPHECIES].forEach(group => {
+[DOMINION_LANDMARKS, DOMINION_EVENTS, DOMINION_PROPHECIES, DOMINION_TRAITS].forEach(group => {
   Object.entries(group).forEach(([expansion, cards]) => {
     cards.forEach(card => { SUPPLEMENTAL_EXPANSION_MAP[card] = expansion; });
   });
@@ -189,4 +261,7 @@ const EXPANSION_DISPLAY = {
   empires: 'Empires',
   rising_sun: 'Rising Sun',
   dark_ages: 'Dark Ages',
+  hinterlands: 'Hinterlands',
+  nocturne: 'Nocturne',
+  plunder: 'Plunder',
 };

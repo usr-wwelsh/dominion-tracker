@@ -1,0 +1,1 @@
+ALTER TABLE builds ADD COLUMN traits TEXT NOT NULL DEFAULT '[]';

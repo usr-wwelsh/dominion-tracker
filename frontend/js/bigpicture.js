@@ -502,7 +502,7 @@ function showResult() {
 // ─────────────────────────────────────────────────────────────
 // Builds — menu, browser, detail, and the remote-friendly creator
 // ─────────────────────────────────────────────────────────────
-const EXPANSION_ORDER = ['base', 'intrigue', 'seaside', 'prosperity', 'empires', 'rising_sun', 'dark_ages'];
+const EXPANSION_ORDER = ['base', 'intrigue', 'seaside', 'prosperity', 'empires', 'rising_sun', 'dark_ages', 'hinterlands', 'nocturne', 'plunder'];
 
 // ── Builds menu (View / Make) ──
 const BUILDS_MENU = [
@@ -614,7 +614,8 @@ function showBuildDetail() {
   body.innerHTML = badgeHtml + renderKingdomGroups(b.cards) +
     renderTagSection('Landmarks', b.landmarks) +
     renderTagSection('Events', b.events) +
-    renderTagSection('Prophecies', b.prophecies);
+    renderTagSection('Prophecies', b.prophecies) +
+    renderTagSection('Traits', b.traits);
   body.scrollTop = 0;
 }
 
@@ -627,18 +628,18 @@ function scrollDetail(dir) {
 }
 
 // ── Creator state + step sequencer (skips steps the expansions don't need) ──
-const mk = { name: '', expansions: new Set(), cards: new Set(), landmarks: new Set(), events: new Set(), prophecies: new Set(), platinumColony: false, shelters: false, touched: new Set(), returnTo: 'builds-menu' };
+const mk = { name: '', expansions: new Set(), cards: new Set(), landmarks: new Set(), events: new Set(), prophecies: new Set(), traits: new Set(), platinumColony: false, shelters: false, touched: new Set(), returnTo: 'builds-menu' };
 
 function startBuildCreator(returnTo) {
   mk.name = '';
   mk.expansions = new Set(); mk.cards = new Set();
-  mk.landmarks = new Set(); mk.events = new Set(); mk.prophecies = new Set();
+  mk.landmarks = new Set(); mk.events = new Set(); mk.prophecies = new Set(); mk.traits = new Set();
   mk.platinumColony = false; mk.shelters = false; mk.touched = new Set();
   mk.returnTo = returnTo || 'builds-menu';
   BP.showScreen('build-expansions');
 }
 
-function mkSupplementalNeeded() { return mk.expansions.has('empires') || mk.expansions.has('rising_sun'); }
+function mkSupplementalNeeded() { return mk.expansions.has('empires') || mk.expansions.has('rising_sun') || mk.expansions.has('plunder'); }
 function mkOptionPrompts() {
   const out = [];
   if (mk.expansions.has('prosperity')) out.push({ key: 'platinumColony', label: 'Platinum & Colony', detected: 'Prosperity' });
@@ -666,6 +667,7 @@ function mkSetFor(kind) {
     case 'landmark': return mk.landmarks;
     case 'event':    return mk.events;
     case 'prophecy': return mk.prophecies;
+    case 'trait':    return mk.traits;
     default:         return mk.cards;
   }
 }
@@ -757,8 +759,10 @@ function showMkSupplemental() {
   const evGroups = [];
   if (e.has('empires')) evGroups.push(['Empires', DOMINION_EVENTS.empires, 'event']);
   if (e.has('rising_sun')) evGroups.push(['Rising Sun', DOMINION_EVENTS.rising_sun, 'event']);
+  if (e.has('plunder')) evGroups.push(['Plunder', DOMINION_EVENTS.plunder, 'event']);
   if (evGroups.length) html += mkSupSection('Events', evGroups);
   if (e.has('rising_sun')) html += mkSupSection('Prophecies', [['', DOMINION_PROPHECIES.rising_sun, 'prophecy']]);
+  if (e.has('plunder')) html += mkSupSection('Traits', [['', DOMINION_TRAITS.plunder, 'trait']]);
   const body = $('bsup-body');
   body.innerHTML = html;
   wireMkChips(body);
@@ -767,7 +771,7 @@ function showMkSupplemental() {
   BP.refreshFocus(body.querySelector('.bp-card-chip') || undefined);
 }
 function updateMkSupplemental() {
-  const n = mk.landmarks.size + mk.events.size + mk.prophecies.size;
+  const n = mk.landmarks.size + mk.events.size + mk.prophecies.size + mk.traits.size;
   $('bsup-count').textContent = n ? `${n} selected` : 'Optional';
 }
 
@@ -803,6 +807,7 @@ function mkSummaryText() {
   if (mk.landmarks.size) extras.push(`${mk.landmarks.size} landmark${mk.landmarks.size > 1 ? 's' : ''}`);
   if (mk.events.size) extras.push(`${mk.events.size} event${mk.events.size > 1 ? 's' : ''}`);
   if (mk.prophecies.size) extras.push(`${mk.prophecies.size} prophec${mk.prophecies.size > 1 ? 'ies' : 'y'}`);
+  if (mk.traits.size) extras.push(`${mk.traits.size} trait${mk.traits.size > 1 ? 's' : ''}`);
   if (mk.platinumColony) extras.push('Platinum/Colony');
   if (mk.shelters) extras.push('Shelters');
   return `${mk.cards.size} kingdom cards · ${exps}` + (extras.length ? ` · ${extras.join(' · ')}` : '');
@@ -822,7 +827,7 @@ async function saveBuild() {
   const platinum = mk.expansions.has('prosperity') && mk.platinumColony;
   const shelters = mk.expansions.has('dark_ages') && mk.shelters;
   try {
-    await buildsAPI.create(name, [...mk.cards], [...mk.landmarks], [...mk.events], [...mk.prophecies], platinum, shelters);
+    await buildsAPI.create(name, [...mk.cards], [...mk.landmarks], [...mk.events], [...mk.prophecies], [...mk.traits], platinum, shelters);
     const back = mk.returnTo;
     showModal({
       title: 'Build saved!',
