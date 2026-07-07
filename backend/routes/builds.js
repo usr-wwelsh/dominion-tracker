@@ -39,7 +39,7 @@ router.get('/', async (req, res, next) => {
 
 router.post('/', async (req, res, next) => {
   try {
-    const { nickname, cards, landmarks, events, prophecies, traits, use_platinum_colony, use_shelters } = req.body;
+    const { nickname, cards, landmarks, events, prophecies, traits, use_platinum_colony, use_shelters, notes } = req.body;
 
     if (!nickname || nickname.trim() === '') {
       return res.status(400).json({ error: 'Build nickname is required' });
@@ -49,8 +49,8 @@ router.post('/', async (req, res, next) => {
     }
 
     const result = await query(
-      `INSERT INTO builds (nickname, cards, landmarks, events, prophecies, traits, use_platinum_colony, use_shelters)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?) RETURNING *`,
+      `INSERT INTO builds (nickname, cards, landmarks, events, prophecies, traits, use_platinum_colony, use_shelters, notes)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING *`,
       [
         nickname.trim(),
         JSON.stringify(cards),
@@ -60,6 +60,7 @@ router.post('/', async (req, res, next) => {
         JSON.stringify(Array.isArray(traits) ? traits : []),
         use_platinum_colony === true ? 1 : 0,
         use_shelters === true ? 1 : 0,
+        typeof notes === 'string' ? notes.trim() : '',
       ]
     );
 
@@ -83,7 +84,7 @@ router.get('/:id', async (req, res, next) => {
 
 router.put('/:id', requireAuth, async (req, res, next) => {
   try {
-    const { nickname, cards, landmarks, events, prophecies, traits, use_platinum_colony, use_shelters } = req.body;
+    const { nickname, cards, landmarks, events, prophecies, traits, use_platinum_colony, use_shelters, notes } = req.body;
 
     if (!nickname || nickname.trim() === '') {
       return res.status(400).json({ error: 'Build nickname is required' });
@@ -94,7 +95,7 @@ router.put('/:id', requireAuth, async (req, res, next) => {
 
     const result = await query(
       `UPDATE builds SET nickname = ?, cards = ?, landmarks = ?, events = ?, prophecies = ?, traits = ?,
-       use_platinum_colony = ?, use_shelters = ? WHERE id = ? RETURNING *`,
+       use_platinum_colony = ?, use_shelters = ?, notes = ? WHERE id = ? RETURNING *`,
       [
         nickname.trim(),
         JSON.stringify(cards),
@@ -104,8 +105,30 @@ router.put('/:id', requireAuth, async (req, res, next) => {
         JSON.stringify(Array.isArray(traits) ? traits : []),
         use_platinum_colony === true ? 1 : 0,
         use_shelters === true ? 1 : 0,
+        typeof notes === 'string' ? notes.trim() : '',
         req.params.id,
       ]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Build not found' });
+    }
+    res.json(hydrateBuild(result.rows[0]));
+  } catch (error) {
+    next(error);
+  }
+});
+
+router.patch('/:id/notes', requireAuth, async (req, res, next) => {
+  try {
+    const { notes } = req.body;
+    if (typeof notes !== 'string') {
+      return res.status(400).json({ error: 'notes must be a string' });
+    }
+
+    const result = await query(
+      'UPDATE builds SET notes = ? WHERE id = ? RETURNING *',
+      [notes.trim(), req.params.id]
     );
 
     if (result.rows.length === 0) {
