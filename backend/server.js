@@ -17,6 +17,7 @@ const profilesRoutes    = require('./routes/profiles');
 const achievementsRoutes = require('./routes/achievements');
 const pushRoutes        = require('./routes/push');
 const cardsRoutes       = require('./routes/cards');
+const adminRoutes       = require('./routes/admin');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -44,6 +45,7 @@ app.use('/api/profiles',     profilesRoutes);
 app.use('/api/achievements', achievementsRoutes);
 app.use('/api/push',         pushRoutes);
 app.use('/api/cards',        cardsRoutes);
+app.use('/api/admin',        adminRoutes);
 app.use('/api',              statsRoutes);
 
 app.get('/api/auth/check', requireAuth, (req, res) => {

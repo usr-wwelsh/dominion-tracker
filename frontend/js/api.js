@@ -213,6 +213,34 @@ const bannerAPI = {
   }, credentials),
 };
 
+// Admin API
+const adminAPI = {
+  // Downloads the live SQLite db as a file. Not routed through apiRequest since
+  // it's a binary response, not JSON.
+  exportDb: async (credentials) => {
+    const url = `${API_BASE_URL}/admin/export-db`;
+    const response = await fetch(url, {
+      headers: { 'Authorization': 'Basic ' + btoa(`${credentials.user}:${credentials.pass}`) },
+    });
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({ error: 'Unknown error' }));
+      throw new Error(error.error || `HTTP error! status: ${response.status}`);
+    }
+    const disposition = response.headers.get('Content-Disposition') || '';
+    const match = disposition.match(/filename="?([^"]+)"?/);
+    const filename = match ? match[1] : 'dominion-backup.db';
+    const blob = await response.blob();
+    const objectUrl = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = objectUrl;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(objectUrl);
+  },
+};
+
 // Push API
 const pushAPI = {
   getKey: () => apiRequest('/push/key'),
