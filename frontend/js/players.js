@@ -52,8 +52,9 @@ function renderPlayers() {
     row.dataset.playerId = player.id;
 
     const color = player.color || '#4db8ff';
+    const crop = avatarCrop(player);
     const avatar = player.avatar_card
-      ? `<a href="profile.html?id=${player.id}" class="player-avatar-link card-art-avatar" style="border-color:${escapeHtml(color)}"><img src="dominion-cards-used-small/${escapeHtml(player.avatar_card)}" alt=""></a>`
+      ? `<a href="profile.html?id=${player.id}" class="player-avatar-link card-art-avatar ${crop.cls}" style="border-color:${escapeHtml(color)}; ${crop.style}"><img src="dominion-cards-used-small/${escapeHtml(player.avatar_card)}" alt=""></a>`
       : `<a href="profile.html?id=${player.id}" class="player-avatar-link"><span class="player-avatar-fallback" style="background:${escapeHtml(color)}">${escapeHtml(player.name.charAt(0).toUpperCase())}</span></a>`;
     const bio = player.bio
       ? `<div class="player-bio">${escapeHtml(player.bio)}</div>`

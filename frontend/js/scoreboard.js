@@ -397,7 +397,7 @@ async function updateScore(playerId, delta) {
   const player = selectedPlayers.find(p => p.id === playerId);
   if (!player) return;
 
-  player.score = Math.max(0, player.score + delta);
+  player.score = player.score + delta;
   renderScoreboard();
   updateLiveChart();
 
@@ -700,6 +700,17 @@ function updateLiveChart() {
     ctx.stroke();
   }
 
+  // Zero baseline (bars grow up/down from here)
+  const zeroY = height - padding.bottom - ((0 - minScore) / scoreRange) * chartHeight;
+  if (minScore < 0) {
+    ctx.strokeStyle = '#a89a82';
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.moveTo(padding.left, zeroY);
+    ctx.lineTo(width - padding.right, zeroY);
+    ctx.stroke();
+  }
+
   // Draw bars for each player
   const barWidth = chartWidth / selectedPlayers.length * 0.8;
   const barSpacing = chartWidth / selectedPlayers.length;
@@ -707,18 +718,20 @@ function updateLiveChart() {
   selectedPlayers.forEach((player, index) => {
     const color = player.color || '#4db8ff';
     const x = padding.left + (barSpacing * index) + (barSpacing - barWidth) / 2;
-    const barHeight = ((player.score - minScore) / scoreRange) * chartHeight;
-    const y = height - padding.bottom - barHeight;
+    const scoreY = height - padding.bottom - ((player.score - minScore) / scoreRange) * chartHeight;
+    const barTop = Math.min(scoreY, zeroY);
+    const barHeight = Math.abs(scoreY - zeroY);
 
     // Draw bar
     ctx.fillStyle = color;
-    ctx.fillRect(x, y, barWidth, barHeight);
+    ctx.fillRect(x, barTop, barWidth, barHeight);
 
-    // Draw score on top
+    // Draw score label (below the bar when negative)
     ctx.fillStyle = '#d4c5a9';
     ctx.textAlign = 'center';
     ctx.font = 'bold 14px Georgia, serif';
-    ctx.fillText(player.score, x + barWidth / 2, y - 5);
+    const labelY = player.score < 0 ? scoreY + 16 : scoreY - 5;
+    ctx.fillText(player.score, x + barWidth / 2, labelY);
 
     // Draw player name at bottom
     ctx.font = '11px Georgia, serif';

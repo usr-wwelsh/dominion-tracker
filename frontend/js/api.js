@@ -1,5 +1,21 @@
 // API Client for Dominion Tracker
 
+/**
+ * Build the class + inline-style needed to render a player's avatar with their
+ * manual crop. Returns empty strings when the player has no crop set, so the
+ * avatar falls back to the default framing. `obj` is any player/profile-shaped
+ * object carrying avatar_zoom / avatar_x / avatar_y.
+ */
+function avatarCrop(obj) {
+  if (!obj || obj.avatar_zoom == null || obj.avatar_x == null || obj.avatar_y == null) {
+    return { cls: '', style: '' };
+  }
+  return {
+    cls: 'cropped',
+    style: `--av-x:${obj.avatar_x}%;--av-y:${obj.avatar_y}%;--av-zoom:${obj.avatar_zoom};`,
+  };
+}
+
 const API_BASE_URL = (window.location.port === '8000')
   ? `http://${window.location.hostname}:3000/api`
   : '/api';

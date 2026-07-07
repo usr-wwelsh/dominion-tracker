@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Dominion Tracker — Big Picture</title>
+  <link rel="apple-touch-icon" href="/icon-192.png">
+  <meta name="theme-color" content="#181f30">
+  <link rel="stylesheet" href="css/main.css">
+  <link rel="stylesheet" href="css/bigpicture.css">
+</head>
+<body class="bp-body">
+  <div id="bp-root">
+
+    <!-- ── Launcher (horizontal console carousel) ── -->
+    <section class="bp-screen" id="screen-launcher">
+      <div class="bp-ambient" id="bp-ambient">
+        <div class="bp-ambient-layer active" data-hue="gold"></div>
+        <div class="bp-ambient-layer" data-hue="green"></div>
+        <div class="bp-ambient-layer" data-hue="blue"></div>
+        <div class="bp-ambient-layer" data-hue="crimson"></div>
+        <div class="bp-ambient-layer" data-hue="violet"></div>
+        <div class="bp-ambient-layer" data-hue="steel"></div>
+      </div>
+      <div class="bp-launcher-head">
+        <div class="bp-brand-wrap">
+          <span class="bp-brand">Dominion</span>
+          <span class="bp-brand-sub">Tracker</span>
+        </div>
+        <div class="bp-clock-wrap">
+          <span class="bp-clock" id="bp-clock"></span>
+          <span class="bp-date" id="bp-date"></span>
+        </div>
+      </div>
+      <div class="bp-carousel" data-bp-carousel>
+        <div class="bp-carousel-track" id="bp-launcher-track"><!-- tiles injected --></div>
+      </div>
+      <div class="bp-hint">◀ ▶ to move · OK to select</div>
+    </section>
+
+    <!-- ── Leaderboard ── -->
+    <section class="bp-screen" id="screen-leaderboard">
+      <div class="bp-screen-head">
+        <div class="bp-head-left"><button type="button" class="bp-back bp-focusable" data-back="launcher">‹ Back</button><h1>Leaderboard</h1></div>
+        <span class="bp-page" id="lb-page"></span>
+      </div>
+      <div class="bp-list" id="lb-list"></div>
+      <div class="bp-hint">◀ ▶ / ▲ ▼ pages · Back to menu</div>
+    </section>
+
+    <!-- ── Live ── -->
+    <section class="bp-screen" id="screen-live">
+      <div class="bp-screen-head">
+        <div class="bp-head-left"><button type="button" class="bp-back bp-focusable" data-back="launcher">‹ Back</button><h1>Live</h1></div>
+        <span class="bp-page" id="live-page"></span>
+      </div>
+      <div class="bp-live-wrap" id="live-wrap"></div>
+      <div class="bp-hint">◀ ▶ switch game · Back to menu</div>
+    </section>
+
+    <!-- ── Recent games ── -->
+    <section class="bp-screen" id="screen-recent">
+      <div class="bp-screen-head">
+        <div class="bp-head-left"><button type="button" class="bp-back bp-focusable" data-back="launcher">‹ Back</button><h1>Recent Games</h1></div>
+        <span class="bp-page" id="recent-page"></span>
+      </div>
+      <div class="bp-list" id="recent-list"></div>
+      <div class="bp-hint">▲ ▼ pick game · ◀ ▶ pages · OK to view · Back to menu</div>
+    </section>
+
+    <!-- ── Play: pick build ── -->
+    <section class="bp-screen" id="screen-play-build">
+      <div class="bp-screen-head">
+        <div class="bp-head-left"><button type="button" class="bp-back bp-focusable" data-back="launcher">‹ Back</button><h1>Choose a Build</h1></div>
+      </div>
+      <div class="bp-carousel" data-bp-carousel>
+        <div class="bp-carousel-track" id="pb-track"></div>
+      </div>
+      <div class="bp-hint">◀ ▶ to move · OK to choose · Back to menu</div>
+    </section>
+
+    <!-- ── Play: pick players ── -->
+    <section class="bp-screen" id="screen-play-players">
+      <div class="bp-screen-head">
+        <div class="bp-head-left"><button type="button" class="bp-back bp-focusable" data-back="play-build">‹ Back</button><h1>Who's Playing?</h1></div>
+        <span class="bp-page" id="pp-count"></span>
+      </div>
+      <div class="bp-grid" id="pp-grid"></div>
+      <div class="bp-add-row" id="pp-add-row" style="display:none;">
+        <input type="text" id="pp-new-name" maxlength="50" placeholder="New player name…">
+        <button type="button" class="bp-btn bp-focusable" id="pp-add-confirm">Add</button>
+      </div>
+      <div class="bp-actions">
+        <button type="button" class="bp-btn bp-focusable" id="pp-add-btn">+ New Player</button>
+        <button type="button" class="bp-btn bp-btn-go bp-focusable bp-disabled" id="pp-start">Start Game</button>
+      </div>
+      <div class="bp-hint">Pick 2+ players · OK to toggle · Back</div>
+    </section>
+
+    <!-- ── Play: scoring ── -->
+    <section class="bp-screen" id="screen-play-score">
+      <div class="bp-screen-head">
+        <h1>Game in Progress</h1>
+        <span class="bp-page" id="ps-timer">00:00</span>
+      </div>
+      <div class="bp-score-rows" id="ps-rows"></div>
+      <div class="bp-actions">
+        <button type="button" class="bp-btn bp-btn-cancel bp-focusable" id="ps-cancel">Cancel Game</button>
+        <button type="button" class="bp-btn bp-btn-go bp-focusable" id="ps-end">End Game</button>
+      </div>
+      <div class="bp-hint">◀ ▶ pick player · ▲ ▼ adjust · Cancel discards · End saves</div>
+    </section>
+
+    <!-- ── Play: result (winner + animated chart) ── -->
+    <section class="bp-screen" id="screen-result">
+      <div class="bp-result-head">
+        <h1 id="bp-result-winner"></h1>
+        <span class="bp-result-sub" id="bp-result-sub"></span>
+      </div>
+      <div class="bp-chart-wrap"><canvas id="bp-result-chart"></canvas></div>
+      <div class="bp-actions">
+        <button type="button" class="bp-btn bp-btn-go bp-focusable" id="bp-result-done">Back to Menu</button>
+      </div>
+    </section>
+
+    <!-- ── Recent game detail (winner + animated chart) ── -->
+    <section class="bp-screen" id="screen-game-detail">
+      <div class="bp-result-head">
+        <h1 id="bp-detail-winner"></h1>
+        <span class="bp-result-sub" id="bp-detail-sub"></span>
+      </div>
+      <div class="bp-chart-wrap"><canvas id="bp-detail-chart"></canvas></div>
+      <div class="bp-actions">
+        <button type="button" class="bp-btn bp-btn-go bp-focusable" id="bp-detail-back">Back</button>
+      </div>
+    </section>
+
+    <!-- ── Builds menu (View / Make) ── -->
+    <section class="bp-screen" id="screen-builds-menu">
+      <div class="bp-screen-head">
+        <div class="bp-head-left"><button type="button" class="bp-back bp-focusable" data-back="launcher">‹ Back</button><h1>Builds</h1></div>
+      </div>
+      <div class="bp-carousel" data-bp-carousel>
+        <div class="bp-carousel-track" id="bm-track"></div>
+      </div>
+      <div class="bp-hint">◀ ▶ to move · OK to select · Back to menu</div>
+    </section>
+
+    <!-- ── Builds: browse existing ── -->
+    <section class="bp-screen" id="screen-builds-view">
+      <div class="bp-screen-head">
+        <div class="bp-head-left"><button type="button" class="bp-back bp-focusable" data-back="builds-menu">‹ Back</button><h1>Builds</h1></div>
+        <span class="bp-page" id="bv-page"></span>
+      </div>
+      <div class="bp-list" id="bv-list"></div>
+      <div class="bp-hint">▲ ▼ pick build · ◀ ▶ pages · OK to view · Back</div>
+    </section>
+
+    <!-- ── Builds: detail (read-only) ── -->
+    <section class="bp-screen" id="screen-build-detail">
+      <div class="bp-screen-head">
+        <div class="bp-head-left"><button type="button" class="bp-back bp-focusable" data-back="builds-view">‹ Back</button><h1 id="bd-title">Build</h1></div>
+        <span class="bp-page" id="bd-meta"></span>
+      </div>
+      <div class="bp-cards-scroll" id="bd-body" data-bp-scroll></div>
+      <div class="bp-hint">▲ ▼ scroll · Back</div>
+    </section>
+
+    <!-- ── Make a build: 1. expansions ── -->
+    <section class="bp-screen" id="screen-build-expansions">
+      <div class="bp-screen-head">
+        <div class="bp-head-left"><button type="button" class="bp-back bp-focusable" data-mkback="build-expansions">‹ Back</button><h1>Which Expansions?</h1></div>
+        <span class="bp-page" id="be-count"></span>
+      </div>
+      <div class="bp-grid" id="be-grid"></div>
+      <div class="bp-actions">
+        <button type="button" class="bp-btn bp-btn-go bp-focusable bp-disabled" id="be-next">Next ›</button>
+      </div>
+      <div class="bp-hint">Pick the expansions in play · OK to toggle · Back</div>
+    </section>
+
+    <!-- ── Make a build: 2. cards ── -->
+    <section class="bp-screen" id="screen-build-cards">
+      <div class="bp-screen-head">
+        <div class="bp-head-left"><button type="button" class="bp-back bp-focusable" data-mkback="build-cards">‹ Back</button><h1>Choose Cards</h1></div>
+        <span class="bp-page" id="bc-count"></span>
+      </div>
+      <div class="bp-cards-scroll" id="bc-body" data-bp-scroll></div>
+      <div class="bp-actions">
+        <button type="button" class="bp-btn bp-btn-go bp-focusable bp-disabled" id="bc-next">Next ›</button>
+      </div>
+      <div class="bp-hint">Pick exactly 10 kingdom cards · ▲ ▼ ◀ ▶ move · OK to toggle · Back</div>
+    </section>
+
+    <!-- ── Make a build: 3. supplemental (landmarks / events / prophecies) ── -->
+    <section class="bp-screen" id="screen-build-supplemental">
+      <div class="bp-screen-head">
+        <div class="bp-head-left"><button type="button" class="bp-back bp-focusable" data-mkback="build-supplemental">‹ Back</button><h1>Extras</h1></div>
+        <span class="bp-page" id="bsup-count"></span>
+      </div>
+      <div class="bp-cards-scroll" id="bsup-body" data-bp-scroll></div>
+      <div class="bp-actions">
+        <button type="button" class="bp-btn bp-btn-go bp-focusable" id="bsup-next">Next ›</button>
+      </div>
+      <div class="bp-hint">Optional · ▲ ▼ ◀ ▶ move · OK to toggle · Back</div>
+    </section>
+
+    <!-- ── Make a build: 4. game setup (platinum/colony, shelters) ── -->
+    <section class="bp-screen" id="screen-build-options">
+      <div class="bp-screen-head">
+        <div class="bp-head-left"><button type="button" class="bp-back bp-focusable" data-mkback="build-options">‹ Back</button><h1>Game Setup</h1></div>
+      </div>
+      <div class="bp-list" id="bo-list"></div>
+      <div class="bp-actions">
+        <button type="button" class="bp-btn bp-btn-go bp-focusable" id="bo-next">Next ›</button>
+      </div>
+      <div class="bp-hint">OK to toggle Yes / No · Back</div>
+    </section>
+
+    <!-- ── Make a build: 5. name + save ── -->
+    <section class="bp-screen" id="screen-build-name">
+      <div class="bp-screen-head">
+        <div class="bp-head-left"><button type="button" class="bp-back bp-focusable" data-mkback="build-name">‹ Back</button><h1>Name Your Build</h1></div>
+      </div>
+      <div class="bp-name-stage">
+        <input type="text" id="bn-input" maxlength="60" placeholder="Build nickname…">
+        <div class="bp-name-summary" id="bn-summary"></div>
+      </div>
+      <div class="bp-actions">
+        <button type="button" class="bp-btn bp-btn-go bp-focusable" id="bn-save">Save Build</button>
+      </div>
+      <div class="bp-hint">Type a name · OK / Enter to save · Back</div>
+    </section>
+
+    <!-- ── Generic confirm / result modal ── -->
+    <section class="bp-screen" id="screen-modal">
+      <div class="bp-modal">
+        <h2 id="bp-modal-title"></h2>
+        <div id="bp-modal-body"></div>
+        <div class="bp-actions" id="bp-modal-actions"></div>
+      </div>
+    </section>
+
+    <!-- ── First blood overlay (first scoring during play-score) ── -->
+    <div class="bp-first-blood" id="bp-first-blood">
+      <div class="bp-first-blood-text">FIRST BLOOD</div>
+      <div class="bp-first-blood-sub" id="bp-first-blood-sub"></div>
+    </div>
+
+  </div>
+
+  <script src="js/api.js"></script>
+  <script src="js/dominion-cards.js"></script>
+  <script src="js/score-chart.js"></script>
+  <script src="js/confetti.js"></script>
+  <script src="js/bigpicture-nav.js"></script>
+  <script src="js/bigpicture.js"></script>
+</body>
+</html>

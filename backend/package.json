@@ -11,15 +11,15 @@
   "author": "",
   "license": "MIT",
   "dependencies": {
-    "better-sqlite3": "^12.10.0",
+    "better-sqlite3": "^12.11.1",
     "cors": "^2.8.5",
-    "dotenv": "^17.4.0",
+    "dotenv": "^17.4.2",
     "express": "^5.2.1",
     "express-basic-auth": "^1.2.1",
     "web-push": "^3.6.7"
   },
   "comment:optionalDependencies": "pg is only needed for the one-time Season 2 Postgres->SQLite cutover (scripts/pg-to-sqlite.js + auto-import on first boot). It is lazy-required, so SQLite-only operation never loads it. Safe to remove once migrated.",
   "optionalDependencies": {
-    "pg": "^8.13.1"
+    "pg": "^8.22.0"
   }
 }

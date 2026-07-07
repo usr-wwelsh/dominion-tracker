@@ -177,8 +177,9 @@ function renderPodium(data) {
 
     const color = player.color || '#4db8ff';
 
+    const crop = avatarCrop(player);
     const avatarHtml = player.avatar_card
-      ? `<div class="podium-avatar card-art-avatar" style="border-color:${color}; box-shadow: 0 0 12px ${color}40">
+      ? `<div class="podium-avatar card-art-avatar ${crop.cls}" style="border-color:${color}; box-shadow: 0 0 12px ${color}40; ${crop.style}">
           <img src="dominion-cards-used-small/${escapeHtml(player.avatar_card)}" alt="">
         </div>`
       : `<div class="podium-avatar" style="border-color:${color}; box-shadow: 0 0 12px ${color}40">
@@ -274,8 +275,9 @@ function renderLeaderboard() {
     const trendHtml = renderTrendArrow(player.rank_trend);
     const recentForm = JSON.stringify(player.recent_form || []);
 
+    const rowCrop = avatarCrop(player);
     const rowAvatar = player.avatar_card
-      ? `<a class="row-avatar card-art-avatar" href="profile.html?id=${player.id}" style="border-color:${color}"><img src="dominion-cards-used-small/${escapeHtml(player.avatar_card)}" alt=""></a>`
+      ? `<a class="row-avatar card-art-avatar ${rowCrop.cls}" href="profile.html?id=${player.id}" style="border-color:${color}; ${rowCrop.style}"><img src="dominion-cards-used-small/${escapeHtml(player.avatar_card)}" alt=""></a>`
       : `<a class="row-avatar row-avatar-fallback" href="profile.html?id=${player.id}" style="background:${color}">${escapeHtml(player.name[0].toUpperCase())}</a>`;
 
     row.innerHTML = `

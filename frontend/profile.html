@@ -75,6 +75,35 @@
     .tab-btn.active { background: var(--color-blue-dim); border-color: var(--color-blue); color: var(--color-text-primary); }
     .tab-panel { display: none; }
     .tab-panel.active { display: block; }
+    .ach-header { display: flex; align-items: baseline; justify-content: space-between; gap: var(--spacing-sm); }
+    .ach-view-all {
+      background: none; border: none; padding: 0; cursor: pointer;
+      color: var(--color-blue); font-size: 0.85rem; font-weight: 600;
+      box-shadow: none; transform: none;
+    }
+    .ach-view-all:hover { color: var(--color-blue-hover); transform: none; box-shadow: none; text-decoration: underline; }
+    .ach-view-all #ach-count { color: var(--color-text-dim); font-weight: normal; }
+    .crop-viewport {
+      width: 240px; height: 240px; margin: 0 auto;
+      border-radius: var(--border-radius-md);
+      border: 2px solid var(--color-accent);
+      overflow: hidden; position: relative;
+      background: var(--color-bg-tertiary);
+      cursor: grab; touch-action: none;
+    }
+    .crop-viewport.dragging { cursor: grabbing; }
+    .crop-viewport img {
+      width: 100%; height: 100%;
+      object-fit: cover;
+      object-position: var(--cx, 50%) var(--cy, 50%);
+      transform: scale(var(--cz, 1));
+      transform-origin: var(--cx, 50%) var(--cy, 50%);
+      user-select: none; -webkit-user-drag: none; pointer-events: none;
+    }
+    .crop-controls { display: flex; align-items: center; gap: var(--spacing-sm); margin-top: var(--spacing-md); }
+    .crop-controls input[type=range] { flex: 1; }
+    /* Flat solid player-color background: suppress the global vignette + grain. */
+    body.solid-bg::after, body.solid-bg::before { display: none; }
     .card-picker { position: relative; max-width: 360px; }
     .card-picker-toggle {
       display: flex; align-items: center; gap: var(--spacing-sm);
@@ -189,7 +218,10 @@
       <!-- Stats tab -->
       <div class="tab-panel active" id="tab-stats">
         <div class="stat-grid" id="stat-grid"></div>
-        <h3 class="section-heading">Achievements</h3>
+        <div class="ach-header">
+          <h3 class="section-heading">Achievements</h3>
+          <button type="button" id="view-all-ach" class="ach-view-all">View all <span id="ach-count"></span></button>
+        </div>
         <div class="achievement-grid" id="achievement-grid"></div>
       </div>
 
@@ -211,14 +243,42 @@
           <div class="form-group">
             <label>Avatar Card</label>
             <div class="card-picker" id="avatar-picker"></div>
-          </div>
-          <div class="form-group">
-            <label>Background Card <span style="color:var(--color-text-dim);font-weight:normal;">(tiles your profile page)</span></label>
-            <div class="card-picker" id="bg-picker"></div>
+            <button type="button" id="open-crop-btn" class="btn" style="margin-top:var(--spacing-sm);">Adjust crop</button>
           </div>
           <button id="save-profile-btn" class="btn btn-primary">Save Profile</button>
           <span id="profile-save-msg" style="margin-left:var(--spacing-md);color:var(--color-success);"></span>
         </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- All-achievements modal: every earnable achievement with locked/earned state -->
+  <div class="modal-overlay" id="ach-modal" style="display:none;">
+    <div class="modal-box">
+      <div class="modal-header">
+        <h3 style="margin:0;">All Achievements <span id="ach-modal-count" style="color:var(--color-text-dim);font-weight:normal;font-size:0.9rem;"></span></h3>
+        <button type="button" class="modal-close" id="ach-modal-close" aria-label="Close">&times;</button>
+      </div>
+      <div class="achievement-grid" id="ach-modal-grid"></div>
+    </div>
+  </div>
+
+  <!-- Avatar crop modal: WYSIWYG square viewport using the same CSS as rendered avatars -->
+  <div class="modal-overlay" id="crop-modal" style="display:none;">
+    <div class="modal-box" style="max-width:340px;">
+      <div class="modal-header">
+        <h3 style="margin:0;">Adjust Avatar</h3>
+        <button type="button" class="modal-close" id="crop-cancel" aria-label="Close">&times;</button>
+      </div>
+      <p style="color:var(--color-text-dim);font-size:0.85rem;margin-top:0;">Drag to reposition, slider to zoom.</p>
+      <div class="crop-viewport" id="crop-viewport"><img id="crop-img" src="" alt=""></div>
+      <div class="crop-controls">
+        <label for="crop-zoom" style="font-size:0.85rem;">Zoom</label>
+        <input type="range" id="crop-zoom" min="1" max="4" step="0.05" value="1">
+      </div>
+      <div style="display:flex;gap:var(--spacing-sm);justify-content:flex-end;margin-top:var(--spacing-md);">
+        <button type="button" class="btn" id="crop-reset">Reset</button>
+        <button type="button" class="btn btn-primary" id="crop-apply">Apply</button>
       </div>
     </div>
   </div>
@@ -287,6 +347,8 @@
         const frame = document.getElementById('profile-avatar-frame');
         frame.style.borderColor = playerColor;
         frame.style.display = 'block';
+        const crop = avatarCrop(profile);
+        if (crop.cls) { frame.classList.add('cropped'); frame.style.cssText += crop.style; }
       }
       const headerEl = document.getElementById('profile-header');
       headerEl.style.background =
@@ -302,16 +364,12 @@
         `linear-gradient(${hexToRgba(playerColor, 0.12)}, ${hexToRgba(playerColor, 0.03)}), rgba(20, 28, 44, 0.72)`;
       pc.style.boxShadow = `var(--shadow-lg), 0 0 22px ${hexToRgba(playerColor, 0.18)}`;
 
-      // The background card (if set) tiles the whole profile page like wallpaper,
-      // replacing the default stone bricks, behind a dark scrim for readability.
-      if (profile?.background_card) {
-        document.body.style.backgroundColor = '#0b1220';
-        document.body.style.backgroundImage =
-          `linear-gradient(rgba(11,18,30,0.6), rgba(11,18,30,0.6)), url('${CARDS_PATH}${profile.background_card}')`;
-        document.body.style.backgroundRepeat = 'repeat';
-        document.body.style.backgroundSize = '120px auto';
-        document.body.style.backgroundAttachment = 'fixed';
-      }
+      // Profile page decor is a flat, solid fill of the player's color,
+      // replacing the default stone bricks (no card-tiling wallpaper). The
+      // solid-bg class drops the global vignette so the color stays flat.
+      document.body.classList.add('solid-bg');
+      document.body.style.backgroundColor = playerColor;
+      document.body.style.backgroundImage = 'none';
 
       // Level badge
       document.getElementById('level-badge').textContent = `Lv ${levelData.level}`;
@@ -336,7 +394,7 @@
         `<div class="stat-box"><div class="val">${fmtNum(s.val)}</div><div class="lbl">${s.lbl}</div></div>`
       ).join('');
 
-      // Achievements — only show earned ones
+      // Achievements — grid shows earned ones; modal shows all earnable ones
       const ag = document.getElementById('achievement-grid');
       const earnedAchievements = achievements.filter(a => a.earned);
       if (earnedAchievements.length === 0) {
@@ -351,6 +409,28 @@
             <div style="font-size:0.7rem;color:var(--color-accent);margin-top:4px;">Earned ${formatDate(a.earned_at)}</div>
           </div>`).join('');
       }
+
+      // All-achievements modal: every earnable achievement, locked ones dimmed
+      const total = achievements.length;
+      const earnedCount = earnedAchievements.length;
+      document.getElementById('ach-count').textContent = `${earnedCount} / ${total}`;
+      document.getElementById('ach-modal-count').textContent = `${earnedCount} of ${total} earned`;
+      document.getElementById('ach-modal-grid').innerHTML = achievements.map(a => `
+        <div class="achievement-card ${a.earned ? 'earned' : 'locked'}" title="${a.description}">
+          <img class="ach-icon" src="/img/achievements/${a.key}.svg" alt="" loading="lazy">
+          <div class="ach-name">${a.name}</div>
+          <div class="ach-desc">${a.description}</div>
+          <div style="font-size:0.7rem;margin-top:4px;color:${a.earned ? 'var(--color-accent)' : 'var(--color-text-dim)'};">
+            ${a.earned ? 'Earned ' + formatDate(a.earned_at) : 'Locked'}
+          </div>
+        </div>`).join('');
+
+      const achModal = document.getElementById('ach-modal');
+      const closeAchModal = () => { achModal.style.display = 'none'; };
+      document.getElementById('view-all-ach').addEventListener('click', () => { achModal.style.display = 'flex'; });
+      document.getElementById('ach-modal-close').addEventListener('click', closeAchModal);
+      achModal.addEventListener('click', e => { if (e.target === achModal) closeAchModal(); });
+      document.addEventListener('keydown', e => { if (e.key === 'Escape') closeAchModal(); });
 
       // Edit profile form
       // Player color swatches — edits players.color (same value used everywhere)
@@ -378,8 +458,73 @@
       if (cards.length === 0) {
         try { cards = await cardsAPI.getAll(); } catch (e) { console.error('card list load failed', e); }
       }
-      const avatarPicker = createCardPicker(document.getElementById('avatar-picker'), cards, profile?.avatar_card || '');
-      const bgPicker = createCardPicker(document.getElementById('bg-picker'), cards, profile?.background_card || '');
+      // Crop state, seeded from any saved crop. cropActive gates whether crop is
+      // sent on save — un-cropped avatars keep the default framing.
+      let cropState = {
+        zoom: profile?.avatar_zoom ?? 1,
+        x: profile?.avatar_x ?? 50,
+        y: profile?.avatar_y ?? 50,
+      };
+      let cropActive = profile?.avatar_zoom != null;
+
+      const avatarPicker = createCardPicker(document.getElementById('avatar-picker'), cards, profile?.avatar_card || '', () => {
+        // A new card needs fresh framing; drop any crop until re-adjusted.
+        cropState = { zoom: 1, x: 50, y: 50 };
+        cropActive = false;
+      });
+
+      // Avatar crop modal — preview uses the same object-position + zoom as the
+      // rendered avatar, so what you see here is what ships.
+      const cropModal = document.getElementById('crop-modal');
+      const cropViewport = document.getElementById('crop-viewport');
+      const cropImg = document.getElementById('crop-img');
+      const cropZoom = document.getElementById('crop-zoom');
+
+      function renderCropPreview() {
+        cropViewport.style.setProperty('--cx', cropState.x + '%');
+        cropViewport.style.setProperty('--cy', cropState.y + '%');
+        cropViewport.style.setProperty('--cz', cropState.zoom);
+      }
+      const closeCrop = () => { cropModal.style.display = 'none'; };
+
+      document.getElementById('open-crop-btn').addEventListener('click', () => {
+        if (!avatarPicker.value) { alert('Choose an avatar card first.'); return; }
+        cropImg.src = CARDS_PATH + avatarPicker.value;
+        cropZoom.value = cropState.zoom;
+        renderCropPreview();
+        cropModal.style.display = 'flex';
+      });
+      document.getElementById('crop-cancel').addEventListener('click', closeCrop);
+      cropModal.addEventListener('click', e => { if (e.target === cropModal) closeCrop(); });
+      cropZoom.addEventListener('input', () => { cropState.zoom = parseFloat(cropZoom.value); renderCropPreview(); });
+      document.getElementById('crop-reset').addEventListener('click', () => {
+        cropState = { zoom: 1, x: 50, y: 50 };
+        cropZoom.value = 1;
+        renderCropPreview();
+      });
+      document.getElementById('crop-apply').addEventListener('click', () => { cropActive = true; closeCrop(); });
+
+      // Drag to pan. The preview uses the true CSS, so imperfect drag scaling
+      // only affects feel, never the saved result.
+      let dragging = false, lastX = 0, lastY = 0;
+      cropViewport.addEventListener('pointerdown', e => {
+        dragging = true; lastX = e.clientX; lastY = e.clientY;
+        cropViewport.classList.add('dragging');
+        cropViewport.setPointerCapture(e.pointerId);
+      });
+      cropViewport.addEventListener('pointermove', e => {
+        if (!dragging) return;
+        const rect = cropViewport.getBoundingClientRect();
+        const dx = (e.clientX - lastX) / rect.width * 100 / cropState.zoom;
+        const dy = (e.clientY - lastY) / rect.height * 100 / cropState.zoom;
+        cropState.x = Math.min(100, Math.max(0, cropState.x - dx));
+        cropState.y = Math.min(100, Math.max(0, cropState.y - dy));
+        lastX = e.clientX; lastY = e.clientY;
+        renderCropPreview();
+      });
+      const endDrag = () => { dragging = false; cropViewport.classList.remove('dragging'); };
+      cropViewport.addEventListener('pointerup', endDrag);
+      cropViewport.addEventListener('pointercancel', endDrag);
 
       document.getElementById('save-profile-btn').addEventListener('click', async () => {
         const btn = document.getElementById('save-profile-btn');
@@ -392,7 +537,10 @@
               body: JSON.stringify({
                 bio: document.getElementById('bio-input').value,
                 avatar_card: avatarPicker.value || null,
-                background_card: bgPicker.value || null,
+                background_card: null,
+                avatar_zoom: (avatarPicker.value && cropActive) ? Math.round(cropState.zoom * 100) / 100 : null,
+                avatar_x: (avatarPicker.value && cropActive) ? Math.round(cropState.x) : null,
+                avatar_y: (avatarPicker.value && cropActive) ? Math.round(cropState.y) : null,
               }),
             }),
             playersAPI.updateColor(playerId, selectedColor),
@@ -416,7 +564,7 @@
 
   // Dropdown replacement for card selection: toggle button shows the current
   // card's thumbnail; the panel is a searchable grid of card art previews.
-  function createCardPicker(container, cards, initialValue) {
+  function createCardPicker(container, cards, initialValue, onChange) {
     const state = { value: initialValue || '' };
     const labels = Object.fromEntries(cards.map(c => [c.filename, c.label]));
 
@@ -462,9 +610,11 @@
     }
 
     function pick(filename) {
+      const changed = filename !== state.value;
       state.value = filename;
       renderToggle();
       container.classList.remove('open');
+      if (changed && onChange) onChange(filename);
     }
 
     toggle.addEventListener('click', () => {

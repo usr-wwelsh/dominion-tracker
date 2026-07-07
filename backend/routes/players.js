@@ -6,7 +6,7 @@ const { requireAuth } = require('../middleware/auth');
 router.get('/', async (req, res, next) => {
   try {
     const result = await query(`
-      SELECT p.*, pp.avatar_card, pp.bio
+      SELECT p.*, pp.avatar_card, pp.bio, pp.avatar_zoom, pp.avatar_x, pp.avatar_y
       FROM players p
       LEFT JOIN player_profiles pp ON pp.player_id = p.id
       ORDER BY p.created_at DESC
@@ -53,19 +53,26 @@ router.get('/:id/stats', async (req, res, next) => {
     const playerResult = await query('SELECT * FROM players WHERE id = ?', [id]);
     if (playerResult.rows.length === 0) return res.status(404).json({ error: 'Player not found' });
 
+    // Active-season stats only. LEFT JOIN games with the season/ended filter in
+    // the ON clause so a player with no qualifying games still returns a zeroed
+    // row; aggregates are guarded on g.id so non-matching game_players rows
+    // (other seasons, unfinished games) don't leak in.
     const statsResult = await query(`
       SELECT
         p.id,
         p.name,
-        COUNT(gp.id) AS total_games,
-        COALESCE(SUM(gp.league_points), 0) AS total_league_points,
-        COALESCE(ROUND(CAST(AVG(gp.league_points) AS REAL), 2), 0) AS avg_league_points,
-        COALESCE(SUM(CASE WHEN gp.placement = 1 THEN 1 ELSE 0 END), 0) AS total_wins,
-        COALESCE(ROUND(CAST(AVG(gp.final_score) AS REAL), 2), 0) AS avg_score,
-        COALESCE(MAX(gp.final_score), 0) AS highest_score,
-        COALESCE(MIN(gp.final_score), 0) AS lowest_score
+        COUNT(g.id) AS total_games,
+        COALESCE(SUM(CASE WHEN g.id IS NOT NULL THEN gp.league_points END), 0) AS total_league_points,
+        COALESCE(ROUND(CAST(AVG(CASE WHEN g.id IS NOT NULL THEN gp.league_points END) AS REAL), 2), 0) AS avg_league_points,
+        COALESCE(SUM(CASE WHEN g.id IS NOT NULL AND gp.placement = 1 THEN 1 ELSE 0 END), 0) AS total_wins,
+        COALESCE(ROUND(CAST(AVG(CASE WHEN g.id IS NOT NULL THEN gp.final_score END) AS REAL), 2), 0) AS avg_score,
+        COALESCE(MAX(CASE WHEN g.id IS NOT NULL THEN gp.final_score END), 0) AS highest_score,
+        COALESCE(MIN(CASE WHEN g.id IS NOT NULL THEN gp.final_score END), 0) AS lowest_score
       FROM players p
       LEFT JOIN game_players gp ON p.id = gp.player_id
+      LEFT JOIN games g ON gp.game_id = g.id
+        AND g.ended_at IS NOT NULL
+        AND g.season_id = (SELECT id FROM seasons WHERE ended_at IS NULL ORDER BY id DESC LIMIT 1)
       WHERE p.id = ?
       GROUP BY p.id, p.name
     `, [id]);

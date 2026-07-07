@@ -74,9 +74,13 @@ router.get('/leaderboard', async (req, res, next) => {
         p.id,
         p.name,
         p.color,
+        pp.bio,
         pp.avatar_card,
+        pp.avatar_zoom,
+        pp.avatar_x,
+        pp.avatar_y,
         cs.total_games,
-        cs.total_lp AS total_league_points,
+        ROUND(CAST(cs.total_lp AS REAL), 2) AS total_league_points,
         ROUND(CAST(cs.total_lp AS REAL) / MAX(cs.total_games, 1), 2) AS avg_league_points,
         cs.total_wins,
         cs.avg_score,
@@ -106,7 +110,7 @@ router.get('/leaderboard', async (req, res, next) => {
   }
 });
 
-// GET /api/extras — rivalry, all-time high score, most played build
+// GET /api/extras — rivalry, high score, most played build (active season only)
 router.get('/extras', async (req, res, next) => {
   try {
     const [rivalryResult, highScoreResult, buildResult] = await Promise.all([
@@ -122,6 +126,7 @@ router.get('/extras', async (req, res, next) => {
         JOIN players p1 ON gp1.player_id = p1.id
         JOIN players p2 ON gp2.player_id = p2.id
         WHERE g.ended_at IS NOT NULL
+          AND g.season_id = (SELECT id FROM seasons WHERE ended_at IS NULL ORDER BY id DESC LIMIT 1)
         GROUP BY gp1.player_id, gp2.player_id, p1.name, p2.name
         ORDER BY games_together DESC
         LIMIT 1
@@ -133,6 +138,7 @@ router.get('/extras', async (req, res, next) => {
         JOIN players p ON gp.player_id = p.id
         JOIN games g ON gp.game_id = g.id
         WHERE g.ended_at IS NOT NULL
+          AND g.season_id = (SELECT id FROM seasons WHERE ended_at IS NULL ORDER BY id DESC LIMIT 1)
         ORDER BY gp.final_score DESC
         LIMIT 1
       `),
@@ -141,6 +147,7 @@ router.get('/extras', async (req, res, next) => {
         FROM builds b
         JOIN games g ON g.build_id = b.id
         WHERE g.ended_at IS NOT NULL
+          AND g.season_id = (SELECT id FROM seasons WHERE ended_at IS NULL ORDER BY id DESC LIMIT 1)
         GROUP BY b.id, b.nickname
         ORDER BY games_count DESC
         LIMIT 1
