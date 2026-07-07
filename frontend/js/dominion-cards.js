@@ -291,6 +291,27 @@ const EXPANSION_ICON = {
   cornucopia_guilds: 'Cornucopia_&_Guilds_icon.png',
 };
 
+// Per-expansion color, used to tint icon badges instead of a flat white
+// background. Matches the palette used by dominionrandomizer.com.
+const EXPANSION_COLOR = {
+  base: '#b8a27d',
+  intrigue: '#9e9e9e',
+  seaside: '#84c4e0',
+  prosperity: '#c8ce0b',
+  hinterlands: '#8eb365',
+  dark_ages: '#b1572a',
+  empires: '#d1b03f',
+  nocturne: '#8091e6',
+  plunder: '#904929',
+  rising_sun: '#add8e6',
+  alchemy: '#c086fb',
+  adventures: '#54c49f',
+  allies: '#c51327',
+  menagerie: '#b2955b',
+  renaissance: '#11ada8',
+  cornucopia_guilds: '#f2a138',
+};
+
 // Expansion keys (in release order) a build touches, across kingdom cards
 // and all supplemental card types.
 function buildExpansionKeys(build) {
@@ -310,6 +331,8 @@ function renderExpansionIcons(expansionKeys, badgeClass, iconBasePath) {
     const file = EXPANSION_ICON[e];
     if (!file) return '';
     const label = EXPANSION_DISPLAY[e] || e;
-    return `<span class="${badgeClass}" title="${label}"><img src="${base}/${encodeURIComponent(file)}" alt="${label}"></span>`;
+    const color = EXPANSION_COLOR[e];
+    const style = color ? ` style="--exp-color: ${color}"` : '';
+    return `<span class="${badgeClass}" title="${label}"${style}><img src="${base}/${encodeURIComponent(file)}" alt="${label}"></span>`;
   }).join('');
 }

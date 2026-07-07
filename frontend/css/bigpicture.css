@@ -226,17 +226,17 @@ button.bp-row { cursor: pointer; }
 .bp-exp-icon-row { display: flex; align-items: center; gap: 0.3em; flex: 0 0 auto; }
 .bp-exp-icon-badge {
   display: inline-flex; align-items: center; justify-content: center;
-  width: 1em; height: 1em; flex: 0 0 auto;
+  width: 1.15em; height: 1.15em; flex: 0 0 auto;
   border-radius: 50%;
-  background-color: var(--color-text-primary);
+  background-color: color-mix(in srgb, var(--exp-color, var(--color-accent)) 55%, var(--color-text-primary));
   border: 1px solid var(--color-accent);
   padding: 1px;
 }
 .bp-exp-icon-badge img { width: 100%; height: 100%; object-fit: contain; }
 .bp-detail-exp-icons { margin-bottom: 1.4vh; }
 .bp-detail-exp-icons .bp-exp-icon-badge {
-  width: clamp(1.6rem, 2.6vw, 2.4rem);
-  height: clamp(1.6rem, 2.6vw, 2.4rem);
+  width: clamp(1.9rem, 3vw, 2.8rem);
+  height: clamp(1.9rem, 3vw, 2.8rem);
 }
 .bp-row .bp-stat { color: var(--color-text-secondary); font-variant-numeric: tabular-nums; min-width: 4ch; text-align: right; }
 .bp-row .bp-stat-main { color: var(--color-accent-hover); font-weight: bold; font-size: 1.2em; min-width: 5ch; }
