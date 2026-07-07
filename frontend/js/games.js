@@ -464,7 +464,7 @@ async function toggleGameCard(card, game) {
     const canvas = card.querySelector(`#chart-${game.id}`);
     if (canvas) {
       setTimeout(() => {
-        drawScoreChart(canvas, scoreHistoryCache[game.id], commentsHistoryCache[game.id]);
+        drawScoreChart(canvas, scoreHistoryCache[game.id], commentsHistoryCache[game.id], game.started_at, game.ended_at);
       }, 50);
     }
   }

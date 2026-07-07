@@ -226,6 +226,18 @@ function renderLive() {
     liveStream = new EventSource(`${API_BASE_URL}/games/${g.id}/stream`);
     liveStream.addEventListener('comments-init', e => mergeLiveComments(JSON.parse(e.data)));
     liveStream.addEventListener('comment', e => mergeLiveComments([JSON.parse(e.data)]));
+    // The game being watched just ended — jump straight into its recap
+    // instead of waiting for the next 5s poll to quietly drop it from the list.
+    liveStream.addEventListener('ended', async () => {
+      const endedId = g.id;
+      try {
+        detailGame = await gamesAPI.getById(endedId);
+        detailBackScreen = 'live';
+        BP.showScreen('game-detail');
+      } catch (e) {
+        loadLive();
+      }
+    });
     liveStream.onerror = () => {};
   } else {
     renderCommentFeedInto('live-comments', liveCommentsById);
@@ -276,11 +288,15 @@ function renderRecentPage() {
 }
 
 // Recent game → replay the end-of-game winner banner + animated score chart.
+// Also reused when a game being watched on the Live dashboard ends, so the
+// screen the user is looking at transitions straight into its recap.
 let detailGame = null;
+let detailBackScreen = 'recent';
 
 async function openGameDetail(gid) {
   detailGame = recentGames.find(g => g.id === gid) || null;
   if (!detailGame) return;
+  detailBackScreen = 'recent';
   BP.showScreen('game-detail');
 }
 
@@ -299,13 +315,14 @@ async function showGameDetail() {
   banner.style.color = color;
   $('bp-detail-sub').textContent = winners.length ? `${winners[0].final_score} points` : '';
 
-  $('bp-detail-back').onclick = () => BP.showScreen('recent');
+  $('bp-detail-back').onclick = () => BP.showScreen(detailBackScreen);
 
   const canvas = $('bp-detail-chart');
   let history = [];
   try { history = await gamesAPI.getScoreHistory(g.id); } catch (e) { history = []; }
   const comments = await gamesAPI.getComments(g.id).catch(() => []);
-  requestAnimationFrame(() => drawScoreChart(canvas, history, comments));
+  requestAnimationFrame(() => drawScoreChart(canvas, history, comments, g.started_at, g.ended_at));
+  renderCommentFeedInto('bp-detail-comments', new Map(comments.map(c => [c.id, c])));
   if (window.confetti) window.confetti.fire(4000);
 }
 
@@ -483,7 +500,18 @@ function connectStream() {
     const p = play.players.find(x => x.id === player_id);
     if (p && p.score !== score) { p.score = score; setVal(player_id, score); maybeFirstBlood(p); }
   });
-  play.stream.addEventListener('ended', () => { closeStream(); BP.showScreen('launcher'); });
+  // Game was ended from elsewhere (e.g. a spectator on live.html) — show the
+  // same result recap doEnd() shows when we end it ourselves, not the launcher.
+  play.stream.addEventListener('ended', async () => {
+    closeStream();
+    const history = await gamesAPI.getScoreHistory(play.game.id).catch(() => []);
+    const comments = await gamesAPI.getComments(play.game.id).catch(() => []);
+    const endedGame = await gamesAPI.getById(play.game.id).catch(() => null);
+    const maxScore = Math.max(...play.players.map(p => p.score));
+    const winners = play.players.filter(p => p.score === maxScore);
+    play.result = { winners, history, comments, started_at: endedGame?.started_at, ended_at: endedGame?.ended_at };
+    BP.showScreen('result');
+  });
   play.stream.addEventListener('comments-init', e => mergePsComments(JSON.parse(e.data)));
   play.stream.addEventListener('comment', e => mergePsComments([JSON.parse(e.data)]));
   play.stream.onerror = () => {};
@@ -533,13 +561,13 @@ async function doEnd() {
   hideFirstBlood();
   try {
     for (const p of play.players) await gamesAPI.updateScore(play.game.id, p.id, p.score, play.game.edit_token);
-    await gamesAPI.end(play.game.id);
+    const endedGame = await gamesAPI.end(play.game.id);
     const history = await gamesAPI.getScoreHistory(play.game.id).catch(() => []);
     const comments = await gamesAPI.getComments(play.game.id).catch(() => []);
     closeStream();
     const maxScore = Math.max(...play.players.map(p => p.score));
     const winners = play.players.filter(p => p.score === maxScore);
-    play.result = { winners, history, comments };
+    play.result = { winners, history, comments, started_at: endedGame.started_at, ended_at: endedGame.ended_at };
     BP.showScreen('result');
   } catch (e) {
     showInfo('Could not end game', e.message || 'Please try again.');
@@ -548,7 +576,7 @@ async function doEnd() {
 
 // End-of-game: winner banner + the animated score-progression chart, plus confetti.
 function showResult() {
-  const { winners, history, comments } = play.result || {};
+  const { winners, history, comments, started_at, ended_at } = play.result || {};
   if (!winners || !winners.length) { BP.showScreen('launcher'); return; }
   const tied = winners.length > 1;
   const color = !tied && winners[0].color || '#a08850';
@@ -558,7 +586,8 @@ function showResult() {
   $('bp-result-sub').textContent = `${winners[0].score} points`;
   $('bp-result-done').onclick = () => BP.showScreen('launcher');
   // Canvas is now visible (screen is active), so offsetWidth/Height are measured.
-  requestAnimationFrame(() => drawScoreChart($('bp-result-chart'), history, comments));
+  requestAnimationFrame(() => drawScoreChart($('bp-result-chart'), history, comments, started_at, ended_at));
+  renderCommentFeedInto('bp-result-comments', new Map((comments || []).map(c => [c.id, c])));
   if (window.confetti) window.confetti.fire(4000);
 }
 

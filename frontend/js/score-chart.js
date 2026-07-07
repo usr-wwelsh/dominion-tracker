@@ -4,11 +4,20 @@ function escapeChartHtml(text) {
   return div.innerHTML;
 }
 
+function parseChartDate(ts) {
+  return new Date(ts.includes('T') ? ts : ts.replace(' ', 'T') + 'Z').getTime();
+}
+
 // Shared animated score-progression chart (canvas, no library).
 // Used by the Recent Games page and Big Picture Mode's end-of-game screen.
-// drawScoreChart(canvas, scoreHistory, comments) where scoreHistory = score_snapshots
-// rows and comments = build_comments rows (only those made during play are plotted).
-function drawScoreChart(canvas, scoreHistory, comments = []) {
+// drawScoreChart(canvas, scoreHistory, comments, gameStart, gameEnd) where
+// scoreHistory = score_snapshots rows, comments = build_comments rows (only
+// those made during play are plotted), gameStart/gameEnd = the game's actual
+// started_at/ended_at. The time axis spans gameStart..gameEnd (falling back to
+// the snapshot range if not given) rather than just the snapshot min/max —
+// a game can go a long stretch with no score change but still get comments,
+// and those need a valid position on the axis too.
+function drawScoreChart(canvas, scoreHistory, comments = [], gameStart = null, gameEnd = null) {
   if (!scoreHistory || scoreHistory.length === 0) {
     const ctx = canvas.getContext('2d');
     ctx.fillStyle = '#b8a884';
@@ -35,7 +44,7 @@ function drawScoreChart(canvas, scoreHistory, comments = []) {
       };
     }
     playerScores[snapshot.player_id].scores.push({
-      timestamp: new Date(snapshot.timestamp),
+      timestamp: parseChartDate(snapshot.timestamp),
       score: snapshot.score
     });
   });
@@ -46,17 +55,21 @@ function drawScoreChart(canvas, scoreHistory, comments = []) {
   const maxScore = Math.max(...allScores);
   const scoreRange = maxScore - minScore || 1;
 
-  // Shared time axis across all players
-  const allTimestamps = scoreHistory.map(s => new Date(s.timestamp).getTime());
-  const globalFirstTime = Math.min(...allTimestamps);
-  const globalLastTime = Math.max(...allTimestamps);
+  // Shared time axis across all players — widened to the game's actual
+  // started_at/ended_at (when known) so it always covers the full session,
+  // not just whenever scores happened to change.
+  const allTimestamps = scoreHistory.map(s => parseChartDate(s.timestamp));
+  let globalFirstTime = Math.min(...allTimestamps);
+  let globalLastTime = Math.max(...allTimestamps);
+  if (gameStart) globalFirstTime = Math.min(globalFirstTime, parseChartDate(gameStart));
+  if (gameEnd) globalLastTime = Math.max(globalLastTime, parseChartDate(gameEnd));
   const globalTimeRange = globalLastTime - globalFirstTime || 1;
 
   // Timed comment markers ("pop out" as the reveal animation sweeps past them).
-  // Only comments made during play (within the score-snapshot time range) are
-  // plotted — post-game comments fall outside [globalFirstTime, globalLastTime].
+  // Only comments made during play (within [globalFirstTime, globalLastTime],
+  // i.e. the game's session) are plotted — post-game comments fall outside it.
   const commentsInRange = comments.filter(c => {
-    const t = new Date(c.created_at).getTime();
+    const t = parseChartDate(c.created_at);
     return t >= globalFirstTime && t <= globalLastTime;
   });
 
@@ -68,7 +81,7 @@ function drawScoreChart(canvas, scoreHistory, comments = []) {
   const chartHeight = height - padding.top - padding.bottom;
 
   const commentMarkers = commentsInRange.map(c => ({
-    x: padding.left + ((new Date(c.created_at).getTime() - globalFirstTime) / globalTimeRange * chartWidth),
+    x: padding.left + ((parseChartDate(c.created_at) - globalFirstTime) / globalTimeRange * chartWidth),
     color: c.player_color || '#e8dcc8',
     player_name: c.player_name,
     comment_text: c.comment_text,
