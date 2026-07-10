@@ -124,23 +124,32 @@ async function showLeaderboard() {
   list.innerHTML = '<div class="bp-empty">Loading…</div>';
   let data = [];
   try { data = await statsAPI.getLeaderboard(); } catch (e) { list.innerHTML = '<div class="bp-empty">Could not load standings.</div>'; return; }
-  data.sort((a, b) => b.avg_league_points - a.avg_league_points);
+
+  // Ranked (qualified) players first, sorted by avg LP; provisional players
+  // (below the games-played minimum) trail behind, unranked.
+  const qualified = data.filter(p => p.qualified).sort((a, b) => b.avg_league_points - a.avg_league_points);
+  const provisional = data.filter(p => !p.qualified).sort((a, b) => b.total_games - a.total_games || b.avg_league_points - a.avg_league_points);
+  qualified.forEach((p, i) => { p._rank = i + 1; });
+  provisional.forEach(p => { p._rank = null; });
+
   list.innerHTML = '';
-  lbPages = paginate(data, list, 88);
+  lbPages = paginate([...qualified, ...provisional], list, 88);
   lbIdx = 0;
   renderLbPage();
 }
 
 function renderLbPage() {
   const list = $('lb-list');
-  const start = lbIdx * (lbPages[0]?.length || 1);
-  list.innerHTML = lbPages[lbIdx].map((p, i) => {
+  list.innerHTML = lbPages[lbIdx].map(p => {
     const color = p.color || '#4db8ff';
-    const rank = start + i + 1;
+    const minGames = p.min_games_for_ranking ?? 5;
+    const rankHtml = p._rank
+      ? p._rank
+      : `<span class="bp-rank-provisional" title="Needs ${minGames} games played to be ranked">&mdash;</span>`;
     const bio = p.bio
       ? `<span class="bp-bio">${escapeHtml(p.bio)}</span>` : '';
-    return `<div class="bp-row" style="border-left-color:${color}">
-      <span class="bp-rank">${rank}</span>
+    return `<div class="bp-row${p._rank ? '' : ' bp-row-provisional'}" style="border-left-color:${color}">
+      <span class="bp-rank">${rankHtml}</span>
       ${avatarHtml(p)}
       <span class="bp-name-wrap"><span class="bp-name">${escapeHtml(p.name)}</span>${bio}</span>
       <span class="bp-stat">${p.total_wins}<span class="bp-stat-label">wins</span></span>

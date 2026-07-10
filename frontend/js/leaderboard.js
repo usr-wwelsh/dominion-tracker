@@ -140,15 +140,16 @@ async function loadLeaderboard() {
   }
 }
 
-// Render podium for top 3
+// Render podium for top 3 (ranked/qualified players only)
 function renderPodium(data) {
   const section = document.getElementById('podium-section');
-  if (data.length < 2) {
+  const qualifiedData = data.filter(p => p.qualified);
+  if (qualifiedData.length < 2) {
     section.style.display = 'none';
     return;
   }
 
-  const sorted = sortData(data, currentSort.column, currentSort.direction);
+  const sorted = sortData(qualifiedData, currentSort.column, currentSort.direction);
   const top = sorted.slice(0, Math.min(3, sorted.length));
 
   // Build podium order: 2nd (left), 1st (center), 3rd (right)
@@ -268,11 +269,16 @@ function renderLeaderboard() {
 
   const sortedData = sortData(leaderboardData, currentSort.column, currentSort.direction);
 
-  sortedData.forEach((player, index) => {
+  let rank = 0;
+  sortedData.forEach(player => {
     const row = document.createElement('tr');
     const color = player.color || '#4db8ff';
+    const minGames = player.min_games_for_ranking ?? 5;
 
-    const trendHtml = renderTrendArrow(player.rank_trend);
+    if (player.qualified) rank += 1;
+    if (!player.qualified) row.classList.add('row-provisional');
+
+    const trendHtml = player.qualified ? renderTrendArrow(player.rank_trend) : '';
     const recentForm = JSON.stringify(player.recent_form || []);
 
     const rowCrop = avatarCrop(player);
@@ -280,12 +286,17 @@ function renderLeaderboard() {
       ? `<a class="row-avatar card-art-avatar ${rowCrop.cls}" href="profile.html?id=${player.id}" style="border-color:${color}; ${rowCrop.style}"><img src="dominion-cards-used-small/${escapeHtml(player.avatar_card)}" alt=""></a>`
       : `<a class="row-avatar row-avatar-fallback" href="profile.html?id=${player.id}" style="background:${color}">${escapeHtml(player.name[0].toUpperCase())}</a>`;
 
+    const rankCell = player.qualified
+      ? `${rank}${trendHtml}`
+      : `<span class="rank-provisional" title="Needs ${minGames} games played to be ranked (${player.total_games}/${minGames})">&mdash;</span>`;
+
     row.innerHTML = `
-      <td class="col-rank">${index + 1}${trendHtml}</td>
+      <td class="col-rank">${rankCell}</td>
       <td class="player-name">
         ${rowAvatar}
         <span class="player-color-swatch" data-player-id="${player.id}" style="background:${color}" title="Click to change color"></span>
         <a class="player-name-link" href="profile.html?id=${player.id}" data-player-id="${player.id}" data-player-name="${escapeHtml(player.name)}" data-recent-form="${escapeHtml(recentForm)}" title="View profile">${escapeHtml(player.name)}</a>
+        ${!player.qualified ? `<span class="provisional-badge" title="Needs ${minGames} games played to be ranked">${player.total_games}/${minGames} games</span>` : ''}
       </td>
       <td class="stat-highlight">${player.total_league_points}</td>
       <td>${player.avg_league_points}</td>
@@ -460,9 +471,9 @@ function updateSortIndicators() {
   });
 }
 
-// Sort data helper
+// Sort data helper — ranked (qualified) players always sort above provisional ones
 function sortData(data, column, direction) {
-  const sorted = [...data].sort((a, b) => {
+  const compare = (a, b) => {
     let aVal = a[column];
     let bVal = b[column];
 
@@ -478,9 +489,12 @@ function sortData(data, column, direction) {
     aVal = String(aVal ?? '').toLowerCase();
     bVal = String(bVal ?? '').toLowerCase();
     return direction === 'asc' ? aVal.localeCompare(bVal) : bVal.localeCompare(aVal);
-  });
+  };
 
-  return sorted;
+  const qualified = data.filter(p => p.qualified).sort(compare);
+  const provisional = data.filter(p => !p.qualified).sort(compare);
+
+  return [...qualified, ...provisional];
 }
 
 // Escape HTML to prevent XSS

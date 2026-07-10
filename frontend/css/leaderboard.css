@@ -4,22 +4,43 @@
   margin-top: var(--spacing-lg);
 }
 
-#leaderboard-table tbody tr:nth-child(1) td:first-child {
+#leaderboard-table tbody tr:nth-child(1):not(.row-provisional) td:first-child {
   color: #ffd700;
   font-weight: bold;
   font-size: 1.2rem;
 }
 
-#leaderboard-table tbody tr:nth-child(2) td:first-child {
+#leaderboard-table tbody tr:nth-child(2):not(.row-provisional) td:first-child {
   color: #c0c0c0;
   font-weight: bold;
   font-size: 1.1rem;
 }
 
-#leaderboard-table tbody tr:nth-child(3) td:first-child {
+#leaderboard-table tbody tr:nth-child(3):not(.row-provisional) td:first-child {
   color: #cd7f32;
   font-weight: bold;
   font-size: 1.1rem;
+}
+
+/* Provisional (below games-minimum) rows */
+.row-provisional {
+  opacity: 0.6;
+}
+
+.rank-provisional {
+  color: var(--color-text-dim);
+  cursor: help;
+}
+
+.provisional-badge {
+  font-size: 0.7rem;
+  font-weight: 500;
+  color: var(--color-text-dim);
+  border: 1px solid var(--color-border);
+  border-radius: 10px;
+  padding: 1px 8px;
+  white-space: nowrap;
+  cursor: help;
 }
 
 /* Rank column with trend */

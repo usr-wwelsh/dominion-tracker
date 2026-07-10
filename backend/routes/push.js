@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const { query } = require('../db');
+const { MIN_GAMES_FOR_RANKING } = require('../config');
 let webpush;
 try { webpush = require('web-push'); } catch { webpush = null; }
 
@@ -91,6 +92,7 @@ async function notifyRankChanges() {
       WHERE g.ended_at IS NOT NULL
         AND g.season_id = (SELECT id FROM seasons WHERE ended_at IS NULL ORDER BY id DESC LIMIT 1)
       GROUP BY p.id, p.name
+      HAVING COUNT(*) >= ${MIN_GAMES_FOR_RANKING}
       ORDER BY lp DESC
       LIMIT 1
     `);

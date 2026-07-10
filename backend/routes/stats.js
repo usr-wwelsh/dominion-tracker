@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const { query } = require('../db');
+const { MIN_GAMES_FOR_RANKING } = require('../config');
 
 // GET /api/leaderboard — active-season stats with trend and recent form
 router.get('/leaderboard', async (req, res, next) => {
@@ -52,12 +53,14 @@ router.get('/leaderboard', async (req, res, next) => {
           player_id,
           RANK() OVER (ORDER BY CAST(total_lp AS REAL) / MAX(total_games, 1) DESC, total_wins DESC, avg_score DESC) AS curr_rank
         FROM current_stats
+        WHERE total_games >= ${MIN_GAMES_FOR_RANKING}
       ),
       prev_ranked AS (
         SELECT
           player_id,
           RANK() OVER (ORDER BY CAST(prev_lp AS REAL) / MAX(prev_games, 1) DESC, prev_wins DESC, prev_avg_score DESC) AS prev_rank
         FROM prev_stats
+        WHERE prev_games >= ${MIN_GAMES_FOR_RANKING}
       ),
       recent_form_ordered AS (
         SELECT player_id, placement, player_game_rn
@@ -86,6 +89,8 @@ router.get('/leaderboard', async (req, res, next) => {
         cs.avg_score,
         ROUND(CAST(cs.total_wins AS REAL) * 100.0 / MAX(cs.total_games, 1), 1) AS win_rate,
         COALESCE(rf.recent_form, '[]') AS recent_form,
+        CASE WHEN cs.total_games >= ${MIN_GAMES_FOR_RANKING} THEN 1 ELSE 0 END AS qualified,
+        ${MIN_GAMES_FOR_RANKING} AS min_games_for_ranking,
         CASE
           WHEN pr.prev_rank IS NULL THEN NULL
           ELSE CAST(pr.prev_rank - cr.curr_rank AS INTEGER)
@@ -93,10 +98,15 @@ router.get('/leaderboard', async (req, res, next) => {
       FROM players p
       LEFT JOIN player_profiles pp ON pp.player_id = p.id
       JOIN current_stats cs ON p.id = cs.player_id
-      JOIN current_ranked cr ON p.id = cr.player_id
+      LEFT JOIN current_ranked cr ON p.id = cr.player_id
       LEFT JOIN prev_ranked pr ON p.id = pr.player_id
       LEFT JOIN recent_form_agg rf ON p.id = rf.player_id
-      ORDER BY CAST(cs.total_lp AS REAL) / MAX(cs.total_games, 1) DESC, cs.total_wins DESC, cs.avg_score DESC
+      ORDER BY
+        CASE WHEN cs.total_games >= ${MIN_GAMES_FOR_RANKING} THEN 0 ELSE 1 END ASC,
+        CAST(cs.total_lp AS REAL) / MAX(cs.total_games, 1) DESC,
+        cs.total_wins DESC,
+        cs.avg_score DESC,
+        cs.total_games DESC
     `);
 
     // SQLite returns json_group_array as a string; parse it
