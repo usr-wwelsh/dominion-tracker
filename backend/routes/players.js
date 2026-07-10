@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const { query } = require('../db');
 const { requireAuth } = require('../middleware/auth');
+const { MIN_GAMES_FOR_RANKING } = require('../config');
 
 router.get('/', async (req, res, next) => {
   try {
@@ -77,7 +78,44 @@ router.get('/:id/stats', async (req, res, next) => {
       GROUP BY p.id, p.name
     `, [id]);
 
-    res.json(statsResult.rows[0]);
+    // Leaderboard rank — same qualification/tiebreak rules as GET /leaderboard,
+    // scoped to this player's row so the profile can show "Rank X of Y" or
+    // "Unranked" without shipping the whole board.
+    const rankResult = await query(`
+      WITH active_season AS (
+        SELECT id FROM seasons WHERE ended_at IS NULL ORDER BY id DESC LIMIT 1
+      ),
+      current_stats AS (
+        SELECT
+          gp.player_id,
+          COUNT(*) AS total_games,
+          SUM(gp.league_points) AS total_lp,
+          SUM(CASE WHEN gp.placement = 1 THEN 1 ELSE 0 END) AS total_wins,
+          ROUND(CAST(AVG(gp.final_score) AS REAL), 2) AS avg_score
+        FROM game_players gp
+        JOIN games g ON gp.game_id = g.id
+        WHERE g.ended_at IS NOT NULL
+          AND g.season_id = (SELECT id FROM active_season)
+        GROUP BY gp.player_id
+      ),
+      qualified AS (
+        SELECT
+          player_id,
+          RANK() OVER (ORDER BY CAST(total_lp AS REAL) / MAX(total_games, 1) DESC, total_wins DESC, avg_score DESC) AS rank
+        FROM current_stats
+        WHERE total_games >= ${MIN_GAMES_FOR_RANKING}
+      )
+      SELECT
+        (SELECT rank FROM qualified WHERE player_id = ?) AS rank,
+        (SELECT COUNT(*) FROM qualified) AS total_ranked
+    `, [id]);
+
+    res.json({
+      ...statsResult.rows[0],
+      rank: rankResult.rows[0]?.rank ?? null,
+      total_ranked: rankResult.rows[0]?.total_ranked ?? 0,
+      min_games_for_ranking: MIN_GAMES_FOR_RANKING,
+    });
   } catch (error) {
     next(error);
   }

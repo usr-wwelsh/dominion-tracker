@@ -242,6 +242,7 @@
           <div class="profile-bio" id="profile-bio"></div>
           <div style="display:flex;gap:var(--spacing-sm);align-items:center;margin-top:var(--spacing-sm);">
             <span class="level-badge" id="level-badge"></span>
+            <span class="level-badge" id="rank-badge"></span>
           </div>
           <div class="xp-bar-wrap" style="max-width:180px;" id="xp-wrap">
             <div class="xp-bar-fill" id="xp-bar"></div>
@@ -448,6 +449,17 @@
       document.getElementById('xp-bar').style.width = pct + '%';
       document.getElementById('xp-wrap').title =
         `${levelData.xp_into_level} / ${levelData.xp_for_next} XP to next level`;
+
+      // Rank badge, next to the level badge
+      const rankBadge = document.getElementById('rank-badge');
+      if (stats.rank) {
+        rankBadge.textContent = `Rank #${stats.rank} of ${stats.total_ranked}`;
+        rankBadge.title = `${stats.total_games} games played`;
+      } else {
+        const remaining = stats.min_games_for_ranking - stats.total_games;
+        rankBadge.textContent = 'Unranked';
+        rankBadge.title = `Play ${remaining} more game${remaining === 1 ? '' : 's'} to be ranked`;
+      }
 
       // Stats grid
       const sg = document.getElementById('stat-grid');
