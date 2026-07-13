@@ -4,11 +4,12 @@ Self-hosted league tracker for Dominion game nights. Vanilla JS frontend, Expres
 
 ## Features
 
-- Live scoreboard with score-progression charts, plus spectator mode over SSE
+- Live scoreboard with score-progression charts, plus spectator mode over SSE including a live comment feed
 - Leaderboard, seasons with archived history, and single-elimination or Swiss-pod tournaments
-- Kingdom builds with per-build stats and comments
-- Player profiles with card-art avatars, achievements, levels, and head-to-head stats
+- Kingdom builds with traits, notes, per-build type, stats, and comments
+- Player profiles with card-art avatars, achievements, levels, seasonal rank, and head-to-head stats
 - Installable PWA with web-push notifications
+- Admin tools including database export and site banner management
 
 ## Run it
 
@@ -22,14 +23,18 @@ docker compose up -d   # http://localhost:3002
 **Local:**
 
 ```bash
-cd backend && npm install && npm start   # http://localhost:3000
+cd backend && npm install
+# Start the server:
+npm start                  # http://localhost:3000
+# Update card art lists after adding/removing image files:
+npm run sync-cards
 ```
 
-The database is created and migrated automatically on first start. Back it up by copying one file. Coming from the Season 1 Postgres setup? `backend/scripts/pg-to-sqlite.js` does the one-time migration.
+The database is created and migrated automatically on first start. Back it up by copying one file, or use the new `/api/admin/export-db` endpoint. Coming from the Season 1 Postgres setup? `backend/scripts/pg-to-sqlite.js` does the one-time migration.
 
 ## League points
 
-`LP = 100 × (n − p) / (n − 1)` — first place gets 100, last gets 0, everyone else evenly spaced. Ties split the average of their slots. Season standings rank by average LP per game.
+`LP = 100 × (n − p) / (n − 1)` — first place gets 100, last gets 0, everyone else evenly spaced. Ties split the average of their slots. Season standings rank by average LP per game; players must complete a minimum number of games (currently 5) to be ranked.
 
 ## License
 
