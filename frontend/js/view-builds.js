@@ -67,6 +67,15 @@ function renderBuilds() {
       if (ta !== tb) return ta - tb;
       return a.nickname.localeCompare(b.nickname);
     }
+    if (currentSort === 'rating') {
+      const ra = parseFloat(a.avg_rating) || 0;
+      const rb = parseFloat(b.avg_rating) || 0;
+      if (ra !== rb) return rb - ra;
+      const ca = parseInt(a.rating_count) || 0;
+      const cb = parseInt(b.rating_count) || 0;
+      if (ca !== cb) return cb - ca;
+      return a.nickname.localeCompare(b.nickname);
+    }
     // most recent: API already returns created_at DESC, preserve that order
     return 0;
   });
@@ -169,6 +178,115 @@ function updateFilterButton() {
   }
 }
 
+// Render a static 5-star display for an average rating (rounded to nearest star)
+function renderStars(avg) {
+  const rounded = Math.round(avg);
+  const stars = Array.from({ length: 5 }, (_, i) =>
+    `<span class="star-display-item ${i < rounded ? 'star-filled' : ''}">★</span>`
+  ).join('');
+  return `<span class="star-display">${stars}</span>`;
+}
+
+// Show modal to rate a build: select a player, then pick 1-5 stars
+async function showRateModal(build) {
+  const existing = document.getElementById('rate-build-modal');
+  if (existing) existing.remove();
+
+  let players = [];
+  try { players = await playersAPI.getAll(); } catch {}
+
+  const ratingsByPlayer = new Map();
+  try {
+    const ratings = await buildsAPI.getRatings(build.id);
+    ratings.forEach(r => ratingsByPlayer.set(String(r.player_id), r.rating));
+  } catch {}
+
+  const playerOptions = players.map(p => `<option value="${p.id}">${escapeHtml(p.name)}</option>`).join('');
+
+  const overlay = document.createElement('div');
+  overlay.id = 'rate-build-modal';
+  overlay.className = 'delete-modal-overlay';
+  overlay.innerHTML = `
+    <div class="delete-modal-box">
+      <div class="delete-modal-title">Rate "${escapeHtml(build.nickname)}"</div>
+      <div class="form-group">
+        <label for="rm-player">Player</label>
+        <select id="rm-player">
+          <option value="">Select player...</option>
+          ${playerOptions}
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Your Rating</label>
+        <div class="star-picker" id="rm-star-picker">
+          ${[1, 2, 3, 4, 5].map(n => `<span class="star-input" data-value="${n}">★</span>`).join('')}
+        </div>
+      </div>
+      <div class="delete-modal-error" id="rm-error"></div>
+      <div class="delete-modal-actions">
+        <button class="btn btn-primary" id="rm-submit">Submit Rating</button>
+        <button class="btn" id="rm-cancel">Cancel</button>
+      </div>
+    </div>
+  `;
+
+  document.body.appendChild(overlay);
+
+  let selectedRating = 0;
+  let ratingTouched = false;
+  const starEls = Array.from(overlay.querySelectorAll('#rm-star-picker .star-input'));
+  const starPicker = overlay.querySelector('#rm-star-picker');
+  const playerSelect = overlay.querySelector('#rm-player');
+  const errorEl = overlay.querySelector('#rm-error');
+  const submitBtn = overlay.querySelector('#rm-submit');
+  const cancelBtn = overlay.querySelector('#rm-cancel');
+
+  function paintStars(value) {
+    starEls.forEach(el => el.classList.toggle('active', Number(el.dataset.value) <= value));
+  }
+
+  starEls.forEach(el => {
+    el.addEventListener('click', () => {
+      ratingTouched = true;
+      selectedRating = Number(el.dataset.value);
+      paintStars(selectedRating);
+    });
+    el.addEventListener('mouseenter', () => paintStars(Number(el.dataset.value)));
+  });
+  starPicker.addEventListener('mouseleave', () => paintStars(selectedRating));
+
+  playerSelect.addEventListener('change', () => {
+    if (ratingTouched) return;
+    selectedRating = ratingsByPlayer.get(playerSelect.value) || 0;
+    paintStars(selectedRating);
+  });
+
+  function close() { overlay.remove(); }
+
+  cancelBtn.addEventListener('click', close);
+  overlay.addEventListener('click', (e) => { if (e.target === overlay) close(); });
+
+  submitBtn.addEventListener('click', async () => {
+    errorEl.textContent = '';
+    const playerId = playerSelect.value;
+    if (!playerId) { errorEl.textContent = 'Please select a player.'; return; }
+    if (!selectedRating) { errorEl.textContent = 'Please select a star rating.'; return; }
+
+    submitBtn.disabled = true;
+    submitBtn.textContent = 'Submitting...';
+    try {
+      await buildsAPI.rate(build.id, parseInt(playerId, 10), selectedRating);
+      close();
+      showSuccess('Rating submitted!');
+      loadBuilds();
+    } catch (err) {
+      errorEl.textContent = err.message || 'Failed to submit rating';
+      submitBtn.disabled = false;
+      submitBtn.textContent = 'Submit Rating';
+    }
+  });
+}
+
 // Render a tag group row (label + tags), returns '' if no items
 function renderTagGroup(label, items) {
   if (!items || items.length === 0) return '';
@@ -210,6 +328,8 @@ function createBuildItem(build) {
 
   const gamesPlayed = parseInt(build.games_played) || 0;
   const avgScore = parseFloat(build.avg_score_per_game) || 0;
+  const avgRating = parseFloat(build.avg_rating) || 0;
+  const ratingCount = parseInt(build.rating_count) || 0;
 
   const buildTypeLabel = build.build_type === 'suggested' ? 'Suggested' : build.build_type === 'experimental' ? 'Experimental' : 'Custom';
 
@@ -223,11 +343,13 @@ function createBuildItem(build) {
         <div class="build-stats">
           <span>Games: ${gamesPlayed}</span>
           <span>Avg Score: ${avgScore.toFixed(2)}</span>
+          <span class="build-rating-summary">${renderStars(avgRating)} ${ratingCount ? `${avgRating.toFixed(1)} (${ratingCount})` : 'No ratings'}</span>
           ${build.use_platinum_colony ? '<span class="platinum-colony-badge">Platinum / Colony</span>' : ''}
           ${build.use_shelters ? '<span class="platinum-colony-badge">Shelters</span>' : ''}
         </div>
       </div>
       <div class="build-header-right">
+        <button class="btn btn-sm js-rate-build">Rate</button>
         <button class="btn btn-sm js-edit-build">Edit</button>
         <button class="btn btn-danger btn-sm js-delete-build">Delete</button>
         <span class="build-expand-icon">▼</span>
@@ -251,7 +373,7 @@ function createBuildItem(build) {
 
   // Toggle expand on header click (not action buttons)
   div.querySelector('.build-header').addEventListener('click', (e) => {
-    if (e.target.closest('.js-delete-build') || e.target.closest('.js-edit-build')) return;
+    if (e.target.closest('.js-delete-build') || e.target.closest('.js-edit-build') || e.target.closest('.js-rate-build')) return;
     const wasCollapsed = div.classList.contains('collapsed');
     div.classList.toggle('collapsed');
     if (wasCollapsed && !div.dataset.contentLoaded) {
@@ -259,6 +381,10 @@ function createBuildItem(build) {
       loadBuildComments(build.id, div.querySelector(`#comments-${build.id}`));
       loadBuildGames(build.id, div.querySelector(`#games-${build.id}`));
     }
+  });
+
+  div.querySelector('.js-rate-build').addEventListener('click', () => {
+    showRateModal(build);
   });
 
   div.querySelector('.js-edit-build').addEventListener('click', () => {

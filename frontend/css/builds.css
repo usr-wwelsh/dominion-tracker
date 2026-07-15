@@ -561,6 +561,46 @@
   font-weight: 600;
 }
 
+.build-rating-summary {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  white-space: nowrap;
+}
+
+.star-display {
+  letter-spacing: 1px;
+}
+
+.star-display-item {
+  color: var(--color-border);
+}
+
+.star-display-item.star-filled {
+  color: var(--color-accent);
+}
+
+.star-picker {
+  display: flex;
+  gap: 0.35rem;
+  font-size: 1.8rem;
+  line-height: 1;
+}
+
+.star-input {
+  cursor: pointer;
+  color: var(--color-border);
+  transition: color 0.1s ease, transform 0.1s ease;
+}
+
+.star-input:hover {
+  transform: scale(1.15);
+}
+
+.star-input.active {
+  color: var(--color-accent);
+}
+
 .tag-group-label {
   font-size: 0.8rem;
   font-weight: 600;

@@ -26,7 +26,9 @@ const BUILD_SELECT = `
       FROM game_players gp
       JOIN games g ON gp.game_id = g.id
       WHERE g.build_id = b.id AND g.ended_at IS NOT NULL
-    ), 0) AS avg_score_per_game
+    ), 0) AS avg_score_per_game,
+    (SELECT ROUND(AVG(rating), 2) FROM build_ratings WHERE build_id = b.id) AS avg_rating,
+    (SELECT COUNT(*) FROM build_ratings WHERE build_id = b.id) AS rating_count
   FROM builds b
 `;
 
@@ -210,6 +212,48 @@ router.get('/:id/comments', async (req, res, next) => {
       ORDER BY g.started_at DESC, bc.created_at ASC
     `, [req.params.id]);
     res.json(result.rows);
+  } catch (error) {
+    next(error);
+  }
+});
+
+router.get('/:id/ratings', async (req, res, next) => {
+  try {
+    const result = await query(`
+      SELECT br.*, p.name as player_name, p.color as player_color
+      FROM build_ratings br
+      JOIN players p ON br.player_id = p.id
+      WHERE br.build_id = ?
+      ORDER BY br.created_at DESC
+    `, [req.params.id]);
+    res.json(result.rows);
+  } catch (error) {
+    next(error);
+  }
+});
+
+router.post('/:id/ratings', async (req, res, next) => {
+  try {
+    const { player_id, rating } = req.body;
+    const buildId = req.params.id;
+
+    if (!player_id) {
+      return res.status(400).json({ error: 'player_id is required' });
+    }
+    const ratingNum = parseInt(rating, 10);
+    if (!Number.isInteger(ratingNum) || ratingNum < 1 || ratingNum > 5) {
+      return res.status(400).json({ error: 'rating must be an integer between 1 and 5' });
+    }
+
+    const result = await query(
+      `INSERT INTO build_ratings (build_id, player_id, rating)
+       VALUES (?, ?, ?)
+       ON CONFLICT (build_id, player_id) DO UPDATE SET rating = excluded.rating, created_at = CURRENT_TIMESTAMP
+       RETURNING *`,
+      [buildId, player_id, ratingNum]
+    );
+
+    res.status(201).json(result.rows[0]);
   } catch (error) {
     next(error);
   }

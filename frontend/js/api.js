@@ -119,6 +119,13 @@ const buildsAPI = {
   deleteComment: (buildId, commentId, credentials) => apiRequest(`/builds/${buildId}/comments/${commentId}`, {
     method: 'DELETE',
   }, credentials),
+
+  getRatings: (buildId) => apiRequest(`/builds/${buildId}/ratings`),
+
+  rate: (buildId, playerId, rating) => apiRequest(`/builds/${buildId}/ratings`, {
+    method: 'POST',
+    body: JSON.stringify({ player_id: playerId, rating }),
+  }),
 };
 
 // Games API

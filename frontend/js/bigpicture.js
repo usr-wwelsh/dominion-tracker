@@ -658,6 +658,8 @@ function renderBvPage() {
   list.innerHTML = bvPages[bvIdx].map(b => {
     const games = parseInt(b.games_played) || 0;
     const avg = parseFloat(b.avg_score_per_game) || 0;
+    const rating = parseFloat(b.avg_rating) || 0;
+    const ratingCount = parseInt(b.rating_count) || 0;
     return `<button class="bp-row bp-focusable" data-bid="${b.id}" style="border-left-color:${buildHue(b)}">
       <span class="bp-rank" style="color:${buildHue(b)}">⚒</span>
       <span class="bp-name-wrap"><span class="bp-name">${escapeHtml(b.nickname)}</span>
@@ -666,6 +668,7 @@ function renderBvPage() {
           <span class="bp-exp-icon-row">${renderExpansionIcons(buildExpansionKeys(b), 'bp-exp-icon-badge')}</span>
         </span></span>
       <span class="bp-stat">${games}<span class="bp-stat-label">games</span></span>
+      <span class="bp-stat">${ratingCount ? `${rating.toFixed(1)}★` : '—'}<span class="bp-stat-label">${ratingCount ? `${ratingCount} rating${ratingCount === 1 ? '' : 's'}` : 'no ratings'}</span></span>
       <span class="bp-stat-main">${avg.toFixed(1)}<span class="bp-stat-label">avg score</span></span>
     </button>`;
   }).join('');
@@ -706,7 +709,10 @@ function showBuildDetail() {
   $('bd-title').style.color = buildHue(b);
   const games = parseInt(b.games_played) || 0;
   const avg = parseFloat(b.avg_score_per_game) || 0;
-  $('bd-meta').textContent = `${games} games · ${avg.toFixed(1)} avg`;
+  const rating = parseFloat(b.avg_rating) || 0;
+  const ratingCount = parseInt(b.rating_count) || 0;
+  const ratingText = ratingCount ? `${rating.toFixed(1)}★ (${ratingCount})` : 'no ratings';
+  $('bd-meta').textContent = `${games} games · ${avg.toFixed(1)} avg · ${ratingText}`;
   const badges = [];
   badges.push(BUILD_TYPE_LABEL[b.build_type] || 'Custom Build');
   if (b.use_platinum_colony) badges.push('Platinum / Colony');
