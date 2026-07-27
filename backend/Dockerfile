@@ -15,6 +15,18 @@ FROM node:24-bookworm-slim
 
 RUN apt-get update && apt-get upgrade -y && rm -rf /var/lib/apt/lists/*
 
+# Drop the bundled package managers from the runtime image. Dependencies are
+# installed in the build stage, and CMD is plain `node`, so nothing here needs
+# npm/yarn. Removing them also drops their vendored deps (tar, minimatch, ...)
+# which Trivy's node-pkg scanner reports as image CVEs even though they are
+# never executed — e.g. CVE-2026-59873 in npm's bundled tar 7.5.15.
+# If you ever need to run a script in the container, use `node scripts/<x>.js`.
+RUN rm -rf /usr/local/lib/node_modules/npm \
+           /usr/local/lib/node_modules/corepack \
+           /opt/yarn-v* \
+           /usr/local/bin/npm /usr/local/bin/npx /usr/local/bin/corepack \
+           /usr/local/bin/yarn /usr/local/bin/yarnpkg
+
 WORKDIR /app
 
 COPY --from=build /app/node_modules ./node_modules
