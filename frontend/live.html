@@ -396,9 +396,10 @@
     document.querySelector('.token-section').style.display = '';
     document.getElementById('watch-live-badge').innerHTML = '<span class="live-dot"></span>LIVE';
 
-    const playerSelect = document.getElementById('watch-comment-player');
-    playerSelect.innerHTML = '<option value="">Comment as...</option>' +
-      players.map(p => `<option value="${p.player_id}">${escapeHtml(p.player_name)}</option>`).join('');
+    renderCommentPlayerOptions(players, null);
+    playersAPI.getAll()
+      .then(all => { if (currentGameId === gameId) renderCommentPlayerOptions(players, all); })
+      .catch(() => {});
     document.getElementById('watch-comments-list').innerHTML = '';
     document.getElementById('watch-comment-text').value = '';
     document.getElementById('watch-comment-feedback').textContent = '';
@@ -430,16 +431,31 @@
       document.getElementById('recap-chart-wrap').style.display = 'block';
       requestAnimationFrame(() => drawScoreChart(document.getElementById('recap-chart'), history, comments, game.started_at, game.ended_at));
 
-      // Post-game: anyone can comment as any registered player, not just participants.
       const allPlayers = await playersAPI.getAll().catch(() => []);
-      const select = document.getElementById('watch-comment-player');
-      if (allPlayers.length) {
-        select.innerHTML = '<option value="">Comment as...</option>' +
-          allPlayers.map(p => `<option value="${p.id}">${escapeHtml(p.name)}</option>`).join('');
-      }
+      renderCommentPlayerOptions(players, allPlayers);
     } catch (err) {
       console.error('Failed to load recap', err);
     }
+  }
+
+  // Participants first, then everyone else — spectators can comment on games
+  // they aren't playing in. allPlayers null = participants only (pre-fetch).
+  function renderCommentPlayerOptions(participants, allPlayers) {
+    const select = document.getElementById('watch-comment-player');
+    const previous = select.value;
+    const opt = (id, name) => `<option value="${id}">${escapeHtml(name)}</option>`;
+    const inGame = new Set((participants || []).map(p => String(p.player_id)));
+    const others = (allPlayers || []).filter(p => !inGame.has(String(p.id)));
+
+    let html = '<option value="">Comment as...</option>';
+    if (others.length) {
+      html += `<optgroup label="In this game">${(participants || []).map(p => opt(p.player_id, p.player_name)).join('')}</optgroup>`;
+      html += `<optgroup label="Not in this game">${others.map(p => opt(p.id, p.name)).join('')}</optgroup>`;
+    } else {
+      html += (participants || []).map(p => opt(p.player_id, p.player_name)).join('');
+    }
+    select.innerHTML = html;
+    select.value = previous;
   }
 
   function escapeHtml(text) {

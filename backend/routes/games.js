@@ -408,8 +408,8 @@ router.get('/:id/comments', async (req, res, next) => {
   }
 });
 
-// POST /api/games/:id/comments — post as any participant while live, or any
-// registered player once the game has ended. No edit_token required.
+// POST /api/games/:id/comments — post as any registered player, live or ended.
+// Spectators comment on games they aren't in. No edit_token required.
 router.post('/:id/comments', async (req, res, next) => {
   try {
     const { id } = req.params;
@@ -423,23 +423,13 @@ router.post('/:id/comments', async (req, res, next) => {
       return res.status(400).json({ error: `Comment must be ${MAX_COMMENT_LEN} characters or fewer` });
     }
 
-    const gameRow = await query('SELECT id, ended_at, build_id FROM games WHERE id = ?', [id]);
+    const gameRow = await query('SELECT id, build_id FROM games WHERE id = ?', [id]);
     if (gameRow.rows.length === 0) return res.status(404).json({ error: 'Game not found' });
     const game = gameRow.rows[0];
 
-    if (game.ended_at === null) {
-      const valid = await query(
-        'SELECT 1 FROM game_players WHERE game_id = ? AND player_id = ?',
-        [id, player_id]
-      );
-      if (valid.rows.length === 0) {
-        return res.status(400).json({ error: 'Player is not part of this game' });
-      }
-    } else {
-      const valid = await query('SELECT 1 FROM players WHERE id = ?', [player_id]);
-      if (valid.rows.length === 0) {
-        return res.status(400).json({ error: 'Unknown player' });
-      }
+    const valid = await query('SELECT 1 FROM players WHERE id = ?', [player_id]);
+    if (valid.rows.length === 0) {
+      return res.status(400).json({ error: 'Unknown player' });
     }
 
     const inserted = await query(
