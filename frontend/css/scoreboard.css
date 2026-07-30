@@ -329,30 +329,102 @@
 }
 
 @media (max-width: 768px) {
+  #scoreboard {
+    gap: var(--spacing-sm);
+    margin-top: var(--spacing-md);
+  }
+
   .score-row {
     flex-wrap: wrap;
+    gap: var(--spacing-sm);
+    padding: var(--spacing-sm);
+  }
+
+  .player-rank {
+    font-size: 1rem;
+    min-width: 0;
+    order: 1;
   }
 
   .player-info {
-    order: 1;
-    flex-basis: 100%;
+    order: 2;
+    flex: 1;
+    min-width: 0;
+  }
+
+  .score-avatar {
+    width: 32px;
+    height: 32px;
+  }
+
+  .score-avatar-fallback {
+    font-size: 0.95rem;
+  }
+
+  .player-info-name {
+    font-size: 1rem;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
 
   .score-display {
-    order: 2;
-  }
-
-  .score-controls {
     order: 3;
+    font-size: 1.6rem;
+    min-width: 0;
+    text-align: right;
   }
 
+  /* + / − sit inline, right of the name and score */
+  .score-controls {
+    order: 4;
+    flex: 0 0 auto;
+    flex-wrap: nowrap;
+    gap: 6px;
+  }
+
+  .score-btn {
+    width: 48px;
+    height: 48px;
+    font-size: 1.7rem;
+  }
+
+  /* Victory cards need the full width, so they get their own row */
   .card-controls {
-    flex-wrap: wrap;
+    flex: 1 0 100%;
+    flex-wrap: nowrap;
+    gap: 4px;
   }
 
   .card-score-btn {
-    width: 40px;
-    height: 64px;
+    flex: 1;
+    min-width: 0;
+    width: auto;
+    height: auto;
+    aspect-ratio: 100 / 160;
+  }
+
+  .card-score-btn:hover {
+    transform: none;
+  }
+
+  .card-delta {
+    font-size: 0.62rem;
+    padding: 0 3px;
+    bottom: 1px;
+    right: 1px;
+  }
+
+  .token-btn {
+    flex: 1;
+    width: auto;
+    height: auto;
+    margin-left: 0;
+    font-size: 1.4rem;
+  }
+
+  .score-btn:hover {
+    transform: none;
   }
 
   .game-actions {
