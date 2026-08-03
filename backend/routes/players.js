@@ -4,6 +4,23 @@ const { query } = require('../db');
 const { requireAuth } = require('../middleware/auth');
 const { MIN_GAMES_FOR_RANKING } = require('../config');
 
+// Level curve: XP is total play seconds / K, level is floor(sqrt(xp)), so each
+// level costs progressively more play time.
+const XP_SECONDS_PER_UNIT = 300;
+
+function levelFromSeconds(totalSeconds) {
+  const totalXp = Math.max(0, Math.floor((totalSeconds || 0) / XP_SECONDS_PER_UNIT));
+  const level = Math.floor(Math.sqrt(totalXp));
+  const xpForCurrentLevel = level * level;
+  const xpForNextLevel = (level + 1) * (level + 1);
+  return {
+    total_xp: totalXp,
+    level,
+    xp_into_level: totalXp - xpForCurrentLevel,
+    xp_for_next: xpForNextLevel - xpForCurrentLevel,
+  };
+}
+
 router.get('/', async (req, res, next) => {
   try {
     const result = await query(`
@@ -135,18 +152,9 @@ router.get('/:id/level', async (req, res, next) => {
       WHERE gp.player_id = ? AND g.ended_at IS NOT NULL
     `, [id]);
 
-    const K = 300; // seconds per XP unit; tunes level curve
-    const totalXp = Math.max(0, Math.floor((xpResult.rows[0].total_seconds || 0) / K));
-    const level = Math.floor(Math.sqrt(totalXp));
-    const xpForCurrentLevel = level * level;
-    const xpForNextLevel = (level + 1) * (level + 1);
-
     res.json({
       player_id: Number(id),
-      total_xp: totalXp,
-      level,
-      xp_into_level: totalXp - xpForCurrentLevel,
-      xp_for_next: xpForNextLevel - xpForCurrentLevel,
+      ...levelFromSeconds(xpResult.rows[0].total_seconds),
     });
   } catch (error) {
     next(error);
@@ -226,3 +234,4 @@ router.delete('/:id', requireAuth, async (req, res, next) => {
 });
 
 module.exports = router;
+module.exports.levelFromSeconds = levelFromSeconds;

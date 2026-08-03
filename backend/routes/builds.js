@@ -276,3 +276,4 @@ router.delete('/:buildId/comments/:commentId', requireAuth, async (req, res, nex
 });
 
 module.exports = router;
+module.exports.hydrateBuild = hydrateBuild;
