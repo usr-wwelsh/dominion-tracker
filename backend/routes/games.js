@@ -547,7 +547,10 @@ async function createGameTx(client, { build_id, player_ids }) {
   );
   const game = gameResult.rows[0];
 
-  for (const player_id of player_ids) {
+  // game_players has a UNIQUE(game_id, player_id), so a caller that lists the
+  // same player twice would fail the whole create on a constraint error.
+  // A duplicate is a slip in the picker, not a conflict — seat them once.
+  for (const player_id of [...new Set(player_ids)]) {
     await client.query(
       'INSERT INTO game_players (game_id, player_id, final_score) VALUES (?, ?, ?)',
       [game.id, player_id, startingScore]
