@@ -17,37 +17,6 @@ function sseNotify(gameId, event, data) {
   }
 }
 
-// Shared helper: build the players sub-array for a game via a correlated subquery
-const PLAYERS_SUBQ = `(
-  SELECT json_group_array(json_object(
-    'player_id', gp.player_id,
-    'player_name', p.name,
-    'player_color', p.color,
-    'final_score', gp.final_score,
-    'placement', gp.placement,
-    'league_points', gp.league_points
-  ))
-  FROM (
-    SELECT gp.player_id, p.name, p.color, gp.final_score, gp.placement, gp.league_points
-    FROM game_players gp
-    JOIN players p ON gp.player_id = p.id
-    WHERE gp.game_id = g.id
-    ORDER BY gp.placement
-  ) AS gp JOIN players p ON gp.player_id = p.id
-) AS players`;
-
-// Simpler version used in the create-response (no placement yet)
-const PLAYERS_SUBQ_SIMPLE = `(
-  SELECT json_group_array(json_object(
-    'player_id', gp.player_id,
-    'player_name', p.name,
-    'final_score', gp.final_score
-  ))
-  FROM game_players gp
-  JOIN players p ON gp.player_id = p.id
-  WHERE gp.game_id = g.id
-) AS players`;
-
 function parsePlayers(row) {
   if (row && typeof row.players === 'string') {
     row.players = JSON.parse(row.players);
@@ -550,6 +519,10 @@ router.get('/:id', async (req, res, next) => {
 
 function calculateAverageLeaguePoints(startPlacement, numTied, totalPlayers) {
   const n = totalPlayers;
+  // The 0-100 spread is undefined with fewer than two players — there is no
+  // last place to anchor against. Award nothing rather than divide by zero and
+  // write NaN into game_players.league_points.
+  if (n < 2) return 0;
   const avg = 100 * (n - startPlacement - (numTied - 1) / 2) / (n - 1);
   return Math.round(avg * 100) / 100;
 }
@@ -591,3 +564,5 @@ async function createGameTx(client, { build_id, player_ids }) {
 module.exports = router;
 module.exports.createGameTx = createGameTx;
 module.exports.sseNotify = sseNotify;
+module.exports.calculateAverageLeaguePoints = calculateAverageLeaguePoints;
+module.exports.parsePlayers = parsePlayers;

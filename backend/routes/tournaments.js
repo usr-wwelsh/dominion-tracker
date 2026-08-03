@@ -150,6 +150,7 @@ async function getBracket(tournamentId) {
 // last, i.e. they hold the lower-ranked players when filling top-down.
 // 5->[3,2] 6->[3,3] 7->[3,4] 8->[4,4] 9->[3,3,3] 10->[3,3,4] 11->[3,4,4]
 function podSizes(n) {
+  if (n < 1) return [];
   if (n < 3) return [n];
   const pods = Math.floor(n / 3);
   const rem = n % 3;
@@ -639,3 +640,6 @@ router.delete('/:id', requireAuth, async (req, res, next) => {
 
 module.exports = router;
 module.exports.maybeAdvanceTournament = maybeAdvanceTournament;
+module.exports.nextPow2 = nextPow2;
+module.exports.seedOrder = seedOrder;
+module.exports.podSizes = podSizes;
