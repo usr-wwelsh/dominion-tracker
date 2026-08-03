@@ -2,7 +2,7 @@ const fs = require('fs');
 const path = require('path');
 const { db } = require('./db');
 
-function migrate() {
+function migrate(migrationsDir = path.join(__dirname, 'migrations', 'sqlite')) {
   db.exec(`
     CREATE TABLE IF NOT EXISTS schema_migrations (
       id    INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -15,7 +15,6 @@ function migrate() {
     db.prepare('SELECT filename FROM schema_migrations ORDER BY filename').all().map(r => r.filename)
   );
 
-  const migrationsDir = path.join(__dirname, 'migrations', 'sqlite');
   const files = fs.readdirSync(migrationsDir)
     .filter(f => f.endsWith('.sql'))
     .sort();
@@ -25,8 +24,18 @@ function migrate() {
     if (applied.has(file)) continue;
     console.log(`Applying migration: ${file}`);
     const sql = fs.readFileSync(path.join(migrationsDir, file), 'utf8');
-    // db.exec runs arbitrary multi-statement SQL in one shot
-    db.exec(`BEGIN; ${sql} INSERT INTO schema_migrations (filename) VALUES ('${file}'); COMMIT;`);
+    // db.exec runs arbitrary multi-statement SQL in one shot, but the filename
+    // is bound rather than interpolated — an apostrophe in it would otherwise
+    // close the string literal and break the migration.
+    db.exec('BEGIN');
+    try {
+      db.exec(sql);
+      db.prepare('INSERT INTO schema_migrations (filename) VALUES (?)').run(file);
+      db.exec('COMMIT');
+    } catch (err) {
+      db.exec('ROLLBACK');
+      throw err;
+    }
     console.log(`Applied: ${file}`);
     count++;
   }
