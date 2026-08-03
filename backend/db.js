@@ -13,7 +13,9 @@ const db = new Database(dbPath);
 db.pragma('journal_mode = WAL');
 db.pragma('foreign_keys = ON');
 
-console.log(`SQLite database opened at ${dbPath}`);
+if (process.env.NODE_ENV !== 'test') {
+  console.log(`SQLite database opened at ${dbPath}`);
+}
 
 // Translate Postgres $1,$2,... placeholders to SQLite ?
 function translateSql(text) {
@@ -80,4 +82,4 @@ const getClient = () => {
 };
 
 // Expose the raw db instance for migrate.js (needs db.exec for multi-statement SQL)
-module.exports = { query, getClient, db };
+module.exports = { query, getClient, db, translateSql, returnsRows };
