@@ -324,8 +324,8 @@ function showDeleteModal(actionLabel, onConfirm, options = {}) {
   const existing = document.getElementById('delete-confirm-modal');
   if (existing) existing.remove();
 
-  const authRequired = true; // always show fields; middleware will pass if no env vars set
-
+  // Credential fields are always shown; the middleware passes through when no
+  // AUTH_USER/AUTH_PASS env vars are set.
   const overlay = document.createElement('div');
   overlay.id = 'delete-confirm-modal';
   overlay.className = 'delete-modal-overlay';

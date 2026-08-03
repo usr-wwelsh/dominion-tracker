@@ -339,7 +339,6 @@ function placementLabel(placement) {
 function renderRecentFormSection(form) {
   if (!form || form.length === 0) return '';
 
-  const FORM_LABELS = ['1st', '2nd', '3rd'];
   const pills = form.map(placement => {
     const colorIndex = Math.min(placement - 1, FORM_COLORS.length - 1);
     const color = FORM_COLORS[colorIndex];

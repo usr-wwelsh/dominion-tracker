@@ -122,7 +122,7 @@ async function showLeaderboard() {
   clearScreenTimers();
   const list = $('lb-list');
   list.innerHTML = '<div class="bp-empty">Loading…</div>';
-  let data = [];
+  let data;
   try { data = await statsAPI.getLeaderboard(); } catch (e) { list.innerHTML = '<div class="bp-empty">Could not load standings.</div>'; return; }
 
   // Ranked (qualified) players first, sorted by avg LP; provisional players
@@ -193,7 +193,7 @@ function renderCommentFeedInto(elId, commentsMap) {
 function mergeLiveComments(list) { list.forEach(c => liveCommentsById.set(c.id, c)); renderCommentFeedInto('live-comments', liveCommentsById); }
 
 async function loadLive(silent) {
-  let games = [];
+  let games;
   try { ({ games } = await apiRequest('/games?live=1&limit=10')); } catch (e) { games = []; }
   liveGames = games || [];
   if (liveIdx >= liveGames.length) liveIdx = 0;
@@ -262,7 +262,7 @@ async function showRecent() {
   clearScreenTimers();
   const list = $('recent-list');
   list.innerHTML = '<div class="bp-empty">Loading…</div>';
-  let games = [];
+  let games;
   try { ({ games } = await gamesAPI.getAll({ limit: 40 })); } catch (e) { list.innerHTML = '<div class="bp-empty">Could not load games.</div>'; return; }
   recentGames = (games || []).filter(g => g.ended_at);
   list.innerHTML = '';
@@ -344,7 +344,7 @@ async function showPlayBuild() {
   clearScreenTimers();
   const track = $('pb-track');
   track.innerHTML = '<div class="bp-empty">Loading…</div>';
-  let builds = [];
+  let builds;
   try { builds = await buildsAPI.getAll(); } catch (e) { builds = []; }
   const tiles = [{ id: null, nickname: 'No Build' }, ...builds];
   track.innerHTML = tiles.map(b =>
@@ -374,7 +374,7 @@ async function showPlayPlayers() {
   $('pp-add-row').style.display = 'none';
   const grid = $('pp-grid');
   grid.innerHTML = '<div class="bp-empty">Loading…</div>';
-  let players = [];
+  let players;
   try { players = await playersAPI.getAll(); } catch (e) { players = []; }
   play.players = players;
   renderPlayerGrid();
@@ -384,7 +384,6 @@ async function showPlayPlayers() {
 function renderPlayerGrid() {
   const grid = $('pp-grid');
   grid.innerHTML = play.players.map(p => {
-    const color = p.color || '#4db8ff';
     const sel = play.selected.includes(p.id);
     return `<button class="bp-player-tile bp-focusable ${sel ? 'selected' : ''}" data-pid="${p.id}">
       ${avatarHtml(p, 'bp-av-tile')}
@@ -643,7 +642,7 @@ async function showBuildsView() {
   clearScreenTimers();
   const list = $('bv-list');
   list.innerHTML = '<div class="bp-empty">Loading…</div>';
-  let builds = [];
+  let builds;
   try { builds = await buildsAPI.getAll(); } catch (e) { list.innerHTML = '<div class="bp-empty">Could not load builds.</div>'; return; }
   bvBuilds = builds || [];
   if (!bvBuilds.length) { list.innerHTML = '<div class="bp-empty">No builds yet.<br>Make one from the Builds menu.</div>'; $('bv-page').textContent = ''; return; }
