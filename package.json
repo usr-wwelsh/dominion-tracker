@@ -1,0 +1,16 @@
+{
+  "name": "dominion-tracker",
+  "private": true,
+  "description": "Repo-level tooling only. Runtime dependencies live in backend/package.json; the Docker image copies backend/ and never sees this file.",
+  "license": "MIT",
+  "scripts": {
+    "lint": "eslint .",
+    "test": "npm --prefix backend test",
+    "check": "npm run lint && npm test"
+  },
+  "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "eslint": "^10.8.0",
+    "globals": "^17.9.0"
+  }
+}
