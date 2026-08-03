@@ -19,7 +19,12 @@ permissions:
   contents: write
 
 jobs:
+  # Lint + tests must pass before anything is built or pushed.
+  checks:
+    uses: ./.github/workflows/ci.yml
+
   build:
+    needs: checks
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
