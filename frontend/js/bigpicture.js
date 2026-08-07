@@ -376,7 +376,9 @@ async function showPlayPlayers() {
   grid.innerHTML = '<div class="bp-empty">Loading…</div>';
   let players;
   try { players = await playersAPI.getAll(); } catch (e) { players = []; }
-  play.players = players;
+  // Regulars first — the couch remote should reach the usual crew in one press.
+  play.players = players.sort((a, b) =>
+    (b.total_games || 0) - (a.total_games || 0) || a.name.localeCompare(b.name));
   renderPlayerGrid();
   BP.refreshFocus(grid.querySelector('.bp-player-tile') || undefined);   // onShow is async; re-grab focusables now that tiles exist
 }

@@ -24,7 +24,8 @@ function levelFromSeconds(totalSeconds) {
 router.get('/', async (req, res, next) => {
   try {
     const result = await query(`
-      SELECT p.*, pp.avatar_card, pp.bio, pp.avatar_zoom, pp.avatar_x, pp.avatar_y
+      SELECT p.*, pp.avatar_card, pp.bio, pp.avatar_zoom, pp.avatar_x, pp.avatar_y,
+             (SELECT COUNT(*) FROM game_players gp WHERE gp.player_id = p.id) AS total_games
       FROM players p
       LEFT JOIN player_profiles pp ON pp.player_id = p.id
       ORDER BY p.created_at DESC
