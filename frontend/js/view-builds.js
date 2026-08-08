@@ -701,8 +701,9 @@ function placementLabel(n) {
 }
 
 function formatGameDate(ts) {
-  if (!ts) return 'Unknown date';
-  return new Date(ts).toLocaleString('en-US', {
+  const d = parseServerTime(ts);
+  if (!d) return 'Unknown date';
+  return d.toLocaleString('en-US', {
     year: 'numeric', month: 'short', day: 'numeric',
     hour: '2-digit', minute: '2-digit',
   });
@@ -811,12 +812,7 @@ function renderBuildComments(buildId, comments, container) {
   const seenGames = new Map();
   comments.forEach(c => {
     if (!seenGames.has(c.game_id)) {
-      const gameDate = c.game_started_at
-        ? new Date(c.game_started_at).toLocaleString('en-US', {
-            year: 'numeric', month: 'short', day: 'numeric',
-            hour: '2-digit', minute: '2-digit'
-          })
-        : 'Unknown date';
+      const gameDate = formatGameDate(c.game_started_at);
       const group = { game_id: c.game_id, gameDate, comments: [] };
       seenGames.set(c.game_id, group);
       gameGroups.push(group);

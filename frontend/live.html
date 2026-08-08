@@ -465,12 +465,11 @@
   }
 
   function formatCommentTime(ts) {
-    const d = new Date(ts.includes('T') ? ts : ts.replace(' ', 'T') + 'Z');
-    return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    return parseServerTime(ts)?.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) ?? '';
   }
 
   function renderComments() {
-    const list = [...commentsById.values()].sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
+    const list = [...commentsById.values()].sort((a, b) => parseServerTime(a.created_at) - parseServerTime(b.created_at));
     const container = document.getElementById('watch-comments-list');
     container.innerHTML = list.map(c => `
       <div class="comment-item">

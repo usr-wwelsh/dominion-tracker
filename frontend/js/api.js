@@ -16,9 +16,24 @@ function avatarCrop(obj) {
   };
 }
 
-const API_BASE_URL = (window.location.port === '8000')
+const API_BASE_URL = (typeof window !== 'undefined' && window.location.port === '8000')
   ? `http://${window.location.hostname}:3000/api`
   : '/api';
+
+/**
+ * Parse a timestamp as written by the server. SQLite's CURRENT_TIMESTAMP emits
+ * "YYYY-MM-DD HH:MM:SS" in UTC with no zone suffix, and `new Date()` reads that
+ * shape as local time — so a bare parse shows UTC clock numbers to everyone.
+ * Always route server timestamps through here before formatting.
+ * @returns {Date|null} null when there is no timestamp
+ */
+function parseServerTime(ts) {
+  if (!ts) return null;
+  if (ts instanceof Date) return ts;
+  if (typeof ts !== 'string') return new Date(ts);
+  if (ts.includes('Z') || /[+-]\d\d:?\d\d$/.test(ts)) return new Date(ts);
+  return new Date(ts.replace(' ', 'T') + 'Z');
+}
 
 /**
  * Centralized fetch wrapper with error handling
@@ -399,5 +414,6 @@ if (typeof module !== 'undefined' && module.exports) {
     gamesAPI,
     statsAPI,
     tournamentsAPI,
+    parseServerTime,
   };
 }

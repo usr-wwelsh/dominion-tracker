@@ -5,7 +5,7 @@ function escapeChartHtml(text) {
 }
 
 function parseChartDate(ts) {
-  return new Date(ts.includes('T') ? ts : ts.replace(' ', 'T') + 'Z').getTime();
+  return parseServerTime(ts)?.getTime() ?? NaN;
 }
 
 // Shared animated score-progression chart (canvas, no library).

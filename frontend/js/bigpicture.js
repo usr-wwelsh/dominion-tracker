@@ -8,8 +8,7 @@ const initial = (name) => (name || '?').trim()[0].toUpperCase();
 // Join winner names for display, handling ties ("Alice", "Alice & Bob", "Alice, Bob & Carl").
 const joinNames = (names) => names.length <= 1 ? (names[0] || '') :
   names.slice(0, -1).join(', ') + ' & ' + names[names.length - 1];
-// DB timestamps are UTC but lack a 'Z'; parse as UTC so the client renders local time.
-const parseDbDate = (ts) => ts ? new Date(ts.includes('T') ? ts : ts.replace(' ', 'T') + 'Z') : null;
+const parseDbDate = parseServerTime;
 
 // Player avatar — card-art crop (shared with the rest of the site via avatarCrop),
 // falling back to a colored initial. Accepts leaderboard/player/game-player shapes.
@@ -181,7 +180,7 @@ let liveStream = null, liveStreamGameId = null, liveCommentsById = new Map();
 function renderCommentFeedInto(elId, commentsMap) {
   const el = document.getElementById(elId);
   if (!el) return;
-  const list = [...commentsMap.values()].sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
+  const list = [...commentsMap.values()].sort((a, b) => parseDbDate(a.created_at) - parseDbDate(b.created_at));
   el.innerHTML = list.map(c => `
     <div class="bp-comment-item">
       <span class="bp-comment-time">${parseDbDate(c.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
@@ -449,7 +448,7 @@ function showPlayScore() {
   $('ps-cancel').onclick = confirmCancel;
   $('ps-token').textContent = play.game.edit_token || '';
 
-  const started = Date.parse((play.game.started_at || '').replace(' ', 'T') + 'Z') || Date.now();
+  const started = parseDbDate(play.game.started_at)?.getTime() || Date.now();
   own(setInterval(() => {
     const s = Math.floor((Date.now() - started) / 1000);
     $('ps-timer').textContent = `${String(Math.floor(s / 60)).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}`;

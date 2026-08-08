@@ -229,8 +229,7 @@
   });
 
   function formatDate(ts) {
-    if (!ts) return '?';
-    return new Date(ts).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
+    return parseServerTime(ts)?.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }) ?? '?';
   }
   </script>
 </body>

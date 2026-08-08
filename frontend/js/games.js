@@ -256,7 +256,7 @@ function createGameCard(game) {
   // Single winner: use their color. Tied: fall back to gold accent.
   card.style.setProperty('--winner-color', !tied && winner?.player_color ? winner.player_color : '#a08850');
 
-  const startDate = game.started_at ? new Date(game.started_at) : null;
+  const startDate = parseServerTime(game.started_at);
   const formattedDate = startDate
     ? startDate.toLocaleString('en-US', {
         year: 'numeric',
@@ -583,6 +583,5 @@ function escapeHtml(text) {
 }
 
 function formatCommentTime(ts) {
-  const d = new Date(ts.includes('T') ? ts : ts.replace(' ', 'T') + 'Z');
-  return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  return parseServerTime(ts)?.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) ?? '';
 }

@@ -67,7 +67,7 @@ async function resumeExistingGame(gameId) {
       score: p.final_score,
     }));
 
-    gameStartTime = game.started_at ? parseServerTime(game.started_at) : new Date();
+    gameStartTime = parseServerTime(game.started_at) || new Date();
     startTimer();
     connectScoreStream();
 
@@ -298,7 +298,7 @@ async function startGame() {
     currentGame = await gamesAPI.start(createdGame.id);
 
     // Initialize game state
-    gameStartTime = parseServerTime(currentGame.started_at);
+    gameStartTime = parseServerTime(currentGame.started_at) || new Date();
     startTimer();
     showShareToken();
     connectScoreStream();
@@ -464,14 +464,6 @@ function disconnectScoreStream() {
     scoreStream.close();
     scoreStream = null;
   }
-}
-
-// Parse a SQLite timestamp ("YYYY-MM-DD HH:MM:SS", UTC, no zone) as UTC.
-function parseServerTime(ts) {
-  if (!ts) return new Date();
-  if (typeof ts !== 'string') return new Date(ts);
-  if (ts.includes('Z') || /[+-]\d\d:?\d\d$/.test(ts)) return new Date(ts);
-  return new Date(ts.replace(' ', 'T') + 'Z');
 }
 
 // Display the edit token so the starter can share live-score editing.
