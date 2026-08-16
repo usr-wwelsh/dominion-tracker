@@ -1,3 +1,5 @@
+[![Read about the commits](https://img.shields.io/badge/commits-code%20blog-1a1a1a?style=flat-square)](https://wwel.sh/digest.html?repo=dominion-tracker)
+
 <p align="center"><img src="banner.svg" alt="Dominion Tracker" width="100%"></p>
 
 Self-hosted league tracker for Dominion game nights. Vanilla JS frontend, Express backend, single-file SQLite database — no build step, no cloud.
