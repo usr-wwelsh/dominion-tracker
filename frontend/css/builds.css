@@ -485,7 +485,8 @@
 
 .build-stats {
   display: flex;
-  gap: var(--spacing-lg);
+  flex-wrap: wrap;
+  gap: var(--spacing-xs) var(--spacing-lg);
   color: var(--color-text-secondary);
   font-size: 0.9rem;
 }
@@ -637,6 +638,8 @@
   border-radius: var(--border-radius-sm);
   font-size: 0.8rem;
   font-weight: 600;
+  white-space: nowrap;
+  flex-shrink: 0;
 }
 
 .build-rating-summary {
