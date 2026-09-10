@@ -58,6 +58,13 @@
       <div id="loading" class="loading">Loading builds</div>
 
       <div id="builds-container" style="display: none;">
+        <div class="build-search-bar">
+          <div class="build-search-wrap">
+            <input type="text" id="build-search-input" placeholder="Search builds by name or card..." autocomplete="off">
+            <button type="button" id="build-search-clear" class="build-search-clear" style="display: none;" aria-label="Clear search">&times;</button>
+            <div id="build-search-suggestions" class="build-search-suggestions" style="display: none;"></div>
+          </div>
+        </div>
         <div class="builds-sort-bar">
           <span class="sort-label">Sort:</span>
           <button class="sort-btn active" data-sort="recent">Most Recent</button>

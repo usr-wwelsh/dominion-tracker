@@ -6,12 +6,15 @@
 let buildsData = [];
 let currentSort = 'recent';
 let activeExpansionFilter = null; // null = no filter
+let searchQuery = ''; // lowercase, trimmed
+let activeSuggestionIndex = -1;
 
 const BUILD_TYPE_SORT_ORDER = { custom: 0, suggested: 1, experimental: 2 };
 
 // Initialize page
 document.addEventListener('DOMContentLoaded', () => {
   setupSortButtons();
+  setupSearchBar();
   document.getElementById('filter-builds-btn').addEventListener('click', showFilterModal);
   loadBuilds();
 });
@@ -25,6 +28,126 @@ function setupSortButtons() {
       renderBuilds();
     });
   });
+}
+
+function setupSearchBar() {
+  const input = document.getElementById('build-search-input');
+  const clearBtn = document.getElementById('build-search-clear');
+  const suggestions = document.getElementById('build-search-suggestions');
+
+  input.addEventListener('input', () => {
+    searchQuery = input.value.trim().toLowerCase();
+    clearBtn.style.display = input.value ? 'block' : 'none';
+    renderSearchSuggestions(input.value.trim());
+    renderBuilds();
+  });
+
+  input.addEventListener('keydown', (e) => {
+    const items = Array.from(suggestions.querySelectorAll('.build-search-suggestion'));
+    if (e.key === 'ArrowDown' && items.length) {
+      e.preventDefault();
+      activeSuggestionIndex = Math.min(activeSuggestionIndex + 1, items.length - 1);
+      paintActiveSuggestion(items);
+    } else if (e.key === 'ArrowUp' && items.length) {
+      e.preventDefault();
+      activeSuggestionIndex = Math.max(activeSuggestionIndex - 1, 0);
+      paintActiveSuggestion(items);
+    } else if (e.key === 'Enter') {
+      e.preventDefault();
+      const target = items[activeSuggestionIndex] || items[0];
+      if (target) target.click();
+    } else if (e.key === 'Escape') {
+      hideSearchSuggestions();
+    }
+  });
+
+  input.addEventListener('focus', () => {
+    if (input.value.trim()) renderSearchSuggestions(input.value.trim());
+  });
+
+  clearBtn.addEventListener('click', () => {
+    input.value = '';
+    searchQuery = '';
+    clearBtn.style.display = 'none';
+    hideSearchSuggestions();
+    renderBuilds();
+    input.focus();
+  });
+
+  document.addEventListener('click', (e) => {
+    if (!e.target.closest('.build-search-wrap')) hideSearchSuggestions();
+  });
+}
+
+function paintActiveSuggestion(items) {
+  items.forEach((el, i) => el.classList.toggle('active', i === activeSuggestionIndex));
+}
+
+function hideSearchSuggestions() {
+  const suggestions = document.getElementById('build-search-suggestions');
+  suggestions.style.display = 'none';
+  suggestions.innerHTML = '';
+  activeSuggestionIndex = -1;
+}
+
+function renderSearchSuggestions(rawQuery) {
+  const suggestions = document.getElementById('build-search-suggestions');
+  activeSuggestionIndex = -1;
+
+  if (!rawQuery) {
+    hideSearchSuggestions();
+    return;
+  }
+
+  const q = rawQuery.toLowerCase();
+  const matches = buildsData
+    .filter(b => buildMatchesSearch(b, q))
+    .slice(0, 8);
+
+  if (matches.length === 0) {
+    suggestions.innerHTML = '<div class="build-search-suggestion" style="cursor: default;">No matching builds</div>';
+    suggestions.style.display = 'block';
+    return;
+  }
+
+  suggestions.innerHTML = matches.map(b => {
+    const matchDetail = findSearchMatchDetail(b, q);
+    const detailHtml = matchDetail ? `<span class="search-match-type">— ${escapeHtml(matchDetail)}</span>` : '';
+    return `<button type="button" class="build-search-suggestion" data-build-id="${b.id}">${escapeHtml(b.nickname)}${detailHtml}</button>`;
+  }).join('');
+  suggestions.style.display = 'block';
+
+  suggestions.querySelectorAll('.build-search-suggestion[data-build-id]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const buildId = Number(btn.dataset.buildId);
+      const build = buildsData.find(b => b.id === buildId);
+      if (!build) return;
+      const input = document.getElementById('build-search-input');
+      input.value = build.nickname;
+      searchQuery = build.nickname.toLowerCase();
+      document.getElementById('build-search-clear').style.display = 'block';
+      hideSearchSuggestions();
+      renderBuilds();
+      focusOnBuild(buildId);
+    });
+  });
+}
+
+// Scroll to a build, expand it, and briefly highlight it
+function focusOnBuild(buildId) {
+  const el = document.querySelector(`.build-item[data-build-id="${buildId}"]`);
+  if (!el) return;
+
+  el.classList.remove('collapsed');
+  if (!el.dataset.contentLoaded) {
+    el.dataset.contentLoaded = '1';
+    loadBuildComments(buildId, el.querySelector(`#comments-${buildId}`));
+    loadBuildGames(buildId, el.querySelector(`#games-${buildId}`));
+  }
+
+  el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  el.classList.add('search-highlight');
+  setTimeout(() => el.classList.remove('search-highlight'), 2400);
 }
 
 // Load builds data
@@ -84,8 +207,13 @@ function renderBuilds() {
     sorted = sorted.filter(buildMatchesFilter);
   }
 
+  if (searchQuery) {
+    sorted = sorted.filter(b => buildMatchesSearch(b, searchQuery));
+  }
+
   if (sorted.length === 0) {
-    buildsList.innerHTML = '<p class="builds-no-results">No builds match the selected expansions.</p>';
+    const message = searchQuery ? 'No builds match your search.' : 'No builds match the selected expansions.';
+    buildsList.innerHTML = `<p class="builds-no-results">${escapeHtml(message)}</p>`;
     return;
   }
 
@@ -104,6 +232,65 @@ function buildMatchesFilter(build) {
     if (exp && !activeExpansionFilter.has(exp)) return false;
   }
   return true;
+}
+
+// Minimal edit distance, used to tolerate small typos in search terms
+function levenshtein(a, b) {
+  const m = a.length, n = b.length;
+  if (m === 0) return n;
+  if (n === 0) return m;
+  let prev = Array.from({ length: n + 1 }, (_, i) => i);
+  for (let i = 1; i <= m; i++) {
+    const row = [i];
+    for (let j = 1; j <= n; j++) {
+      row[j] = a[i - 1] === b[j - 1]
+        ? prev[j - 1]
+        : 1 + Math.min(prev[j - 1], prev[j], row[j - 1]);
+    }
+    prev = row;
+  }
+  return prev[n];
+}
+
+// Substring match, falling back to a per-word fuzzy match so small typos
+// (e.g. "theives" vs "thieves") still find results.
+function fuzzyIncludes(text, query) {
+  if (!text) return false;
+  const t = text.toLowerCase();
+  if (t.includes(query)) return true;
+  const maxDist = query.length <= 4 ? 1 : query.length <= 8 ? 2 : 3;
+  return t.split(/\s+/).some(word => levenshtein(word, query) <= maxDist);
+}
+
+// Search matches nickname, notes, or any selected card/landmark/event/prophecy/trait
+function buildMatchesSearch(build, query) {
+  if (fuzzyIncludes(build.nickname, query)) return true;
+  if (fuzzyIncludes(build.notes, query)) return true;
+  const allItems = [
+    ...(build.cards || []),
+    ...(build.landmarks || []),
+    ...(build.events || []),
+    ...(build.prophecies || []),
+    ...(build.traits || []),
+  ];
+  return allItems.some(item => fuzzyIncludes(item, query));
+}
+
+// Returns the specific card/landmark/etc that matched, for display in the
+// autocomplete dropdown, or null when the nickname itself matched.
+function findSearchMatchDetail(build, query) {
+  if (fuzzyIncludes(build.nickname, query)) return null;
+  const allItems = [
+    ...(build.cards || []),
+    ...(build.landmarks || []),
+    ...(build.events || []),
+    ...(build.prophecies || []),
+    ...(build.traits || []),
+  ];
+  const match = allItems.find(item => fuzzyIncludes(item, query));
+  if (match) return match;
+  if (fuzzyIncludes(build.notes, query)) return 'notes';
+  return null;
 }
 
 function showFilterModal() {
