@@ -24,6 +24,7 @@ docker compose up -d   # http://localhost:3002
 
 **Local:**
 
+Requires Node.js 22 or newer.
 ```bash
 cd backend && npm install
 # Start the server:
